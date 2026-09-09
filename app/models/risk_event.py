@@ -32,7 +32,7 @@ class RiskEvent(Base):
         nullable=False,
     )
 
-    metadata: Mapped[dict | None] = mapped_column(
+    event_data: Mapped[dict | None] = mapped_column(
         JSON,
         nullable=True,
     )
