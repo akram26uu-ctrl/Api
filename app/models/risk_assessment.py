@@ -1,10 +1,11 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, Enum as SqlEnum, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.models.enums import RiskDecision
 
 
 class RiskAssessment(Base):
@@ -26,8 +27,8 @@ class RiskAssessment(Base):
         nullable=False,
     )
 
-    decision: Mapped[str] = mapped_column(
-        String(50),
+    decision: Mapped[RiskDecision] = mapped_column(
+        SqlEnum(RiskDecision, name="risk_decision"),
         nullable=False,
         index=True,
     )
