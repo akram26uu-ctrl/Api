@@ -1,10 +1,11 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, Enum as SqlEnum, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.models.enums import MerchantStatus
 
 
 class Merchant(Base):
@@ -27,10 +28,11 @@ class Merchant(Base):
         index=True,
     )
 
-    status: Mapped[str] = mapped_column(
-        String(50),
+    status: Mapped[MerchantStatus] = mapped_column(
+        SqlEnum(MerchantStatus, name="merchant_status"),
         nullable=False,
-        default="active",
+        default=MerchantStatus.PENDING,
+        index=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
