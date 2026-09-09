@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     DateTime,
+    Enum as SqlEnum,
     ForeignKey,
     Numeric,
     String,
@@ -13,6 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.models.enums import OrderStatus
 
 
 class Order(Base):
@@ -66,10 +68,10 @@ class Order(Base):
         nullable=False,
     )
 
-    status: Mapped[str] = mapped_column(
-        String(50),
+    status: Mapped[OrderStatus] = mapped_column(
+        SqlEnum(OrderStatus, name="order_status"),
         nullable=False,
-        default="pending",
+        default=OrderStatus.PENDING,
         index=True,
     )
 
