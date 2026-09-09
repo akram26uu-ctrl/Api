@@ -22,14 +22,26 @@ class Order(Base):
         index=True,
     )
 
-    customer_id: Mapped[UUID] = mapped_column(
+    customer_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("customers.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
 
-    phone_identifier_id: Mapped[UUID] = mapped_column(
+    phone_identifier_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("phone_identifiers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    device_identifier_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("device_identifiers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    address_identifier_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("address_identifiers.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -37,7 +49,6 @@ class Order(Base):
     external_order_id: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
-        index=True,
     )
 
     status: Mapped[str] = mapped_column(
@@ -68,24 +79,10 @@ class Order(Base):
         nullable=False,
     )
 
-    wilaya: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-    )
-
-    commune: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-    )
-
-    address: Mapped[str] = mapped_column(
-        String(500),
-        nullable=False,
-    )
-
     ip_address: Mapped[str | None] = mapped_column(
         String(45),
         nullable=True,
+        index=True,
     )
 
     user_agent: Mapped[str | None] = mapped_column(
@@ -93,16 +90,11 @@ class Order(Base):
         nullable=True,
     )
 
-    device_id: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
-        index=True,
-    )
-
     source: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
         default="api",
+        index=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
