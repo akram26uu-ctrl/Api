@@ -1,10 +1,11 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, func
+from sqlalchemy import DateTime, Enum as SqlEnum, ForeignKey, Integer, JSON, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.models.enums import RiskEventType
 
 
 class RiskEvent(Base):
@@ -21,8 +22,8 @@ class RiskEvent(Base):
         index=True,
     )
 
-    event_type: Mapped[str] = mapped_column(
-        String(100),
+    event_type: Mapped[RiskEventType] = mapped_column(
+        SqlEnum(RiskEventType, name="risk_event_type"),
         nullable=False,
         index=True,
     )
