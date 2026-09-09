@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -33,4 +33,8 @@ class DeviceIdentifier(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    orders: Mapped[list["Order"]] = relationship(
+        back_populates="device_identifier",
     )
