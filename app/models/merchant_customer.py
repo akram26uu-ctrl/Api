@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import DateTime, ForeignKey, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -31,4 +31,12 @@ class MerchantCustomer(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    merchant: Mapped["Merchant"] = relationship(
+        back_populates="customer_links",
+    )
+
+    customer: Mapped["Customer"] = relationship(
+        back_populates="merchant_links",
     )
