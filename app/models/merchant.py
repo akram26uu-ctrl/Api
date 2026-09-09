@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -44,4 +44,19 @@ class Merchant(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    api_keys: Mapped[list["ApiKey"]] = relationship(
+        back_populates="merchant",
+        cascade="all, delete-orphan",
+    )
+
+    orders: Mapped[list["Order"]] = relationship(
+        back_populates="merchant",
+        cascade="all, delete-orphan",
+    )
+
+    customer_links: Mapped[list["MerchantCustomer"]] = relationship(
+        back_populates="merchant",
+        cascade="all, delete-orphan",
     )
