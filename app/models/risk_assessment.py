@@ -1,9 +1,8 @@
 from datetime import datetime
-from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -43,4 +42,13 @@ class RiskAssessment(Base):
         nullable=False,
         server_default=func.now(),
         index=True,
+    )
+
+    order: Mapped["Order"] = relationship(
+        back_populates="risk_assessments",
+    )
+
+    events: Mapped[list["RiskEvent"]] = relationship(
+        back_populates="risk_assessment",
+        cascade="all, delete-orphan",
     )
