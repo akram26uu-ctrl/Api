@@ -10,7 +10,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -124,4 +124,29 @@ class Order(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    merchant: Mapped["Merchant"] = relationship(
+        back_populates="orders",
+    )
+
+    customer: Mapped["Customer | None"] = relationship(
+        back_populates="orders",
+    )
+
+    phone_identifier: Mapped["PhoneIdentifier | None"] = relationship(
+        back_populates="orders",
+    )
+
+    device_identifier: Mapped["DeviceIdentifier | None"] = relationship(
+        back_populates="orders",
+    )
+
+    address_identifier: Mapped["AddressIdentifier | None"] = relationship(
+        back_populates="orders",
+    )
+
+    risk_assessments: Mapped[list["RiskAssessment"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
     )
