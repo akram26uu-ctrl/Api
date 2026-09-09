@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -42,4 +42,8 @@ class RiskEvent(Base):
         nullable=False,
         server_default=func.now(),
         index=True,
+    )
+
+    risk_assessment: Mapped["RiskAssessment"] = relationship(
+        back_populates="events",
     )
