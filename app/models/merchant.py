@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import MerchantStatus
+from app.models.order import Order
 
 
 class Merchant(Base):
@@ -29,7 +30,11 @@ class Merchant(Base):
     )
 
     status: Mapped[MerchantStatus] = mapped_column(
-        SqlEnum(MerchantStatus, name="merchant_status"),
+        SqlEnum(
+            MerchantStatus,
+            name="merchant_status",
+            values_callable=lambda enum: [item.value for item in enum],
+        ),
         nullable=False,
         default=MerchantStatus.PENDING,
         index=True,
@@ -55,8 +60,7 @@ class Merchant(Base):
 
     orders: Mapped[list["Order"]] = relationship(
         back_populates="merchant",
-        cascade="all, delete-orphan",
-    )
+)
 
     customer_links: Mapped[list["MerchantCustomer"]] = relationship(
         back_populates="merchant",

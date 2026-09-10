@@ -34,10 +34,10 @@ class Order(Base):
     )
 
     merchant_id: Mapped[UUID] = mapped_column(
-        ForeignKey("merchants.id", ondelete="CASCADE"),
+        ForeignKey("merchants.id"),
         nullable=False,
         index=True,
-    )
+)
 
     customer_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("customers.id", ondelete="SET NULL"),
@@ -69,7 +69,11 @@ class Order(Base):
     )
 
     status: Mapped[OrderStatus] = mapped_column(
-        SqlEnum(OrderStatus, name="order_status"),
+        SqlEnum(
+            OrderStatus,
+            name="order_status",
+            values_callable=lambda enum: [item.value for item in enum],
+        ),
         nullable=False,
         default=OrderStatus.PENDING,
         index=True,
