@@ -30,7 +30,6 @@ class ApiKey(Base):
         String(255),
         nullable=False,
         unique=True,
-        index=True,
     )
 
     is_active: Mapped[bool] = mapped_column(

@@ -19,7 +19,6 @@ class PhoneIdentifier(Base):
         String(20),
         nullable=False,
         unique=True,
-        index=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(

@@ -21,6 +21,7 @@ class RiskDecision(str, Enum):
     REVIEW = "review"
     REJECT = "reject"
 
+
 class RiskEventType(str, Enum):
     VPN_DETECTED = "vpn_detected"
     PROXY_DETECTED = "proxy_detected"

@@ -1,7 +1,15 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Enum as SqlEnum, ForeignKey, Integer, String, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum as SqlEnum,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -10,6 +18,13 @@ from app.models.enums import RiskDecision
 
 class RiskAssessment(Base):
     __tablename__ = "risk_assessments"
+
+    __table_args__ = (
+        CheckConstraint(
+            "score >= 0 AND score <= 100",
+            name="ck_risk_assessment_score_range",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(
         primary_key=True,
@@ -28,7 +43,11 @@ class RiskAssessment(Base):
     )
 
     decision: Mapped[RiskDecision] = mapped_column(
-        SqlEnum(RiskDecision, name="risk_decision"),
+        SqlEnum(
+            RiskDecision,
+            name="risk_decision",
+            values_callable=lambda enum: [item.value for item in enum],
+        ),
         nullable=False,
         index=True,
     )

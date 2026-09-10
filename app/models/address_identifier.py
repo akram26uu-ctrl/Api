@@ -37,7 +37,6 @@ class AddressIdentifier(Base):
         String(64),
         nullable=False,
         unique=True,
-        index=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(

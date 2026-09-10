@@ -19,9 +19,7 @@ class DeviceIdentifier(Base):
         String(255),
         nullable=False,
         unique=True,
-        index=True,
     )
-
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

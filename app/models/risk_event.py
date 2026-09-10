@@ -23,7 +23,11 @@ class RiskEvent(Base):
     )
 
     event_type: Mapped[RiskEventType] = mapped_column(
-        SqlEnum(RiskEventType, name="risk_event_type"),
+        SqlEnum(
+            RiskEventType,
+            name="risk_event_type",
+            values_callable=lambda enum: [item.value for item in enum],
+        ),
         nullable=False,
         index=True,
     )
