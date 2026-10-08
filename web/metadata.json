@@ -1,0 +1,7 @@
+{
+  "name": "ORDIUM",
+  "description": "Fraud Detection & Order Risk Intelligence Infrastructure for E-commerce",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

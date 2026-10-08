@@ -1,0 +1,6 @@
+from app.repositories.address_identifier_repository import AddressIdentifierRepository
+from app.repositories.customer_repository import CustomerRepository
+from app.repositories.device_identifier_repository import DeviceIdentifierRepository
+from app.repositories.merchant_repository import MerchantRepository
+from app.repositories.order_repository import OrderRepository
+from app.repositories.phone_identifier_repository import PhoneIdentifierRepository

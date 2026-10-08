@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  html, body, #root {
+    min-width: 0;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  button, a, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  
+  /* High-quality Arabic typography when RTL or Arabic is active */
+  [dir="rtl"],
+  html[lang="ar"],
+  [dir="rtl"] body {
+    font-family: 'Cairo', 'IBM Plex Sans Arabic', 'Tajawal', 'Arial', sans-serif;
+    letter-spacing: 0 !important;
+  }
+
+  /* Ensure monospace numbers and code remain readable and well-aligned */
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* In Arabic, keep monospace for numbers and hashes while keeping legible script */
+  [dir="rtl"] .font-mono {
+    font-family: 'JetBrains Mono', 'IBM Plex Sans Arabic', monospace;
+  }
+}
+
+/* RTL Icon and layout utility support */
+[dir="rtl"] .rtl-mirror {
+  transform: scaleX(-1);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #080B12;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.35);
+}
