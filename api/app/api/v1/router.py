@@ -5,6 +5,7 @@ from app.api.v1.audit import router as audit_router
 from app.api.v1.webhooks import router as webhooks_router
 from app.api.v1.api_keys import router as api_keys_router
 from app.api.v1.orders import router as orders_router
+from app.api.v1.order_confirmation_metrics import router as order_confirmation_metrics_router
 from app.api.v1.order_outcomes import (
     router as order_outcomes_router,
 )
@@ -23,6 +24,7 @@ router = APIRouter(
 router.include_router(
     orders_router,
 )
+router.include_router(order_confirmation_metrics_router)
 
 router.include_router(
     order_outcomes_router,

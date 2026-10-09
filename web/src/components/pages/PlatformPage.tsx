@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Cpu, Zap, Activity, ShieldAlert, GitBranch, Layers } from 'lucide-react';
+import { Cpu, Zap, Activity, ShieldAlert, GitBranch, Layers, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { RiskCore3D } from '../3d/RiskCore3D';
 import { PipelineSection } from '../marketing/PipelineSection';
 
@@ -23,6 +23,17 @@ export const PlatformPage: React.FC = () => {
           <p className="text-base text-[#94A3B8] leading-relaxed">
             Designed for merchant-scoped checkout risk evaluation. The platform persists risk signals, rule versions, identity relationships, and measured evaluation telemetry.
           </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+          <div className="rounded-2xl border border-white/10 bg-[#0D1320] p-6 space-y-3">
+            <div className="flex items-center gap-2 text-[#22D3EE]"><MessageCircle className="w-5 h-5" /><h2 className="text-sm font-bold text-white">Manual order confirmation</h2></div>
+            <p className="text-sm text-[#94A3B8] leading-relaxed">Open a pre-filled WhatsApp conversation or initiate a phone call yourself, then record the result against the order. ORDIUM does not send messages or place calls automatically.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[#0D1320] p-6 space-y-3">
+            <div className="flex items-center gap-2 text-[#10B981]"><CheckCircle2 className="w-5 h-5" /><h2 className="text-sm font-bold text-white">Confirmation metrics and audit history</h2></div>
+            <p className="text-sm text-[#94A3B8] leading-relaxed">Track confirmed orders, orders awaiting first contact, work in progress, cancellations and contact attempts. The confirmation rate uses orders with recorded confirmation activity as its denominator; untouched new orders are reported separately.</p>
+          </div>
         </div>
 
         {/* 3D Visualizer */}

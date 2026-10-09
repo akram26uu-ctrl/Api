@@ -3,7 +3,7 @@
     "name": "ORDIUM",
     "tagline": "Risk Intelligence",
     "fullName": "ORDIUM — Fraud Detection & Order Risk Intelligence",
-    "metaDescription": "ORDIUM analyzes identity, behavior, network signals, and connected entities to help e-commerce businesses stop suspicious orders before they become losses."
+    "metaDescription": "ORDIUM combines order-risk evaluation with manual order confirmation through WhatsApp or phone, keeping contact outcomes auditable and giving merchants practical follow-up metrics."
   },
   "nav": {
     "platform": "Platform",
@@ -149,7 +149,7 @@
     "badge": "ORDIUM INFRASTRUCTURE ENGINE v2.4",
     "title_p1": "Stop Fraud Before",
     "title_p2": "It Hits Settlement.",
-    "description": "ORDIUM analyzes identity, behavior, network signals, order history, and connected entities to help e-commerce businesses stop suspicious orders before they become chargeback losses.",
+    "description": "Assess order risk, follow up manually through WhatsApp or phone, and record confirmation outcomes in one merchant workflow.",
     "cta_launch": "Launch Console",
     "cta_docs": "Explore the API",
     "cta_simulate": "Simulate Checkout",
@@ -327,7 +327,8 @@
     "fp_rate": "False-positive rate (reported when enough outcome data exists)",
     "verified_rules": "Explainable verified rules",
     "chargeback_red": "Chargeback impact (reported when enough outcome data exists)",
-    "immediate_syndicate": "Immediate syndicate blocking"
+    "immediate_syndicate": "Immediate syndicate blocking",
+    "sandbox_feat_6": "Manual WhatsApp or phone follow-up, with an auditable attempt history and confirmation metrics in the Orders screen."
   },
   "footer": {
     "network_status": "ORDIUM Network: Telemetry reported by the service Operational",
@@ -386,7 +387,7 @@
     "sidebar": {
       "risk_platform": "Risk Platform",
       "overview": "Overview",
-      "orders": "Orders & Risk",
+      "orders": "Orders & Confirmation",
       "network": "Identity Graph",
       "simulator": "Simulator",
       "rules": "Rules Engine",
@@ -402,7 +403,7 @@
       "sandbox_btn": "SANDBOX",
       "live_btn": "LIVE",
       "live_active": "LIVE TRAFFIC ACTIVE",
-            "simulate_order": "Simulate Order",
+      "simulate_order": "Simulate Order",
       "return_website": "Return to website",
       "store_label": "Store",
       "toggle_menu": "Open navigation"
@@ -441,7 +442,7 @@
     },
     "titles": {
       "overview": "Command Telemetry",
-      "orders": "Orders & Ingestion Pipeline",
+      "orders": "Order confirmation & follow-up metrics",
       "network": "3D Identity Graph",
       "simulator": "Signal Simulation Sandbox",
       "rules": "Heuristic Rules Engine",
@@ -452,7 +453,7 @@
     },
     "orders": {
       "title": "Orders & Risk Ledger",
-      "subtitle": "Real-time evaluation stream and historical decision audit logs.",
+      "subtitle": "Review each order’s risk, track confirmation status, and record contact attempts and outcomes directly from the orders screen.",
       "all_decisions": "All Decisions",
       "allow": "ALLOW",
       "review": "REVIEW",
@@ -483,7 +484,10 @@
       "outcome_false_positive": "False Positive",
       "all_statuses": "All statuses",
       "load_error": "Unable to load orders",
-      "inspect": "Inspect"
+      "inspect": "Inspect",
+      "col_product": "Product",
+      "product_unavailable": "Product name unavailable",
+      "more_products": "more products"
     },
     "simulator": {
       "title": "Interactive Order Risk Simulator",
@@ -659,6 +663,61 @@
       "orders": "Orders",
       "disable": "Disable",
       "enable": "Enable"
+    },
+    "confirmation": {
+      "title": "Order confirmation",
+      "products": "Products",
+      "buyer": "Buyer",
+      "whatsapp": "Open WhatsApp",
+      "call": "Manual call",
+      "phone_missing": "A valid phone number is not available",
+      "note_placeholder": "Optional contact note",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancel order",
+      "no_answer": "No answer",
+      "callback": "Call back",
+      "saving": "Saving contact history...",
+      "recent_activity": "Recent contact attempts",
+      "load_error": "Could not load confirmation history",
+      "save_error": "Could not save confirmation result",
+      "manual_call": "Manual call",
+      "product_unavailable": "Product name unavailable",
+      "more_products": "more products",
+      "status": {
+        "pending": "Awaiting confirmation",
+        "confirmed": "Confirmed",
+        "cancelled": "Order cancelled",
+        "no_answer": "No answer",
+        "callback_requested": "Callback requested",
+        "needs_review": "Needs review",
+        "contact_started": "Contact started"
+      },
+      "outcome": {
+        "contact_started": "Contact started",
+        "confirmed": "Confirmed",
+        "cancelled": "Order cancelled",
+        "no_answer": "No answer",
+        "callback_requested": "Callback requested",
+        "needs_review": "Needs review"
+      }
+    },
+    "confirmation_metrics": {
+      "title": "Order confirmation metrics",
+      "subtitle": "The confirmation rate uses unique orders with at least one recorded confirmation activity. New orders not yet worked are shown separately.",
+      "rate": "Confirmation rate",
+      "processed": "orders with confirmation activity",
+      "unstarted": "Awaiting first contact",
+      "unstarted_hint": "New orders with no recorded contact attempt",
+      "progress": "In progress",
+      "progress_hint": "Follow-up started; no final result recorded",
+      "confirmed": "Confirmed orders",
+      "confirmed_hint": "Orders marked confirmed in the workflow",
+      "attempts": "Total contact attempts",
+      "cancelled": "Cancelled after follow-up started",
+      "average_attempts": "Average attempts per worked order",
+      "refresh": "Refresh metrics",
+      "loading": "Loading metrics…",
+      "error": "Could not load confirmation metrics. Use Refresh metrics to try again."
     }
   },
   "onboarding": {

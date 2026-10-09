@@ -3,7 +3,7 @@
     "name": "ORDIUM",
     "tagline": "Intelligence du Risque",
     "fullName": "ORDIUM — Détection de fraude et intelligence du risque de commande",
-    "metaDescription": "ORDIUM analyse l'identité, les comportements, les signaux réseau et les entités connectées pour aider les commerçants à stopper les commandes frauduleuses avant les pertes et rétrofacturations."
+    "metaDescription": "ORDIUM associe l'évaluation du risque des commandes au suivi manuel de confirmation par WhatsApp ou téléphone, avec un historique traçable et des indicateurs de suivi utiles aux commerçants."
   },
   "nav": {
     "platform": "Plateforme",
@@ -149,7 +149,7 @@
     "badge": "MOTEUR D'INFRASTRUCTURE ORDIUM v2.4",
     "title_p1": "Stoppez la Fraude Avant",
     "title_p2": "Le Règlement de la Commande.",
-    "description": "ORDIUM analyse l'identité, les comportements, les signaux réseau, l'historique et les entités connectées pour aider les boutiques e-commerce à stopper les commandes suspectes avant qu'elles ne deviennent des pertes.",
+    "description": "Évaluez le risque des commandes, contactez manuellement les acheteurs par WhatsApp ou téléphone et consignez les résultats dans un même parcours.",
     "cta_launch": "Lancer la Console",
     "cta_docs": "Explorer l'API",
     "cta_simulate": "Simuler une commande",
@@ -327,7 +327,8 @@
     "fp_rate": "Taux de faux positifs",
     "verified_rules": "Règles vérifiées et explicables",
     "chargeback_red": "Réduction des impayés",
-    "immediate_syndicate": "Blocage immédiat des réseaux frauduleux"
+    "immediate_syndicate": "Blocage immédiat des réseaux frauduleux",
+    "sandbox_feat_6": "Suivi manuel par WhatsApp ou téléphone, historique des tentatives et indicateurs de confirmation dans la liste des commandes."
   },
   "footer": {
     "network_status": "Réseau ORDIUM : Opérationnel à Télémétrie rapportée par le service",
@@ -386,7 +387,7 @@
     "sidebar": {
       "risk_platform": "Plateforme de Risque",
       "overview": "Vue d'ensemble",
-      "orders": "Commandes & Risques",
+      "orders": "Commandes et confirmations",
       "network": "Graphe d'Identité",
       "simulator": "Simulateur",
       "rules": "Moteur de Règles",
@@ -402,7 +403,7 @@
       "sandbox_btn": "BAC À SABLE",
       "live_btn": "PRODUCTION",
       "live_active": "TRAFIC EN DIRECT ACTIF",
-            "simulate_order": "Simuler une commande",
+      "simulate_order": "Simuler une commande",
       "return_website": "Retour au site",
       "store_label": "Boutique",
       "toggle_menu": "Ouvrir la navigation"
@@ -441,7 +442,7 @@
     },
     "titles": {
       "overview": "Télémétrie de Contrôle",
-      "orders": "Commandes & Pipeline d'Ingestion",
+      "orders": "Confirmation des commandes et indicateurs de suivi",
       "network": "Graphe d'Identité 3D",
       "simulator": "Bac à Sable de Simulation de Signaux",
       "rules": "Moteur de Règles Heuristiques",
@@ -452,7 +453,7 @@
     },
     "orders": {
       "title": "Journal des Commandes & Risques",
-      "subtitle": "Flux d'évaluation en direct et registre d'audit des décisions passées.",
+      "subtitle": "Examinez le risque de chaque commande, suivez son statut de confirmation et consignez les tentatives et résultats depuis la liste des commandes.",
       "all_decisions": "Toutes les décisions",
       "allow": "AUTORISER",
       "review": "RÉVISER",
@@ -483,7 +484,10 @@
       "outcome_false_positive": "Faux positif",
       "all_statuses": "Tous les statuts",
       "load_error": "Impossible de charger les commandes",
-      "inspect": "Inspecter"
+      "inspect": "Inspecter",
+      "col_product": "Produit",
+      "product_unavailable": "Nom du produit indisponible",
+      "more_products": "autres produits"
     },
     "simulator": {
       "title": "Simulateur Interactif de Risque de Commande",
@@ -659,6 +663,61 @@
       "orders": "Commandes",
       "disable": "Désactiver",
       "enable": "Activer"
+    },
+    "confirmation": {
+      "title": "Confirmation de commande",
+      "products": "Produits",
+      "buyer": "Acheteur",
+      "whatsapp": "Ouvrir WhatsApp",
+      "call": "Appel manuel",
+      "phone_missing": "Aucun numéro de téléphone valide",
+      "note_placeholder": "Note de contact facultative",
+      "confirmed": "Confirmée",
+      "cancelled": "Annuler la commande",
+      "no_answer": "Sans réponse",
+      "callback": "Rappeler",
+      "saving": "Enregistrement de l’historique...",
+      "recent_activity": "Dernières tentatives de contact",
+      "load_error": "Impossible de charger l’historique",
+      "save_error": "Impossible d’enregistrer le résultat",
+      "manual_call": "Appel manuel",
+      "product_unavailable": "Nom du produit indisponible",
+      "more_products": "autres produits",
+      "status": {
+        "pending": "En attente de confirmation",
+        "confirmed": "Confirmée",
+        "cancelled": "Commande annulée",
+        "no_answer": "Sans réponse",
+        "callback_requested": "Rappel demandé",
+        "needs_review": "À vérifier",
+        "contact_started": "Contact commencé"
+      },
+      "outcome": {
+        "contact_started": "Contact commencé",
+        "confirmed": "Confirmée",
+        "cancelled": "Commande annulée",
+        "no_answer": "Sans réponse",
+        "callback_requested": "Rappel demandé",
+        "needs_review": "À vérifier"
+      }
+    },
+    "confirmation_metrics": {
+      "title": "Indicateurs de confirmation des commandes",
+      "subtitle": "Le taux est calculé sur les commandes ayant au moins une activité de confirmation enregistrée. Les nouvelles commandes sans suivi restent séparées.",
+      "rate": "Taux de confirmation",
+      "processed": "commandes avec activité de confirmation",
+      "unstarted": "En attente du premier contact",
+      "unstarted_hint": "Nouvelles commandes sans tentative enregistrée",
+      "progress": "En cours",
+      "progress_hint": "Suivi commencé, sans résultat final",
+      "confirmed": "Commandes confirmées",
+      "confirmed_hint": "Commandes marquées comme confirmées",
+      "attempts": "Tentatives de contact au total",
+      "cancelled": "Annulées après le début du suivi",
+      "average_attempts": "Tentatives moyennes par commande suivie",
+      "refresh": "Actualiser les indicateurs",
+      "loading": "Chargement des indicateurs…",
+      "error": "Impossible de charger les indicateurs. Réessayez avec le bouton Actualiser."
     }
   },
   "onboarding": {

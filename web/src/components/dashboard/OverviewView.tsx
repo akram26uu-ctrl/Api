@@ -11,6 +11,7 @@ import { EmptyState, LoadingState } from '../common/EmptyState';
 import { RiskCore3D } from '../3d/RiskCore3D';
 import { Button } from '../common/Button';
 import { OrderDetailDrawer } from './OrderDetailDrawer';
+import { OrderConfirmationMetrics } from './OrderConfirmationMetrics';
 import { useLanguage } from '../../i18n/LanguageContext';
 import {
   ShieldAlert,
@@ -69,6 +70,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
 
   return (
     <div className="p-6 space-y-6">
+      <OrderConfirmationMetrics />
+
       {/* 4 Core Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard

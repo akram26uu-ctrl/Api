@@ -94,6 +94,32 @@ export type OrderOutcome = 'fulfilled' | 'chargeback' | 'cancelled_fraud' | 'ret
 
 export type RiskOutcome = OrderOutcome;
 
+export interface OrderConfirmationAttempt {
+  id: string;
+  order_id: string;
+  channel: 'whatsapp' | 'manual_call';
+  outcome: 'contact_started' | 'confirmed' | 'cancelled' | 'no_answer' | 'callback_requested' | 'needs_review';
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface OrderConfirmationHistory {
+  status: string;
+  data: OrderConfirmationAttempt[];
+}
+
+export interface OrderConfirmationMetrics {
+  attempted_orders: number;
+  confirmed_orders: number;
+  cancelled_orders: number;
+  in_progress_orders: number;
+  unstarted_pending_orders: number;
+  total_attempts: number;
+  confirmation_rate: number;
+  average_attempts_per_order: number;
+  rate_denominator: string;
+}
+
 export interface Order {
   id: string;
   order_number: string;

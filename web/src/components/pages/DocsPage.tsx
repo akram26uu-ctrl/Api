@@ -13,6 +13,9 @@ export const DocsPage: React.FC = () => {
     { id: 'create_order', method: 'POST', path: '/api/v1/orders', title: 'Create & Ingest Order' },
     { id: 'get_orders', method: 'GET', path: '/api/v1/orders', title: 'List Orders' },
     { id: 'get_order', method: 'GET', path: '/api/v1/orders/{id}', title: 'Retrieve Order & Risk' },
+    { id: 'confirmation_metrics', method: 'GET', path: '/api/v1/order-confirmations/metrics', title: 'Order Confirmation Metrics' },
+    { id: 'confirmation_history', method: 'GET', path: '/api/v1/orders/{id}/confirmation-attempts', title: 'Confirmation History' },
+    { id: 'confirmation_record', method: 'POST', path: '/api/v1/orders/{id}/confirmation-attempts', title: 'Record Confirmation Attempt' },
     { id: 'order_outcome', method: 'POST', path: '/api/v1/orders/{id}/outcome', title: 'Record Order Outcome' },
     { id: 'risk_profile_get', method: 'GET', path: '/api/v1/risk-profile', title: 'Read Risk Profile' },
     { id: 'risk_profile_patch', method: 'PATCH', path: '/api/v1/risk-profile', title: 'Update Risk Profile' },
@@ -72,7 +75,7 @@ export function verifyOrdiumWebhook(payloadString, signatureHeader, webhookSecre
             Developer API Reference
           </h1>
           <p className="text-sm text-[#94A3B8] max-w-2xl leading-relaxed">
-            Integrate checkout risk intelligence through an authenticated REST API with standardized JSON responses, scoped credentials, and cryptographic webhook signing.
+            Integrate order-risk evaluation and manual order confirmation through an authenticated REST API with store-scoped credentials, auditable contact attempts, confirmation metrics, and cryptographic webhook signing.
           </p>
         </div>
 
@@ -155,7 +158,7 @@ export function verifyOrdiumWebhook(payloadString, signatureHeader, webhookSecre
                   {endpointsList.find(e => e.id === activeEndpoint)?.title}
                 </h3>
                 <p className="text-xs text-[#94A3B8] leading-relaxed">
-                  The endpoint behavior depends on the selected route. Use the dedicated Simulator for isolated request evaluation; this page is the production API reference.
+                  Order confirmation routes require the orders:read or orders:write scope. Metrics are scoped to the authenticated merchant, environment, and selected store. The confirmation workflow records staff actions only; WhatsApp messages and phone calls are not sent automatically.
                 </p>
               </div>
 

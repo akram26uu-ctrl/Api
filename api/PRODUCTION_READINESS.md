@@ -25,7 +25,7 @@ These cannot be honestly certified from the repository-only environment:
 1. Run the API suite against a dedicated PostgreSQL test database with `TEST_POSTGRES_DATABASE_URL`.
 2. Run PostgreSQL concurrency tests for idempotency, concurrent outcomes, rate-limit contention and webhook claiming.
 3. Run `pip-audit` and `bandit` in a clean CI environment.
-4. Install web dependencies and run `npm ci`, `npm run lint`, and `npm run build`.
+4. Install web dependencies with `bun install --frozen-lockfile`, then run `bun run lint` and `bun run build`.
 5. Configure production `DATABASE_URL`, `SECRET_KEY`, `ORDIUM_INTERNAL_SHARED_SECRET`, `ALLOWED_HOSTS`, CORS origins, and IPQS credentials through the deployment secret manager.
 6. Define and test webhook encryption-key rotation before rotating `SECRET_KEY` in production.
 7. Define IP/network-data retention and deletion policy for production privacy compliance.

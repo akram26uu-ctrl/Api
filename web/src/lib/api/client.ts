@@ -7,7 +7,7 @@ import { CONTROL_PLANE_CONFIG } from './controlPlane';
 import {
   ApiErrorResponse, ApiKey, CreateOrderRequest, Environment, IdentityGraphData,
   MetricsSummary, Order, OrderListQuery, OrderOutcome, RiskAssessment, RiskCategoryBreakdown, RiskSignal, DashboardNotification, NotificationPage,
-  UsageQuota, WebhookDeliveryLog, WebhookEndpoint, Store, OrderStatus,
+  UsageQuota, WebhookDeliveryLog, WebhookEndpoint, Store, OrderStatus, OrderConfirmationAttempt, OrderConfirmationHistory, OrderConfirmationMetrics,
 } from './types';
 import { MockDatabase } from './mockDatabase';
 
@@ -220,6 +220,29 @@ class OrdiumClientService {
     const storeQuery = options.storeId ? `?store_id=${encodeURIComponent(options.storeId)}` : '';
     const raw = await ordiumFetch<any>(`/orders${storeQuery}`, { method: 'POST', headers: { 'Idempotency-Key': options.simulation ? `sim_${crypto.randomUUID()}` : payload.order_number, 'X-Device-Fingerprint': payload.customer.device_id, ...(options.simulation ? { 'X-Ordium-Environment': 'test', 'X-Simulation-IP': payload.customer.ip_address } : {}), ...(options.storeId ? { 'X-Ordium-Store-ID': options.storeId } : {}) }, body: JSON.stringify(body) });
     return mapOrder({ ...raw, first_name: body.first_name, last_name: body.last_name, phone: body.phone, ip_address: payload.customer.ip_address, currency: body.currency, total_amount: body.total_amount, created_at: new Date().toISOString() });
+  }
+
+  async getOrderConfirmationMetrics(): Promise<OrderConfirmationMetrics> {
+    if (DEMO_MODE) {
+      const orders = MockDatabase.getOrders(normalizeEnvironment(this.activeEnvironment));
+      const confirmed = orders.filter(order => order.status === 'confirmed').length;
+      const attempted = confirmed;
+      return { attempted_orders: attempted, confirmed_orders: confirmed, cancelled_orders: orders.filter(order => order.status === 'cancelled').length, in_progress_orders: 0, unstarted_pending_orders: orders.filter(order => order.status === 'pending').length, total_attempts: attempted, confirmation_rate: attempted ? 100 : 0, average_attempts_per_order: attempted ? 1 : 0, rate_denominator: 'unique_orders_with_confirmation_activity' };
+    }
+    return ordiumFetch<OrderConfirmationMetrics>(`/order-confirmations/metrics${activeStoreId ? `?store_id=${encodeURIComponent(activeStoreId)}` : ''}`);
+  }
+
+  async getConfirmationAttempts(orderId: string): Promise<OrderConfirmationHistory> {
+    if (DEMO_MODE) return { status: 'pending', data: [] };
+    return ordiumFetch<OrderConfirmationHistory>(`/orders/${encodeURIComponent(orderId)}/confirmation-attempts${activeStoreId ? `?store_id=${encodeURIComponent(activeStoreId)}` : ''}`);
+  }
+
+  async recordConfirmationAttempt(orderId: string, payload: { channel: 'whatsapp' | 'manual_call'; outcome: OrderConfirmationAttempt['outcome']; notes?: string }): Promise<OrderConfirmationAttempt> {
+    const result = DEMO_MODE
+      ? { id: `demo-${Date.now()}`, order_id: orderId, channel: payload.channel, outcome: payload.outcome, notes: payload.notes || null, created_at: new Date().toISOString() } as OrderConfirmationAttempt
+      : await ordiumFetch<OrderConfirmationAttempt>(`/orders/${encodeURIComponent(orderId)}/confirmation-attempts${activeStoreId ? `?store_id=${encodeURIComponent(activeStoreId)}` : ''}`, { method: 'POST', body: JSON.stringify(payload) });
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('ordium:confirmation-updated'));
+    return result;
   }
 
   async updateOrderOutcome(orderId: string, outcome: OrderOutcome): Promise<Order> {

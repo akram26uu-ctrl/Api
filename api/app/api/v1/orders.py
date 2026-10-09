@@ -8,8 +8,11 @@ from app.models.api_key import ApiKey
 from app.schemas.order import OrderCreate, OrderResponse, OrderListPage, OrderListResponse
 from app.services.order_service import OrderService
 from app.models.order import Order
+from app.models.order_item import OrderItem
 from app.models.risk_assessment import RiskAssessment
 from app.api.store_scope import requested_store_id
+from app.models.order_confirmation_attempt import OrderConfirmationAttempt
+from app.schemas.order_confirmation import ConfirmationAttemptCreate
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -106,7 +109,7 @@ def list_orders(
         query = query.filter(Order.risk_assessments.any(RiskAssessment.decision == RiskDecision(normalized)))
     if search:
         pattern = f"%{search.strip()}%"
-        query = query.filter(or_(Order.external_order_id.ilike(pattern), Order.first_name.ilike(pattern), Order.last_name.ilike(pattern), Order.ip_address.ilike(pattern)))
+        query = query.filter(or_(Order.external_order_id.ilike(pattern), Order.first_name.ilike(pattern), Order.last_name.ilike(pattern), Order.ip_address.ilike(pattern), Order.items.any(OrderItem.product_name.ilike(pattern))))
     total = query.count()
     orders = query.order_by(Order.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
     return OrderListPage(data=[_order_list_response(order) for order in orders], pagination={"total": total, "page": page, "limit": limit, "total_pages": (total + limit - 1) // limit if total else 1})
@@ -174,3 +177,93 @@ def create_order(
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
     return result.response_body
+
+
+@router.get("/{order_id}/confirmation-attempts")
+def list_confirmation_attempts(
+    order_id: str,
+    store_id: str | None = Query(default=None),
+    db: Session = Depends(get_database),
+    api_key: ApiKey = Depends(require_api_scope("orders:read")),
+):
+    from uuid import UUID
+    try:
+        parsed_order_id = UUID(order_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Order not found") from exc
+    selected_store = requested_store_id(db, api_key, store_id)
+    order_query = db.query(Order).filter(
+        Order.id == parsed_order_id,
+        Order.merchant_id == api_key.merchant_id,
+        Order.environment == api_key.environment,
+    )
+    if selected_store is not None:
+        order_query = order_query.filter(Order.store_id == selected_store)
+    order = order_query.first()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    attempts = db.query(OrderConfirmationAttempt).filter(
+        OrderConfirmationAttempt.order_id == order.id,
+        OrderConfirmationAttempt.merchant_id == api_key.merchant_id,
+        OrderConfirmationAttempt.environment == api_key.environment,
+    ).order_by(OrderConfirmationAttempt.created_at.desc()).limit(50).all()
+    latest = order.status.value if order.status.value in {"confirmed", "cancelled"} else (attempts[0].outcome if attempts else "pending")
+    return {"status": latest, "data": [{
+        "id": str(item.id), "order_id": str(item.order_id), "channel": item.channel,
+        "outcome": item.outcome, "notes": item.notes, "created_at": item.created_at,
+    } for item in attempts]}
+
+
+@router.post("/{order_id}/confirmation-attempts", status_code=status.HTTP_201_CREATED)
+def create_confirmation_attempt(
+    order_id: str,
+    data: ConfirmationAttemptCreate,
+    store_id: str | None = Query(default=None),
+    db: Session = Depends(get_database),
+    api_key: ApiKey = Depends(require_api_scope("orders:write")),
+):
+    from uuid import UUID
+    from app.models.enums import OrderStatus
+    try:
+        parsed_order_id = UUID(order_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Order not found") from exc
+    selected_store = requested_store_id(db, api_key, store_id)
+    order_query = db.query(Order).filter(
+        Order.id == parsed_order_id,
+        Order.merchant_id == api_key.merchant_id,
+        Order.environment == api_key.environment,
+    ).with_for_update()
+    if selected_store is not None:
+        order_query = order_query.filter(Order.store_id == selected_store)
+    order = order_query.first()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if data.outcome == "confirmed":
+        if order.status not in {OrderStatus.PENDING, OrderStatus.CONFIRMED}:
+            raise HTTPException(status_code=409, detail="This order can no longer be confirmed")
+        order.status = OrderStatus.CONFIRMED
+    elif data.outcome == "cancelled":
+        if order.status not in {OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.CANCELLED}:
+            raise HTTPException(status_code=409, detail="A fulfilled order cannot be cancelled through confirmation")
+        order.status = OrderStatus.CANCELLED
+
+    attempt = OrderConfirmationAttempt(
+        order_id=order.id,
+        merchant_id=api_key.merchant_id,
+        store_id=order.store_id,
+        api_key_id=api_key.id,
+        environment=api_key.environment,
+        channel=data.channel,
+        outcome=data.outcome,
+        notes=data.notes.strip() if data.notes else None,
+    )
+    db.add(attempt)
+    db.commit()
+    db.refresh(attempt)
+    return {
+        "id": str(attempt.id), "order_id": str(attempt.order_id),
+        "channel": attempt.channel, "outcome": attempt.outcome,
+        "notes": attempt.notes, "created_at": attempt.created_at,
+    }

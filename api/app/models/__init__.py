@@ -26,3 +26,5 @@ from app.models.merchant_rate_limit_bucket import MerchantRateLimitBucket
 from app.models.notification import Notification
 
 from app.models.store import Store
+
+from app.models.order_confirmation_attempt import OrderConfirmationAttempt

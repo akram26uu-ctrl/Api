@@ -4,8 +4,8 @@
  * score breakdown, timeline, outcome logger, and raw JSON payload.
  */
 
-import React, { useState } from 'react';
-import { Order, RiskOutcome } from '../../lib/api/types';
+import React, { useEffect, useState } from 'react';
+import { Order, RiskOutcome, OrderConfirmationAttempt } from '../../lib/api/types';
 import { Drawer } from '../common/Drawer';
 import { RiskBadge } from '../common/RiskBadge';
 import { RiskScoreGauge } from '../common/RiskScoreGauge';
@@ -23,7 +23,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   Code,
-  FileText
+  FileText,
+  MessageCircle,
+  PhoneCall,
+  PackageCheck,
+  Loader2
 } from 'lucide-react';
 import { ordiumClient } from '../../lib/api/client';
 
@@ -43,8 +47,51 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
   const { t, isRTL } = useLanguage();
   const [activeTab, setActiveTab] = useState<'overview' | 'signals' | 'timeline' | 'json'>('overview');
   const [isUpdatingOutcome, setIsUpdatingOutcome] = useState(false);
+  const [confirmationAttempts, setConfirmationAttempts] = useState<OrderConfirmationAttempt[]>([]);
+  const [confirmationStatus, setConfirmationStatus] = useState('pending');
+  const [confirmationLoading, setConfirmationLoading] = useState(false);
+  const [confirmationNote, setConfirmationNote] = useState('');
+  const [lastContactChannel, setLastContactChannel] = useState<'whatsapp' | 'manual_call'>('manual_call');
+  const [confirmationError, setConfirmationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !order) return;
+    let active = true;
+    setConfirmationLoading(true);
+    setConfirmationError(null);
+    ordiumClient.getConfirmationAttempts(order.id).then(result => {
+      if (!active) return;
+      setConfirmationAttempts(result.data || []);
+      setConfirmationStatus(result.status || 'pending');
+    }).catch(err => {
+      if (active) setConfirmationError((err as Error)?.message || t('dashboard.confirmation.load_error', 'تعذر تحميل سجل التأكيد'));
+    }).finally(() => { if (active) setConfirmationLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, order?.id]);
 
   if (!order) return null;
+
+  const recordConfirmation = async (channel: 'whatsapp' | 'manual_call', outcome: OrderConfirmationAttempt['outcome']) => {
+    setConfirmationLoading(true);
+    setConfirmationError(null);
+    try {
+      const attempt = await ordiumClient.recordConfirmationAttempt(order.id, { channel, outcome, notes: confirmationNote.trim() || undefined });
+      setConfirmationAttempts(prev => [attempt, ...prev].slice(0, 50));
+      setConfirmationStatus(outcome);
+      setConfirmationNote('');
+    } catch (err) {
+      setConfirmationError((err as Error)?.message || t('dashboard.confirmation.save_error', 'تعذر حفظ نتيجة التأكيد'));
+    } finally { setConfirmationLoading(false); }
+  };
+
+  const phoneDigits = (order.customer.phone || '').replace(/\D/g, '');
+  const normalizedDigits = phoneDigits.startsWith('00213') ? phoneDigits.slice(2) : phoneDigits;
+  const internationalPhone = normalizedDigits.startsWith('213') ? normalizedDigits : normalizedDigits.startsWith('0') ? `213${normalizedDigits.slice(1)}` : normalizedDigits;
+  const canContact = internationalPhone.length >= 11;
+  const productSummary = (order.items || []).map(item => `${item.name} × ${item.quantity}`).join('، ') || '—';
+  const whatsappMessage = `السلام عليكم ${order.customer.name}، نتواصل معكم لتأكيد طلبكم رقم ${order.order_number}. المنتجات: ${productSummary}. المبلغ الإجمالي: ${order.amount.toFixed(2)} ${order.currency}. هل تؤكدون الطلب؟`;
+  const whatsappUrl = canContact ? `https://wa.me/${internationalPhone}?text=${encodeURIComponent(whatsappMessage)}` : undefined;
+  const callUrl = canContact ? `tel:+${internationalPhone}` : undefined;
 
   const handleOutcome = async (outcome: RiskOutcome) => {
     setIsUpdatingOutcome(true);
@@ -145,6 +192,32 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
       {/* Tab: Overview */}
       {activeTab === 'overview' && (
         <div className="space-y-4 text-start">
+          {/* Integrated manual order confirmation — no separate confirmation dashboard or automated calls */}
+          <div className="p-4 rounded-xl bg-[#080B12]/80 border border-[#22D3EE]/20 space-y-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="font-mono text-white uppercase tracking-wider font-bold flex items-center gap-2"><PackageCheck className="w-4 h-4 text-[#22D3EE]" />{t('dashboard.confirmation.title', 'تأكيد الطلب')}</h4>
+              <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${confirmationStatus === 'confirmed' ? 'bg-emerald-500/15 text-emerald-400' : confirmationStatus === 'cancelled' ? 'bg-red-500/15 text-red-400' : 'bg-white/5 text-[#94A3B8]'}`}>{t(`dashboard.confirmation.status.${confirmationStatus}`, ({pending:'بانتظار التأكيد',confirmed:'تم التأكيد',cancelled:'أُلغي الطلب',no_answer:'لم يرد',callback_requested:'طلب معاودة الاتصال',needs_review:'يتطلب المراجعة',contact_started:'بدأ التواصل'} as Record<string,string>)[confirmationStatus] || confirmationStatus)}</span>
+            </div>
+            <div className="rounded-lg bg-white/[0.03] p-3 space-y-1">
+              <div className="text-[#94A3B8]">{t('dashboard.confirmation.products', 'المنتجات')}</div>
+              <div className="text-white font-medium">{productSummary}</div>
+              <div className="text-[#94A3B8]">{t('dashboard.confirmation.buyer', 'المشتري')}: <span className="text-white">{order.customer.name}</span> · <span dir="ltr" className="text-white">{order.customer.phone || '—'}</span></div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {whatsappUrl ? <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" onClick={() => { setLastContactChannel('whatsapp'); void recordConfirmation('whatsapp', 'contact_started'); }} className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 font-semibold text-emerald-300 hover:bg-emerald-500/20"><MessageCircle className="w-4 h-4" />{t('dashboard.confirmation.whatsapp', 'فتح واتساب')}</a> : <span className="text-amber-300">{t('dashboard.confirmation.phone_missing', 'رقم الهاتف غير صالح للتواصل')}</span>}
+              {callUrl && <a href={callUrl} onClick={() => { setLastContactChannel('manual_call'); void recordConfirmation('manual_call', 'contact_started'); }} className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 font-semibold text-white hover:bg-white/5"><PhoneCall className="w-4 h-4" />{t('dashboard.confirmation.call', 'اتصال يدوي')}</a>}
+            </div>
+            <textarea value={confirmationNote} onChange={e => setConfirmationNote(e.target.value)} rows={2} maxLength={1000} placeholder={t('dashboard.confirmation.note_placeholder', 'ملاحظة اختيارية عن التواصل')} className="w-full rounded-lg border border-white/10 bg-[#0D1320] p-3 text-white placeholder-[#64748B] outline-none focus:border-[#22D3EE]" />
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" isLoading={confirmationLoading} onClick={() => void recordConfirmation(lastContactChannel, 'confirmed')} className="text-emerald-300 border-emerald-500/30">{t('dashboard.confirmation.confirmed', 'تم التأكيد')}</Button>
+              <Button variant="outline" size="sm" isLoading={confirmationLoading} onClick={() => void recordConfirmation(lastContactChannel, 'cancelled')} className="text-red-300 border-red-500/30">{t('dashboard.confirmation.cancelled', 'إلغاء الطلب')}</Button>
+              <Button variant="outline" size="sm" isLoading={confirmationLoading} onClick={() => void recordConfirmation(lastContactChannel, 'no_answer')}>{t('dashboard.confirmation.no_answer', 'لم يرد')}</Button>
+              <Button variant="outline" size="sm" isLoading={confirmationLoading} onClick={() => void recordConfirmation(lastContactChannel, 'callback_requested')}>{t('dashboard.confirmation.callback', 'معاودة الاتصال')}</Button>
+            </div>
+            {confirmationError && <p className="text-red-300" role="alert">{confirmationError}</p>}
+            {confirmationLoading && <p className="text-[#94A3B8] flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />{t('dashboard.confirmation.saving', 'جارٍ حفظ سجل التواصل...')}</p>}
+            {confirmationAttempts.length > 0 && <div className="border-t border-white/10 pt-3 space-y-2"><div className="text-[#94A3B8]">{t('dashboard.confirmation.recent_activity', 'آخر محاولات التواصل')}</div>{confirmationAttempts.slice(0, 3).map(item => <div key={item.id} className="flex flex-wrap justify-between gap-2 text-[10px]"><span className="text-white">{t(`dashboard.confirmation.outcome.${item.outcome}`, ({contact_started:'بدأ التواصل',confirmed:'تم التأكيد',cancelled:'أُلغي الطلب',no_answer:'لم يرد',callback_requested:'طلب معاودة الاتصال',needs_review:'يتطلب المراجعة'} as Record<string,string>)[item.outcome] || item.outcome)} · {item.channel === 'whatsapp' ? 'WhatsApp' : t('dashboard.confirmation.manual_call', 'اتصال يدوي')}</span><span className="text-[#64748B]" dir="ltr">{new Date(item.created_at).toLocaleString()}</span></div>)}</div>}
+          </div>
           {/* Customer & Device */}
           <div className="p-4 rounded-xl bg-[#080B12]/80 border border-white/5 space-y-3 text-xs">
             <h4 className="font-mono text-white uppercase tracking-wider font-bold flex items-center gap-2">

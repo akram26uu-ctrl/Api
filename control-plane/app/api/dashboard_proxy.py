@@ -14,7 +14,8 @@ from app.db import get_db
 router = APIRouter(prefix="/dashboard", tags=["Dashboard Proxy"])
 
 _ALLOWED = (
-    re.compile(r"^/orders(?:/[0-9a-fA-F-]{36})?(?:/outcome)?$"),
+    re.compile(r"^/orders(?:/[0-9a-fA-F-]{36})?(?:/outcome|/confirmation-attempts)?$"),
+    re.compile(r"^/order-confirmations/metrics$"),
     re.compile(r"^/metrics/(summary|risk-performance|risk-calibration|risk-attribution|risk-backtest|risk-quality)$"),
     re.compile(r"^/api-keys(?:/[0-9a-fA-F-]{36}/(?:revoke|rotate))?$"),
     re.compile(r"^/stores(?:/[0-9a-fA-F-]{36})?$") ,

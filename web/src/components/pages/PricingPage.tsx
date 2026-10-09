@@ -12,6 +12,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onSelectPlan, onOpenDa
     t('pricing.sandbox_feat_3','Scoped API keys and webhook signing'),
     t('pricing.sandbox_feat_4','Merchant-scoped identity graph and risk telemetry'),
     t('pricing.sandbox_feat_5','No billing or overage charges in the current MVP'),
+    t('pricing.sandbox_feat_6','Manual WhatsApp or phone follow-up with confirmation metrics'),
   ];
   return <div className="py-20 bg-[#080B12] min-h-screen"><div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
     <div className="text-center max-w-3xl mx-auto mb-14 space-y-4"><div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D1320] border border-white/10 text-xs font-mono text-[#22D3EE]"><Zap className="w-3.5 h-3.5"/>ORDIUM MVP</div><h1 className="text-4xl sm:text-5xl font-extrabold text-white">Free while the platform is in MVP.</h1><p className="text-sm text-[#94A3B8] leading-relaxed">The current release has no subscription billing, paid tiers, overage charges, or SLA guarantees. Future commercial plans will be announced separately when billing infrastructure is available.</p></div>
