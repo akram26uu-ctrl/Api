@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ORDIUM Platform
 
 ## Components
@@ -32,3 +33,7 @@ Control Plane email verification is enabled for production. Verification tokens 
 ## Dashboard data path
 
 The dashboard uses the real ORDIUM API by default. `MockDatabase` is only available when `VITE_ORDIUM_DEMO_MODE=true`; it is not part of the normal production path.
+=======
+# Api
+Api for Ecommerce
+>>>>>>> 4b03b26421016567808815a723eb1b80f19ef75f
