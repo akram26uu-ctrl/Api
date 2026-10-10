@@ -1,4 +1,5 @@
 from functools import lru_cache
+from urllib.parse import urlsplit
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -42,6 +43,15 @@ class Settings(BaseSettings):
                 raise ValueError("SQLite is not allowed in production")
             if not self.cookie_secure:
                 raise ValueError("COOKIE_SECURE must be true in production")
+            configured_origins = [item.strip() for item in self.web_origins.split(",") if item.strip()]
+            if not configured_origins or "*" in configured_origins:
+                raise ValueError("WEB_ORIGINS must contain explicit origins and cannot use a wildcard in production")
+            for origin in configured_origins:
+                parsed_origin = urlsplit(origin)
+                if parsed_origin.scheme != "https" or not parsed_origin.netloc or parsed_origin.path or parsed_origin.query or parsed_origin.fragment:
+                    raise ValueError("WEB_ORIGINS must contain HTTPS origins only in production")
+            if not self.public_base_url.startswith("https://"):
+                raise ValueError("PUBLIC_BASE_URL must use HTTPS in production")
             if not self.require_email_verification:
                 raise ValueError("REQUIRE_EMAIL_VERIFICATION must be true in production")
             if len(self.session_encryption_key) < 32:

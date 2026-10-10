@@ -82,6 +82,13 @@ def get_current_rate_limited_api_key(
 
     if settings.database_url.startswith("sqlite"):
         with _rate_limit_lock:
+            # Keep the local SQLite/test limiter bounded and discard old minute buckets.
+            stale_before = window_start - timedelta(hours=2)
+            for old_key, (old_window, _) in list(_test_rate_windows.items()):
+                if old_window < stale_before:
+                    _test_rate_windows.pop(old_key, None)
+            if len(_test_rate_windows) > 20_000:
+                _test_rate_windows.clear()
             key = (str(api_key.id), api_key.environment)
             stored = _test_rate_windows.get(key)
             if stored is None or stored[0] != window_start:
@@ -115,6 +122,12 @@ def get_current_rate_limited_api_key(
 
     if settings.database_url.startswith("sqlite"):
         with _rate_limit_lock:
+            stale_before = window_start - timedelta(hours=2)
+            for old_key, (old_window, _) in list(_test_merchant_rate_windows.items()):
+                if old_window < stale_before:
+                    _test_merchant_rate_windows.pop(old_key, None)
+            if len(_test_merchant_rate_windows) > 20_000:
+                _test_merchant_rate_windows.clear()
             merchant_key = (str(api_key.merchant_id), api_key.environment)
             stored = _test_merchant_rate_windows.get(merchant_key)
             if stored is None or stored[0] != window_start:

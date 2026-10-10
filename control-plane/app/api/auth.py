@@ -16,15 +16,41 @@ from app.services.verification import VerificationService
 from app.services.email import send_verification_email, EmailDeliveryError
 from collections import defaultdict, deque
 from datetime import datetime, timezone, timedelta
+from threading import Lock
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 _RATE_BUCKETS: dict[str, deque[datetime]] = defaultdict(deque)
+_RATE_LIMIT_LOCK = Lock()
+_RATE_BUCKET_MAX = 20_000
+_RATE_CLEANUP_INTERVAL = 128
+_rate_limit_calls = 0
 
 def _rate_limit(request: Request, bucket: str, limit: int, window_seconds: int = 60) -> None:
-    now = datetime.now(timezone.utc); key = f"{bucket}:{request.client.host if request.client else 'unknown'}"; q = _RATE_BUCKETS[key]; cutoff = now - timedelta(seconds=window_seconds)
-    while q and q[0] <= cutoff: q.popleft()
-    if len(q) >= limit: raise HTTPException(status_code=429, detail="Too many account requests; retry later")
-    q.append(now)
+    global _rate_limit_calls
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(seconds=window_seconds)
+    client_host = request.client.host if request.client else "unknown"
+    key = f"{bucket}:{client_host}"
+    with _RATE_LIMIT_LOCK:
+        _rate_limit_calls += 1
+        q = _RATE_BUCKETS.get(key)
+        if q is None:
+            if len(_RATE_BUCKETS) >= _RATE_BUCKET_MAX:
+                for old_key in list(_RATE_BUCKETS)[: max(1, _RATE_BUCKET_MAX // 20)]:
+                    _RATE_BUCKETS.pop(old_key, None)
+            q = deque()
+            _RATE_BUCKETS[key] = q
+        while q and q[0] <= cutoff:
+            q.popleft()
+        if _rate_limit_calls % _RATE_CLEANUP_INTERVAL == 0:
+            for old_key, old_q in list(_RATE_BUCKETS.items()):
+                while old_q and old_q[0] <= cutoff:
+                    old_q.popleft()
+                if not old_q:
+                    _RATE_BUCKETS.pop(old_key, None)
+        if len(q) >= limit:
+            raise HTTPException(status_code=429, detail="Too many account requests; retry later")
+        q.append(now)
 
 def _registration_response(user, membership, *, verification_required=False, verification_token=None, initial_test_api_key=None):
     org = membership.organization
@@ -171,6 +197,18 @@ def change_password(
     if data.current_password == data.new_password:
         raise HTTPException(status_code=400, detail="New password must be different from the current password")
     user.password_hash = hash_password(data.new_password)
+    # Password changes invalidate all other browser sessions to limit the impact
+    # of a compromised session. Keep the current session so the user is not logged out.
+    now = datetime.now(timezone.utc)
+    other_sessions = db.scalars(
+        select(DbSession).where(
+            DbSession.user_id == user.id,
+            DbSession.id != _session.id,
+            DbSession.revoked_at.is_(None),
+        )
+    ).all()
+    for other_session in other_sessions:
+        other_session.revoked_at = now
     db.commit()
     return Response(status_code=204)
 
