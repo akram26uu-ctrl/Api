@@ -18,3 +18,18 @@ app.include_router(dashboard_router, prefix="/api/v1")
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
+
+
+@app.middleware("http")
+async def enforce_allowed_origin_for_mutations(request: Request, call_next):
+    """Reject cross-origin browser mutations while allowing clients without Origin."""
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        origin = request.headers.get("origin")
+        if origin:
+            normalized_origin = origin.rstrip("/")
+            parsed = urlsplit(normalized_origin)
+            valid_origin = bool(parsed.scheme and parsed.netloc and parsed.path == "" and not parsed.query and not parsed.fragment)
+            allowed = {item.rstrip("/") for item in origins}
+            if not valid_origin or normalized_origin not in allowed:
+                return JSONResponse(status_code=403, content={"detail": "Request origin is not allowed"})
+    return await call_next(request)
