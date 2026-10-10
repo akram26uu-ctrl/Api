@@ -48,6 +48,7 @@ if allowed_origins:
             "X-Ordium-Store-ID",
             "X-Request-ID",
             "X-Ordium-Client-Version",
+            "X-Ordium-Environment",
         ],
     )
 

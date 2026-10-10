@@ -1,5 +1,7 @@
 from uuid import UUID
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
@@ -8,10 +10,13 @@ from app.services.ordium_api import OrdiumProvisioningClient
 from app.services.email import send_verification_email
 
 
-def test_email_verification_activates_account_and_creates_dashboard_session(monkeypatch):
+@pytest.mark.parametrize(("environment", "token_exposed"), [("test", True), ("staging", False)])
+def test_email_verification_activates_account_and_creates_dashboard_session(monkeypatch, environment, token_exposed):
     captured = {}
     old = settings.require_email_verification
+    old_environment = settings.environment
     settings.require_email_verification = True
+    settings.environment = environment
 
     monkeypatch.setattr(OrdiumProvisioningClient, "provision_merchant", lambda self, **kwargs: UUID("00000000-0000-0000-0000-000000000011"))
     monkeypatch.setattr(OrdiumProvisioningClient, "activate_merchant", lambda self, merchant_id: None)
@@ -33,16 +38,19 @@ def test_email_verification_activates_account_and_creates_dashboard_session(monk
     body = response.json()
     assert body["verification_required"] is True
     assert captured["recipient"] == "verify@example.com"
-    token = body["verification_token"]
-    assert token
+    email_token = captured["token"]
+    assert (body["verification_token"] == email_token) is token_exposed
+    if not token_exposed:
+        assert body["verification_token"] is None
 
-    verified = client.post(f"/api/v1/auth/verify-email?token={token}")
+    verified = client.post(f"/api/v1/auth/verify-email?token={email_token}")
     assert verified.status_code == 200
     assert verified.json()["user"]["status"] == "active"
     assert verified.json().get("dashboard_api_key") is None
     assert verified.json().get("dashboard_api_keys") is None
 
     settings.require_email_verification = old
+    settings.environment = old_environment
 
 def test_logout_clears_cookie_and_revokes_session():
     import hashlib

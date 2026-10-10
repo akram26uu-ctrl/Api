@@ -46,7 +46,7 @@ def create_store(request: Request, data: StoreCreate, db: Session = Depends(get_
     slug = _resolve_slug(db, current.merchant_id, data.slug.strip() if data.slug else name)
     store = Store(merchant_id=current.merchant_id, name=name, slug=slug, is_active=True)
     db.add(store); db.flush()
-    AuditService(db).record(action="store.created", resource_type="store", resource_id=store.id, merchant_id=current.merchant_id, api_key_id=current.id, environment="live", request_id=getattr(request.state, "request_id", None))
+    AuditService(db).record(action="store.created", resource_type="store", resource_id=store.id, merchant_id=current.merchant_id, api_key_id=current.id, environment=current.environment, request_id=getattr(request.state, "request_id", None))
     db.commit(); db.refresh(store)
     return _serialize(store, db)
 
@@ -57,6 +57,6 @@ def update_store(store_id: UUID, request: Request, data: StoreUpdate, db: Sessio
     if store is None:
         raise HTTPException(404, "Store not found")
     store.name = data.name.strip(); store.is_active = data.is_active
-    AuditService(db).record(action="store.updated", resource_type="store", resource_id=store.id, merchant_id=current.merchant_id, api_key_id=current.id, environment="live", request_id=getattr(request.state, "request_id", None))
+    AuditService(db).record(action="store.updated", resource_type="store", resource_id=store.id, merchant_id=current.merchant_id, api_key_id=current.id, environment=current.environment, request_id=getattr(request.state, "request_id", None))
     db.commit(); db.refresh(store)
     return _serialize(store, db)

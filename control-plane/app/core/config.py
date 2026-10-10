@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     session_ttl_seconds: int = Field(default=86_400, alias="SESSION_TTL_SECONDS", ge=900, le=2_592_000)
     cookie_secure: bool = Field(default=False, alias="COOKIE_SECURE")
     require_email_verification: bool = Field(default=True, alias="REQUIRE_EMAIL_VERIFICATION")
+    expose_verification_token: bool = Field(default=False, alias="EXPOSE_VERIFICATION_TOKEN")
     smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
     smtp_port: int = Field(default=587, alias="SMTP_PORT", ge=1, le=65535)
     smtp_username: str | None = Field(default=None, alias="SMTP_USERNAME")
@@ -54,6 +55,8 @@ class Settings(BaseSettings):
                 raise ValueError("PUBLIC_BASE_URL must use HTTPS in production")
             if not self.require_email_verification:
                 raise ValueError("REQUIRE_EMAIL_VERIFICATION must be true in production")
+            if self.expose_verification_token:
+                raise ValueError("EXPOSE_VERIFICATION_TOKEN must be false in production")
             if len(self.session_encryption_key) < 32:
                 raise ValueError("SESSION_ENCRYPTION_KEY is required in production")
             if not all((self.smtp_host, self.smtp_username, self.smtp_password, self.email_from)):
