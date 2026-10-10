@@ -15,6 +15,7 @@ import { IdentitySection } from './components/marketing/IdentitySection';
 import { PipelineSection } from './components/marketing/PipelineSection';
 import { ExplainableCard } from './components/marketing/ExplainableCard';
 import { FraudClusterSection } from './components/marketing/FraudClusterSection';
+import { ManualConfirmationSection } from './components/marketing/ManualConfirmationSection';
 import { DeveloperSection } from './components/marketing/DeveloperSection';
 import { RoadmapSection } from './components/marketing/RoadmapSection';
 import { PricingPage } from './components/pages/PricingPage';
@@ -134,7 +135,6 @@ export function AppContent() {
     }
     return <DashboardLayout
       session={authSession}
-      onExitToWebsite={handleExitToWebsite}
       onLogout={() => { void authApi.logout(); setAuthSession(null); handleExitToWebsite(); }}
     />;
   }
@@ -189,6 +189,7 @@ export function AppContent() {
             <PipelineSection />
             <ExplainableCard />
             <FraudClusterSection />
+            <ManualConfirmationSection />
             <DeveloperSection onViewDocs={() => navigateTo('/docs')} />
             <RoadmapSection />
           </>

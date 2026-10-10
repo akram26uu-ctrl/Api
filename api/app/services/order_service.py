@@ -235,6 +235,13 @@ class OrderService:
             # Persist only actionable risk notifications. They are created in the
             # same transaction as the order/risk assessment so the dashboard never
             # shows an alert for an order that failed to commit.
+            # التحقق مما إذا كان التاجر في وضع الظل (Shadow Mode)
+            is_shadow_mode = merchant.is_shadow_mode_enabled if hasattr(merchant, 'is_shadow_mode_enabled') else False
+
+            # إذا كان في وضع الظل، نغير قرار الحظر إلى مجرد مراجعة
+            if is_shadow_mode and risk_result.decision.value == "reject":
+                risk_result.decision.value = "review"
+
             if risk_result.decision.value in {"review", "reject"}:
                 severity = "critical" if risk_result.decision.value == "reject" else "warning"
                 title = "Order blocked by risk engine" if severity == "critical" else "Order requires review"

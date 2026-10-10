@@ -62,5 +62,5 @@ def enforce_live_quota(db: Session, merchant_id) -> dict:
     )
     usage = get_live_usage(db, merchant)
     if usage["evaluations_limit"] and usage["evaluations_used"] >= usage["evaluations_limit"]:
-        raise ValueError("usage_quota_exceeded")
+        usage["quota_exceeded_warning"] = True
     return usage

@@ -15,6 +15,8 @@ def _quota_period_default() -> datetime:
 
 
 class Merchant(Base):
+    # إضافة حقل لتفعيل/تعطيل وضع الظل (False = Active Blocking, True = Logging Only)
+    is_shadow_mode_enabled = Column(Boolean, default=True)
     __tablename__ = "merchants"
 
     id: Mapped[UUID] = mapped_column(

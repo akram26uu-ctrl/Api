@@ -229,20 +229,20 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg font-bold text-white tracking-tight">{t('dashboard.simulator.title', 'محاكي الطلبات')}</h2>
+                  <h2 className="text-lg font-bold text-white tracking-tight">{t('dashboard.simulator.title', 'تجربة الطلبات')}</h2>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/5 px-2.5 py-1 text-[10px] font-semibold text-amber-300">
                     <span className="h-1.5 w-1.5 rounded-full bg-amber-300" /> TEST
                   </span>
                 </div>
                 <p className="text-xs text-[#94A3B8] mt-1.5 max-w-2xl leading-relaxed">
-                  {t('dashboard.simulator.subtitle', 'جرّب بيانات الطلبات، راقب إشارات المخاطر، وافهم القرار قبل ربط حركة الطلبات الفعلية.')}
+                  {t('dashboard.simulator.subtitle', 'أدخل بيانات طلب تجريبي لمراجعة تقييم المخاطر دون التأثير على الطلبات الفعلية.')}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <div className="rounded-xl border border-white/8 bg-black/15 px-3 py-2 text-start">
                 <div className="text-[9px] uppercase tracking-wider text-[#64748B]">{t('dashboard.simulator.store_context', 'المتجر المحدد')}</div>
-                <div className="mt-0.5 text-xs font-medium text-white">{storeId ? t('dashboard.simulator.store_ready', 'جاهز للمحاكاة') : t('dashboard.simulator.store_missing', 'اختر متجرًا')}</div>
+                <div className="mt-0.5 text-xs font-medium text-white">{storeId ? t('dashboard.simulator.store_ready', 'جاهز لتجربة طلب') : t('dashboard.simulator.store_missing', 'اختر متجرًا')}</div>
               </div>
               <div className="rounded-xl border border-white/8 bg-black/15 px-3 py-2 text-start">
                 <div className="text-[9px] uppercase tracking-wider text-[#64748B]">{t('dashboard.simulator.quota_context', 'الاستهلاك')}</div>
@@ -252,7 +252,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
           </div>
 
           <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-white/5 pt-4">
-            <div role="tablist" aria-label={t('dashboard.simulator.input_mode', 'Input mode')} className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-[#080B12]/80 p-1 shadow-inner">
+            <div role="tablist" aria-label={t('dashboard.simulator.input_mode', 'طريقة إدخال البيانات')} className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-[#080B12]/80 p-1 shadow-inner">
               <button
                 type="button"
                 role="tab"
@@ -264,7 +264,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
                     : 'border border-transparent text-[#94A3B8] hover:bg-white/5 hover:text-white'
                 }`}
               >
-                {t('dashboard.simulator.form_mode', 'Structured Form')}
+                {t('dashboard.simulator.form_mode', 'نموذج منظم')}
               </button>
               <button
                 type="button"
@@ -280,7 +280,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
                 {t('dashboard.simulator.json_mode', 'Raw JSON')}
               </button>
             </div>
-            <span className="text-[10px] font-mono text-[#64748B]">{mode === 'form' ? 'FORM' : 'JSON'} • {t('dashboard.simulator.input_mode_hint', 'اختر طريقة إدخال واحدة')}</span>
+            <span className="text-[10px] font-mono text-[#64748B]">{mode === 'form' ? 'FORM' : 'JSON'} • {t('dashboard.simulator.input_mode_hint', 'اختر طريقة إدخال البيانات')}</span>
           </div>
 
           {/* Attack Presets */}
@@ -321,7 +321,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
         <div className="lg:col-span-7 bg-[#0D1320] border border-white/10 rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-white/5 pb-3">
             <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-              {mode === 'form' ? t('dashboard.simulator.order_details', 'Transaction Parameters') : t('dashboard.simulator.payload_editor', 'Raw JSON Ingestion Payload')}
+              {mode === 'form' ? t('dashboard.simulator.order_details', 'تفاصيل الطلب التجريبي') : t('dashboard.simulator.payload_editor', 'بيانات متقدمة (JSON)')}
             </span>
             <span className="text-[11px] font-mono text-[#94A3B8]">الوجهة: POST /api/v1/dashboard/orders → TEST API</span>
           </div>
@@ -485,7 +485,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
               onClick={handleEvaluate}
               leftIcon={<Send className="w-4 h-4" />}
             >
-              {isEvaluating ? t('dashboard.simulator.evaluating', 'Evaluating risk...') : t('dashboard.simulator.evaluate_btn', 'Evaluate Risk Instantly')}
+              {isEvaluating ? t('dashboard.simulator.evaluating', 'Evaluating risk...') : t('dashboard.simulator.evaluate_btn', 'تقييم الطلب التجريبي')}
             </Button>
           </div>
         </div>
@@ -506,7 +506,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
           {!evaluatedOrder ? (
             <div className="py-16 text-center text-xs font-mono text-[#94A3B8] space-y-3">
               <Zap className="w-8 h-8 text-[#22D3EE]/50 mx-auto animate-pulse" />
-              <p>{t('dashboard.simulator.run_simulation_desc', 'اضبط البيانات في الجهة اليسرى ثم شغّل المحاكاة لرؤية التقييم والإشارات.')}</p>
+              <p>{t('dashboard.simulator.run_simulation_desc', 'أدخل بيانات الطلب التجريبي ثم اعرض نتيجة تقييم المخاطر.')}</p>
             </div>
           ) : (
             <div className="space-y-6 animate-in fade-in duration-200">

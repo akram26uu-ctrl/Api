@@ -1,15 +1,14 @@
 /**
  * ORDIUM Dashboard Header
- * Live dashboard header with store selection, simulator access, notifications, and account controls,
- * simulate quick action, language switcher, and status beacon.
+ * Commercial dashboard header with store selection, notifications, language, and account controls.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AccountSettingsUpdate, AuthSession, Environment, Store } from '../../lib/api/types';
-import { Send, ExternalLink, Menu, ChevronDown, User, Settings, LogOut, LockKeyhole, Building2, Mail, Save, ShieldCheck, Store as StoreIcon, Settings2 } from 'lucide-react';
-import { Button } from '../common/Button';
+import { Menu, ChevronDown, User, Settings, LogOut, LockKeyhole, Building2, Mail, Save, ShieldCheck, Store as StoreIcon, Settings2 } from 'lucide-react';
 import { authApi, SessionInfo } from '../../lib/api/auth';
+import { Button } from '../common/Button';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { NotificationsCenter } from './NotificationsCenter';
@@ -20,8 +19,6 @@ interface DashboardHeaderProps {
   selectedStoreId: string | null;
   onStoreChange: (storeId: string) => void;
   onManageStores: () => void;
-  onOpenSimulator: () => void;
-  onExitToWebsite: () => void;
   onToggleMobileSidebar?: () => void;
   title: string;
   session: AuthSession;
@@ -35,8 +32,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   selectedStoreId,
   onStoreChange,
   onManageStores,
-  onOpenSimulator,
-  onExitToWebsite,
   onToggleMobileSidebar,
   title,
   session,
@@ -120,27 +115,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Action Controls & Language */}
+      {/* Right: Notifications, Language & Account */}
       <div className="flex items-center gap-2 shrink-0">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={onOpenSimulator}
-          leftIcon={<Send className="w-3.5 h-3.5 text-[#22D3EE]" />}
-          className="hidden md:inline-flex text-xs"
-        >
-          {t('dashboard.header.simulate_order', t('dashboard.header.simulate_order','محاكاة طلب'))}
-        </Button>
-
-        <button
-          onClick={onExitToWebsite}
-          className="text-xs text-[#94A3B8] hover:text-white flex items-center gap-1 font-mono px-2 py-1.5 rounded-lg border border-white/5 hover:border-white/15 bg-[#0D1320] transition-colors"
-          title={t('dashboard.header.return_website', 'العودة إلى الموقع الرئيسي')}
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{t('dashboard.header.return_website', 'العودة إلى الموقع')}</span>
-        </button>
-
         {selectedStoreId && <NotificationsCenter environment={environment} />}
 
         {/* Language Switcher in Header */}

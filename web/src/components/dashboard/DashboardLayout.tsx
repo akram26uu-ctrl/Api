@@ -20,12 +20,11 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { StoreManagementModal } from './StoreManagementModal';
 
 interface DashboardLayoutProps {
-  onExitToWebsite: () => void;
   session: AuthSession;
   onLogout: () => void;
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onExitToWebsite, session, onLogout }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLogout }) => {
   const { t } = useLanguage();
   const [currentSession, setCurrentSession] = useState<AuthSession>(session);
   useEffect(() => setCurrentSession(session), [session]);
@@ -71,21 +70,21 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onExitToWebsit
   const getTabTitle = () => {
     switch (activeTab) {
       case 'overview':
-        return t('dashboard.titles.overview', 'نظرة عامة');
+        return t('dashboard.titles.overview', 'ملخص المتجر');
       case 'orders':
-        return t('dashboard.titles.orders', 'الطلبات والمخاطر');
+        return t('dashboard.titles.orders', 'الطلبات والتأكيد');
       case 'network':
-        return t('dashboard.titles.network', 'شبكة الهوية');
+        return t('dashboard.titles.network', 'تحليل المخاطر');
       case 'simulator':
-        return t('dashboard.titles.simulator', 'محاكي الطلبات');
+        return t('dashboard.titles.simulator', 'طلب تجريبي');
       case 'rules':
         return t('dashboard.titles.rules', 'قواعد المخاطر');
       case 'webhooks':
-        return t('dashboard.titles.webhooks', 'Webhooks وسجل الإرسال');
+        return t('dashboard.titles.webhooks', 'تكاملات المتجر');
       case 'apikeys':
-        return t('dashboard.titles.apikeys', 'مفاتيح API');
+        return t('dashboard.titles.apikeys', 'إعدادات الربط');
       case 'usage':
-        return t('dashboard.titles.usage', 'الاستخدام والحصص');
+        return t('dashboard.titles.usage', 'الاستخدام');
       default:
         return t('nav.console', 'لوحة التحكم');
     }
@@ -97,7 +96,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onExitToWebsit
       <DashboardSidebar
         activeTab={activeTab}
         onSelectTab={tab => setActiveTab(tab)}
-        onExitToWebsite={onExitToWebsite}
         mobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
@@ -110,9 +108,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onExitToWebsit
           selectedStoreId={selectedStoreId}
           onStoreChange={handleStoreChange}
           onManageStores={() => setStoreManagementOpen(true)}
-          onOpenSimulator={() => setActiveTab('simulator')}
-          onExitToWebsite={onExitToWebsite}
-          onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+            onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
           title={getTabTitle()}
           session={currentSession}
           onSessionUpdate={setCurrentSession}

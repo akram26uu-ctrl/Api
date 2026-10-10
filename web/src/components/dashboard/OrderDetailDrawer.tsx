@@ -1,7 +1,6 @@
 /**
  * ORDIUM Order Detail Inspector Drawer
- * Comprehensive inspection view with customer, device, IP, signals,
- * score breakdown, timeline, outcome logger, and raw JSON payload.
+ * Merchant-facing order details, risk summary, manual confirmation, and activity history.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -10,7 +9,6 @@ import { Drawer } from '../common/Drawer';
 import { RiskBadge } from '../common/RiskBadge';
 import { RiskScoreGauge } from '../common/RiskScoreGauge';
 import { Button } from '../common/Button';
-import { CodeBlock } from '../common/CodeBlock';
 import { useLanguage } from '../../i18n/LanguageContext';
 import {
   User,
@@ -22,8 +20,6 @@ import {
   ShieldAlert,
   CheckCircle2,
   AlertTriangle,
-  Code,
-  FileText,
   MessageCircle,
   PhoneCall,
   PackageCheck,
@@ -45,7 +41,7 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
   onUpdateOutcome
 }) => {
   const { t, isRTL } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'overview' | 'signals' | 'timeline' | 'json'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'signals' | 'timeline'>('overview');
   const [isUpdatingOutcome, setIsUpdatingOutcome] = useState(false);
   const [confirmationAttempts, setConfirmationAttempts] = useState<OrderConfirmationAttempt[]>([]);
   const [confirmationStatus, setConfirmationStatus] = useState('pending');
@@ -158,7 +154,7 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
             activeTab === 'overview' ? 'text-[#22D3EE] border-b-2 border-[#22D3EE]' : 'text-[#94A3B8] hover:text-white'
           }`}
         >
-          {t('dashboard.orders.tab_entity', 'Entity Overview')}
+          {t('dashboard.orders.tab_entity', 'ملخص الطلب')}
         </button>
         <button
           onClick={() => setActiveTab('signals')}
@@ -166,7 +162,7 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
             activeTab === 'signals' ? 'text-[#22D3EE] border-b-2 border-[#22D3EE]' : 'text-[#94A3B8] hover:text-white'
           }`}
         >
-          <span>{t('dashboard.orders.tab_signals', 'Signals')}</span>
+          <span>{t('dashboard.orders.tab_signals', 'مؤشرات المخاطر')}</span>
           <span className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[10px]">
             {order.risk?.signals?.length || 0}
           </span>
@@ -177,16 +173,9 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
             activeTab === 'timeline' ? 'text-[#22D3EE] border-b-2 border-[#22D3EE]' : 'text-[#94A3B8] hover:text-white'
           }`}
         >
-          {t('dashboard.orders.tab_timeline', 'Events Timeline')}
+          {t('dashboard.orders.tab_timeline', 'سجل النشاط')}
         </button>
-        <button
-          onClick={() => setActiveTab('json')}
-          className={`pb-2.5 px-3 font-semibold transition-colors ${
-            activeTab === 'json' ? 'text-[#22D3EE] border-b-2 border-[#22D3EE]' : 'text-[#94A3B8] hover:text-white'
-          }`}
-        >
-          {t('dashboard.orders.tab_json', 'Raw JSON')}
-        </button>
+
       </div>
 
       {/* Tab: Overview */}
@@ -222,7 +211,7 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
           <div className="p-4 rounded-xl bg-[#080B12]/80 border border-white/5 space-y-3 text-xs">
             <h4 className="font-mono text-white uppercase tracking-wider font-bold flex items-center gap-2">
               <User className="w-3.5 h-3.5 text-[#22D3EE]" />
-              <span>{t('dashboard.orders.customer_device', 'Customer & Hardware Fingerprint')}</span>
+              <span>{t('dashboard.orders.customer_device', 'معلومات العميل')}</span>
             </h4>
             <div className="grid grid-cols-2 gap-3 font-mono">
               <div>
@@ -230,16 +219,8 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
                 <p className="text-white font-medium">{order.customer.name}</p>
               </div>
               <div>
-                <span className="text-[#94A3B8]">{t('dashboard.orders.email', 'Email')}:</span>
-                <p className="text-white font-medium break-all" dir="ltr">{order.customer.email}</p>
-              </div>
-              <div>
-                <span className="text-[#94A3B8]">{t('dashboard.orders.phone', 'Phone')}:</span>
-                <p className="text-white font-medium" dir="ltr">{order.customer.phone || 'N/A'}</p>
-              </div>
-              <div>
-                <span className="text-[#94A3B8]">{t('dashboard.orders.device_id', 'Device Identifier')}:</span>
-                <p className="text-white font-medium break-all" dir="ltr">{order.customer.device_id || 'dev_fingerprint_auto'}</p>
+                <span className="text-[#94A3B8]">{t('dashboard.orders.phone', 'الهاتف')}:</span>
+                <p className="text-white font-medium" dir="ltr">{order.customer.phone || '—'}</p>
               </div>
             </div>
           </div>
@@ -376,14 +357,7 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
         </div>
       )}
 
-      {/* Tab: Raw JSON */}
-      {activeTab === 'json' && (
-        <CodeBlock
-          code={JSON.stringify(order, null, 2)}
-          language="json"
-          title={t('dashboard.orders.raw_json_title', 'Full Order Ingestion & Risk Object')}
-        />
-      )}
+
     </Drawer>
   );
 };

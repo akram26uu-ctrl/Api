@@ -63,7 +63,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
   }
 
   if (error || !metrics) {
-    return <div className="p-6"><EmptyState title={t('dashboard.overview.load_error_title', 'We could not load your workspace data')} description={t('dashboard.overview.load_error_desc', 'The console is connected, but the risk service did not return telemetry. تحديث the page or check the service status before continuing.')} actionText={t('dashboard.overview.retry', 'إعادة المحاولة')} onAction={() => window.location.reload()} /></div>;
+    return <div className="p-6"><EmptyState title={t('dashboard.overview.load_error_title', 'We could not load your workspace data')} description={t('dashboard.overview.load_error_desc', 'تعذر تحميل بيانات المتجر حاليًا. حدّث الصفحة، وإذا استمرت المشكلة تواصل مع الدعم.')} actionText={t('dashboard.overview.retry', 'إعادة المحاولة')} onAction={() => window.location.reload()} /></div>;
   }
 
   const hasOrders = metrics.total_orders > 0 || recentOrders.length > 0;
@@ -77,26 +77,26 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
         <MetricCard
           title={t('dashboard.overview.orders_ingested', 'الطلبات المستلمة')}
           value={metrics.total_orders.toLocaleString()}
-          change={hasOrders ? { value: `${metrics.orders_analyzed ?? 0} evaluated`, trend: 'up', label: 'persisted assessments' } : undefined}
+          change={hasOrders ? { value: `${(metrics.orders_analyzed ?? 0).toLocaleString()} ${t('dashboard.overview.evaluated_label', 'تم تقييمها')}`, trend: 'up', label: t('dashboard.overview.evaluated_detail', 'طلبات جرى تقييمها') } : undefined}
           icon={<Activity className="w-4 h-4 text-[#22D3EE]" />}
         />
         <MetricCard
-          title={t('dashboard.overview.volume_protected', 'Volume Protected')}
+          title={t('dashboard.overview.volume_protected', 'إجمالي قيمة الطلبات')}
           value={`${(metrics.total_volume / 1000).toFixed(1)}k DZD`}
           change={metrics.total_orders ? { value: `${Math.round((metrics.orders_analyzed / metrics.total_orders) * 100)}%`, trend: 'up', label: 'evaluated' } : undefined}
           icon={<DollarSign className="w-4 h-4 text-[#10B981]" />}
         />
         <MetricCard
-          title={t('dashboard.overview.fraud_blocked_card', 'Fraud Blocked')}
+          title={t('dashboard.overview.fraud_blocked_card', 'قيمة الطلبات المرفوضة')}
           value={`${(metrics.fraud_blocked_volume / 1000).toFixed(1)}k DZD`}
-          subtitle={'حجم الطلبات التي صدر بحقها قرار رفض'}
+          subtitle={t('dashboard.overview.rejected_volume_hint', 'قيمة الطلبات التي صدر بحقها قرار رفض')}
           variant="accent"
           icon={<ShieldAlert className="w-4 h-4 text-[#6C5CE7]" />}
         />
         <MetricCard
           title={t('dashboard.overview.avg_execution', 'Average Execution')}
           value={metrics.avg_execution_time_ms != null ? `${metrics.avg_execution_time_ms}ms` : '—'}
-          subtitle={'Measured risk evaluation time'}
+          subtitle={t('dashboard.overview.avg_execution_hint', 'الوقت المستغرق لتقييم الطلب')}
           icon={<Zap className="w-4 h-4 text-[#22D3EE]" />}
         />
       </div>
@@ -109,15 +109,15 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
           <div className="flex items-center justify-between pb-3 border-b border-white/5 text-xs font-mono">
             <span className="font-bold text-white flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#22D3EE] animate-pulse" />
-              {t('dashboard.identity.badge', 'Active Intelligence Core')}
+              {t('dashboard.overview.risk_analysis_title', 'تحليل مخاطر الطلبات')}
             </span>
-            <span className="text-[#94A3B8]">{t('dashboard.network.title', 'Topology: Multi-entity graph')}</span>
+            <span className="text-[#94A3B8]">{t('dashboard.overview.store_risk_context', 'مؤشرات المخاطر المرتبطة بالمتجر')}</span>
           </div>
 
           <div className="h-[280px] sm:h-[320px] w-full rounded-xl overflow-hidden bg-[#080B12] relative my-2">
             <RiskCore3D interactive={false} />
             <div className="absolute bottom-2 left-2 rtl:left-auto rtl:right-2 z-10 text-[10px] font-mono text-[#94A3B8] bg-[#080B12]/80 px-2 py-1 rounded">
-              {t('dashboard.overview.decision_radar', 'DECISION RADAR: LIVE EVALUATION')}
+              {t('dashboard.overview.decision_radar', 'تحليل قرارات الطلبات')}
             </div>
           </div>
 
@@ -178,16 +178,16 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
 
           <div className="pt-6 border-t border-white/5 space-y-3">
             <div className="p-3 bg-[#080B12] rounded-xl border border-white/5 text-[11px] font-mono text-[#94A3B8] text-start">
-              {t('dashboard.overview.average_risk_score', 'Average Risk Score across all transactions:')}{' '}
+              {t('dashboard.overview.average_risk_score', 'متوسط درجة المخاطر للطلبات:')}{' '}
               <span className="text-white font-bold">{metrics.avg_risk_score} / 100</span>
             </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onNavigateTab('simulator')}
+              onClick={() => onNavigateTab('orders')}
               className="w-full justify-center"
             >
-              {t('dashboard.overview.simulate_new_vector', 'Simulate New Order Vector')}
+              {t('dashboard.overview.view_all_orders', 'عرض الطلبات')}
             </Button>
           </div>
         </div>
@@ -198,7 +198,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
       <div className="bg-[#0D1320] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
         <div className="p-4 border-b border-white/5 flex items-center justify-between">
           <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-            {t('dashboard.overview.recent_evaluated', 'Recent Evaluated Transactions')}
+            {t('dashboard.overview.recent_evaluated', 'أحدث الطلبات')}
           </span>
           <button
             onClick={() => onNavigateTab('orders')}
@@ -210,7 +210,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
 
         {recentOrders.length === 0 ? (
           <div className="p-8">
-            <EmptyState title={t('dashboard.overview.no_orders_title', 'لا توجد طلبات بعد')} description={t('dashboard.overview.no_orders_desc', 'شغّل أول محاكاة من Simulator لعرض القرار ودرجة المخاطر.')} actionText={t('dashboard.overview.open_simulator', 'فتح المحاكي')} onAction={() => onNavigateTab('simulator')} icon={<Activity className="w-8 h-8" />} />
+            <EmptyState title={t('dashboard.overview.no_orders_title', 'لا توجد طلبات بعد')} description={t('dashboard.overview.no_orders_desc', 'ستظهر الطلبات هنا عند وصولها إلى متجرك. يمكنك مراجعة الطلبات وحالات التأكيد من هذه الصفحة.')} actionText={t('dashboard.overview.open_simulator', 'عرض الطلبات')} onAction={() => onNavigateTab('orders')} icon={<Activity className="w-8 h-8" />} />
           </div>
         ) : (
         <div className="overflow-x-auto">

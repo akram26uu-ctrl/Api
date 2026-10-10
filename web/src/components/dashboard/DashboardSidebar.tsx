@@ -13,8 +13,6 @@ import {
   Key,
   BarChart3,
   Cpu,
-  ChevronLeft,
-  ChevronRight,
   X
 } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -33,7 +31,6 @@ export type DashboardTab =
 interface DashboardSidebarProps {
   activeTab: DashboardTab;
   onSelectTab: (tab: DashboardTab) => void;
-  onExitToWebsite: () => void;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -41,24 +38,21 @@ interface DashboardSidebarProps {
 export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   activeTab,
   onSelectTab,
-  onExitToWebsite,
   mobileOpen = false,
   onCloseMobile
 }) => {
   const { t, isRTL } = useLanguage();
 
   const menuItems = [
-    { id: 'overview' as DashboardTab, label: t('dashboard.sidebar.overview', 'Overview'), icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'orders' as DashboardTab, label: t('dashboard.sidebar.orders', 'Orders & Risk'), icon: <ShoppingCart className="w-4 h-4" /> },
-    { id: 'network' as DashboardTab, label: t('dashboard.sidebar.network', 'Identity Graph'), icon: <Network className="w-4 h-4" /> },
-    { id: 'simulator' as DashboardTab, label: t('dashboard.sidebar.simulator', 'Simulator'), icon: <Zap className="w-4 h-4" /> },
-    { id: 'rules' as DashboardTab, label: t('dashboard.sidebar.rules', 'Rules Engine'), icon: <Sliders className="w-4 h-4" /> },
-    { id: 'webhooks' as DashboardTab, label: t('dashboard.sidebar.webhooks', 'Webhooks'), icon: <Webhook className="w-4 h-4" /> },
-    { id: 'apikeys' as DashboardTab, label: t('dashboard.sidebar.apikeys', 'مفاتيح API'), icon: <Key className="w-4 h-4" /> },
-    { id: 'usage' as DashboardTab, label: t('dashboard.sidebar.usage', 'Usage & Quotas'), icon: <BarChart3 className="w-4 h-4" /> }
+    { id: 'overview' as DashboardTab, label: t('dashboard.sidebar.overview', 'ملخص المتجر'), icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'orders' as DashboardTab, label: t('dashboard.sidebar.orders', 'الطلبات والتأكيد'), icon: <ShoppingCart className="w-4 h-4" /> },
+    { id: 'network' as DashboardTab, label: t('dashboard.sidebar.network', 'تحليل المخاطر'), icon: <Network className="w-4 h-4" /> },
+    { id: 'simulator' as DashboardTab, label: t('dashboard.sidebar.simulator', 'طلب تجريبي'), icon: <Zap className="w-4 h-4" /> },
+    { id: 'rules' as DashboardTab, label: t('dashboard.sidebar.rules', 'قواعد المخاطر'), icon: <Sliders className="w-4 h-4" /> },
+    { id: 'webhooks' as DashboardTab, label: t('dashboard.sidebar.webhooks', 'تكاملات المتجر'), icon: <Webhook className="w-4 h-4" /> },
+    { id: 'apikeys' as DashboardTab, label: t('dashboard.sidebar.apikeys', 'إعدادات الربط'), icon: <Key className="w-4 h-4" /> },
+    { id: 'usage' as DashboardTab, label: t('dashboard.sidebar.usage', 'الاستخدام'), icon: <BarChart3 className="w-4 h-4" /> }
   ];
-
-  const ChevronBack = isRTL ? ChevronRight : ChevronLeft;
 
   const sidebarContent = (
     <div className="w-64 border-r rtl:border-r-0 rtl:border-l border-white/5 bg-[#080B12] flex flex-col justify-between shrink-0 h-full min-h-0 overflow-y-auto overscroll-contain">
@@ -92,7 +86,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         {/* Nav Links */}
         <div className="p-3 space-y-1">
           <div className="px-3 py-2 text-[10px] font-mono uppercase text-[#94A3B8] font-bold tracking-wider text-start">
-            {t('dashboard.sidebar.risk_platform', 'Risk Platform')}
+            {t('dashboard.sidebar.risk_platform', 'إدارة المتجر')}
           </div>
 
           {menuItems.map(item => {
@@ -128,20 +122,9 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <LanguageSwitcher variant="dropdown" align="start" />
         </div>
 
-        <button
-          onClick={onExitToWebsite}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-mono text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors text-start"
-        >
-          <ChevronBack className="w-4 h-4 shrink-0" />
-          <span>{t('dashboard.sidebar.exit', 'Exit to Website')}</span>
-        </button>
-
-        <div className="p-3 rounded-xl bg-[#0D1320] border border-white/5 text-[11px] font-mono text-[#94A3B8] space-y-1 text-start">
-          <div className="flex items-center justify-between text-white">
-            <span>{t('dashboard.sidebar.core_version', 'Core v2.4')}</span>
-            <span className="text-[#10B981]">● {t('dashboard.sidebar.connected', 'Connected')}</span>
-          </div>
-          <div className="text-[10px]">Measured evaluation telemetry | Merchant-scoped</div>
+        <div className="p-3 rounded-xl bg-[#0D1320] border border-white/5 text-[11px] text-[#94A3B8] space-y-1.5 text-start">
+          <div className="font-semibold text-white">{t('dashboard.sidebar.store_workspace', 'مساحة عمل المتجر')}</div>
+          <div className="leading-relaxed">{t('dashboard.sidebar.store_workspace_hint', 'تابع الطلبات وسجّل نتائج التواصل من صفحة الطلبات.')}</div>
         </div>
       </div>
     </div>
