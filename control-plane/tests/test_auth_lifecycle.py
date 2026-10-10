@@ -11,7 +11,9 @@ from app.services.email import send_verification_email
 def test_email_verification_activates_account_and_creates_dashboard_session(monkeypatch):
     captured = {}
     old = settings.require_email_verification
+    old_environment = settings.environment
     settings.require_email_verification = True
+    settings.environment = "test"
 
     monkeypatch.setattr(OrdiumProvisioningClient, "provision_merchant", lambda self, **kwargs: UUID("00000000-0000-0000-0000-000000000011"))
     monkeypatch.setattr(OrdiumProvisioningClient, "activate_merchant", lambda self, merchant_id: None)
@@ -43,6 +45,7 @@ def test_email_verification_activates_account_and_creates_dashboard_session(monk
     assert verified.json().get("dashboard_api_keys") is None
 
     settings.require_email_verification = old
+    settings.environment = old_environment
 
 def test_logout_clears_cookie_and_revokes_session():
     import hashlib
