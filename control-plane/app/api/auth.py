@@ -197,6 +197,18 @@ def change_password(
     if data.current_password == data.new_password:
         raise HTTPException(status_code=400, detail="New password must be different from the current password")
     user.password_hash = hash_password(data.new_password)
+    # Password changes invalidate all other browser sessions to limit the impact
+    # of a compromised session. Keep the current session so the user is not logged out.
+    now = datetime.now(timezone.utc)
+    other_sessions = db.scalars(
+        select(DbSession).where(
+            DbSession.user_id == user.id,
+            DbSession.id != _session.id,
+            DbSession.revoked_at.is_(None),
+        )
+    ).all()
+    for other_session in other_sessions:
+        other_session.revoked_at = now
     db.commit()
     return Response(status_code=204)
 
