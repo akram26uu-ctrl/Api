@@ -96,9 +96,11 @@ def register(data: RegisterRequest, request: Request, response: Response, db: Se
             db.rollback()
             raise HTTPException(status_code=503, detail="Email verification delivery is temporarily unavailable") from exc
         db.commit()
-        # Verification tokens are delivered by email. Only explicit test environments may expose them
-        # to automated tests; development/staging deployments must use the email flow as well.
-        return _registration_response(user, membership, verification_required=True, verification_token=token if settings.environment.strip().lower() == "test" else None)
+        # Verification tokens are delivered by email. Tests may expose them for automation; local
+        # development requires an explicit opt-in. Staging and production never return tokens.
+        env = settings.environment.strip().lower()
+        expose_token = env == "test" or (env == "development" and settings.expose_verification_token)
+        return _registration_response(user, membership, verification_required=True, verification_token=token if expose_token else None)
 
     try:
         provisioning.activate_merchant(merchant_id)
