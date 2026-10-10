@@ -19,6 +19,14 @@ class RegisterRequest(BaseModel):
     phone: str | None = Field(default=None, max_length=32)
     monthly_orders: str | None = Field(default=None, max_length=64)
 
+    @field_validator("first_name", "last_name", "organization_name", "country")
+    @classmethod
+    def reject_blank_required_fields(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("This field must not be blank")
+        return normalized
+
     @field_validator("password")
     @classmethod
     def password_strength(cls, value: str) -> str:

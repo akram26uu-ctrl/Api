@@ -17,8 +17,10 @@ from app.services.email import send_verification_email, EmailDeliveryError
 from collections import defaultdict, deque
 from datetime import datetime, timezone, timedelta
 from threading import Lock
+import logging
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+logger = logging.getLogger(__name__)
 _RATE_BUCKETS: dict[str, deque[datetime]] = defaultdict(deque)
 _RATE_LIMIT_LOCK = Lock()
 _RATE_BUCKET_MAX = 20_000
@@ -252,12 +254,16 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                             provisioning.revoke_api_key(membership.organization.merchant_id, session.ordium_api_key_id)
                         if session.ordium_live_api_key_id:
                             provisioning.revoke_api_key(membership.organization.merchant_id, session.ordium_live_api_key_id)
-                except OrdiumApiError:
-                    pass
+                except Exception:
+                    # Local session revocation must not depend on the provisioning
+                    # service being reachable. The browser cookie is still cleared;
+                    # the external key revocation failure is logged for follow-up.
+                    logger.exception("Failed to revoke dashboard API keys during logout")
             session.revoked_at = datetime.now(timezone.utc)
             db.commit()
     clear_session_cookie(response)
-    return Response(status_code=204)
+    response.status_code = 204
+    return response
 
 
 @router.get("/sessions", response_model=list[SessionInfo])
