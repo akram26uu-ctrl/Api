@@ -92,3 +92,22 @@ def test_logout_clears_cookie_and_revokes_session():
     finally:
         db.close()
 
+
+
+def test_registration_rejects_whitespace_only_required_fields():
+    import pytest
+    from pydantic import ValidationError
+    from app.schemas.auth import RegisterRequest
+
+    base = {
+        "email": "spaces@example.com",
+        "password": "StrongPassword123",
+        "first_name": "Valid",
+        "last_name": "User",
+        "organization_name": "Valid Store",
+        "country": "Algeria",
+    }
+    for field in ("first_name", "last_name", "organization_name", "country"):
+        payload = {**base, field: "   "}
+        with pytest.raises(ValidationError):
+            RegisterRequest(**payload)
