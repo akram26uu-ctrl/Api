@@ -257,7 +257,8 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
             session.revoked_at = datetime.now(timezone.utc)
             db.commit()
     clear_session_cookie(response)
-    return Response(status_code=204)
+    response.status_code = 204
+    return response
 
 
 @router.get("/sessions", response_model=list[SessionInfo])
