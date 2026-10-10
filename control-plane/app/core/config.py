@@ -1,4 +1,5 @@
 from functools import lru_cache
+from urllib.parse import urlsplit
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -46,7 +47,7 @@ class Settings(BaseSettings):
             if not configured_origins or "*" in configured_origins:
                 raise ValueError("WEB_ORIGINS must contain explicit origins and cannot use a wildcard in production")
             for origin in configured_origins:
-                parsed_origin = __import__("urllib.parse", fromlist=["urlsplit"]).urlsplit(origin)
+                parsed_origin = urlsplit(origin)
                 if parsed_origin.scheme != "https" or not parsed_origin.netloc or parsed_origin.path or parsed_origin.query or parsed_origin.fragment:
                     raise ValueError("WEB_ORIGINS must contain HTTPS origins only in production")
             if not self.public_base_url.startswith("https://"):
