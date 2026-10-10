@@ -1,5 +1,7 @@
 import logging
-from fastapi import FastAPI
+from urllib.parse import urlsplit
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 from app.api.dashboard_proxy import router as dashboard_router
