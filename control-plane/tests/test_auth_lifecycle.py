@@ -43,3 +43,52 @@ def test_email_verification_activates_account_and_creates_dashboard_session(monk
     assert verified.json().get("dashboard_api_keys") is None
 
     settings.require_email_verification = old
+
+def test_logout_clears_cookie_and_revokes_session():
+    import hashlib
+    from datetime import datetime, timedelta, timezone
+
+    from app.db import SessionLocal
+    from app.models.session import Session as DbSession
+    from app.models.user import User
+
+    raw_token = "test-logout-token"
+    db = SessionLocal()
+    try:
+        user = User(
+            email="logout-cookie-regression@example.com",
+            password_hash="not-used",
+            first_name="Logout",
+            last_name="Regression",
+            status="active",
+        )
+        db.add(user)
+        db.flush()
+        session = DbSession(
+            user_id=user.id,
+            token_hash=hashlib.sha256(raw_token.encode()).hexdigest(),
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        )
+        db.add(session)
+        db.commit()
+        session_id = session.id
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    client.cookies.set("ordium_session", raw_token)
+    response = client.post("/api/v1/auth/logout")
+
+    assert response.status_code == 204
+    set_cookie = response.headers.get("set-cookie", "").lower()
+    assert "ordium_session" in set_cookie
+    assert "max-age=0" in set_cookie or "expires=" in set_cookie
+
+    db = SessionLocal()
+    try:
+        persisted = db.get(DbSession, session_id)
+        assert persisted is not None
+        assert persisted.revoked_at is not None
+    finally:
+        db.close()
+
