@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.auth import COOKIE_NAME, clear_session_cookie, create_session, get_current_session, session_response, set_session_cookie
@@ -8,8 +8,9 @@ from app.db import get_db
 from app.models.membership import Membership
 from app.models.session import Session as DbSession
 from app.models.user import User
+from app.models.email_verification import EmailVerificationToken
 from app.models.organization import Organization
-from app.schemas.auth import LoginRequest, RegisterRequest, RegisterResponse, SessionResponse, AccountSettingsUpdateRequest, ChangePasswordRequest, SessionInfo
+from app.schemas.auth import LoginRequest, RegisterRequest, RegisterResponse, SessionResponse, AccountSettingsUpdateRequest, ChangePasswordRequest, SessionInfo, VerifyEmailRequest, ResendVerificationRequest
 from app.services.ordium_api import OrdiumProvisioningClient, OrdiumApiError
 from app.services.passwords import hash_password, verify_password
 from app.services.verification import VerificationService
@@ -116,8 +117,18 @@ def register(data: RegisterRequest, request: Request, response: Response, db: Se
     return _registration_response(user, membership, initial_test_api_key=None, verification_required=False)
 
 @router.post("/verify-email", response_model=SessionResponse)
-def verify_email(token: str, response: Response, db: Session = Depends(get_db)):
-    user = VerificationService(db).consume(token.strip())
+def verify_email(
+    response: Response,
+    data: VerifyEmailRequest | None = None,
+    token: str | None = None,
+    db: Session = Depends(get_db),
+):
+    # Accept the previous query-string contract during staggered frontend/backend deploys.
+    # The current web client sends the token in the POST body to avoid URL/log leakage.
+    raw_token = data.token if data is not None else token
+    if not raw_token:
+        raise HTTPException(status_code=422, detail="Verification token is required")
+    user = VerificationService(db).consume(raw_token.strip())
     if user is None:
         raise HTTPException(status_code=400, detail="Invalid or expired verification token")
     membership = db.scalar(select(Membership).where(Membership.user_id == user.id).order_by(Membership.created_at.asc()))
@@ -137,6 +148,65 @@ def verify_email(token: str, response: Response, db: Session = Depends(get_db)):
     db.commit()
     set_session_cookie(response, raw)
     return session_response(db, user, membership)
+
+@router.post("/resend-verification")
+def resend_verification(data: ResendVerificationRequest, request: Request, db: Session = Depends(get_db)):
+    email = str(data.email).strip().lower()
+    # Persisted throttling: the token table provides a rolling four-hour history,
+    # so limits survive restarts and multiple Control Plane instances.
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None or user.status == "active" or user.email_verified_at is not None:
+        # Do not disclose whether an account exists or is already verified.
+        return {"message": "If the account needs verification, an email will be sent."}
+
+    now = datetime.now(timezone.utc)
+    window_start = now - timedelta(hours=4)
+    # Exclude the original registration email from the resend quota, even if
+    # it was sent inside this four-hour window.
+    initial_token_id = (
+        select(EmailVerificationToken.id)
+        .where(EmailVerificationToken.user_id == user.id)
+        .order_by(EmailVerificationToken.created_at.asc(), EmailVerificationToken.id.asc())
+        .limit(1)
+        .scalar_subquery()
+    )
+    recent_count = db.scalar(
+        select(func.count(EmailVerificationToken.id)).where(
+            EmailVerificationToken.user_id == user.id,
+            EmailVerificationToken.created_at >= window_start,
+            EmailVerificationToken.id != initial_token_id,
+        )
+    ) or 0
+    latest = db.scalar(
+        select(EmailVerificationToken)
+        .where(EmailVerificationToken.user_id == user.id)
+        .order_by(EmailVerificationToken.created_at.desc())
+        .limit(1)
+    )
+    if latest is not None:
+        latest_created = latest.created_at
+        if latest_created.tzinfo is None:
+            latest_created = latest_created.replace(tzinfo=timezone.utc)
+        if latest_created > now - timedelta(minutes=2):
+            raise HTTPException(status_code=429, detail="Please wait two minutes before requesting another verification email.")
+    # At most five resend emails in any rolling four-hour window.
+    if recent_count >= 5:
+        raise HTTPException(status_code=429, detail="You have reached the limit of five resend attempts in four hours. Try again later.")
+
+    # Only the newest link remains usable after a resend.
+    db.query(EmailVerificationToken).filter(
+        EmailVerificationToken.user_id == user.id,
+        EmailVerificationToken.used_at.is_(None),
+    ).update({EmailVerificationToken.used_at: now}, synchronize_session=False)
+    token = VerificationService(db).create(user)
+    try:
+        send_verification_email(recipient=email, first_name=user.first_name, token=token)
+    except EmailDeliveryError as exc:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Email delivery is temporarily unavailable. Please try again later.") from exc
+    db.commit()
+    return {"message": "If the account needs verification, an email will be sent."}
+
 
 @router.post("/login", response_model=SessionResponse)
 def login(data: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
