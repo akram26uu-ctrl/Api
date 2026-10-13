@@ -34,6 +34,7 @@ def test_verification_token_is_consumed_once():
         assert VerificationService(db).consume(raw_token) is None
     finally:
         db.rollback()
+        db.query(EmailVerificationToken).filter(EmailVerificationToken.user_id == user.id).delete(synchronize_session=False)
         db.delete(user)
         db.commit()
         db.close()
@@ -62,6 +63,7 @@ def test_expired_verification_token_is_rejected():
         assert user.status == "pending_verification"
     finally:
         db.rollback()
+        db.query(EmailVerificationToken).filter(EmailVerificationToken.user_id == user.id).delete(synchronize_session=False)
         db.delete(user)
         db.commit()
         db.close()
