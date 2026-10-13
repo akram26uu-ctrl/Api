@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { authApi } from './lib/api/auth';
 import { AuthSession } from './lib/api/types';
 import { DataStreamCanvas } from './components/3d/DataStreamCanvas';
@@ -241,6 +242,7 @@ export default function App() {
   return (
     <LanguageProvider>
       <AppContent />
+      <Analytics />
     </LanguageProvider>
   );
 }
