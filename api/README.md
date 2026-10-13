@@ -89,6 +89,37 @@ Authorization: Bearer <ordium_live_...>
 
 Test keys use the `ordium_test_...` prefix.
 
+
+## Shopify and Omniterra inbound webhooks
+
+ORDIUM exposes server-to-server intake endpoints:
+
+- `POST /api/v1/integrations/shopify/webhook` — Shopify `orders/create` webhooks.
+- `POST /api/v1/integrations/omniterra/webhook` — Omniterra `order.created`-style events.
+- `GET /api/v1/integrations/status` — reports whether each provider has the required settings; never returns secrets or store mappings.
+
+### Required deployment environment
+
+Configure these variables in the hosting provider's secret/environment settings, not in source control:
+
+- `SHOPIFY_WEBHOOK_SECRET`: Shopify app webhook signing secret.
+- `SHOPIFY_STORE_MAP`: JSON object keyed by the exact Shopify shop domain. Each value must contain `merchant_id` and `store_id` UUIDs, for example `{"example-shop.myshopify.com":{"merchant_id":"<merchant-uuid>","store_id":"<store-uuid>"}}`.
+- `OMNITERRA_WEBHOOK_SECRET`: shared secret used by the Omniterra webhook signer.
+- `OMNITERRA_SIGNATURE_HEADER`: signature header name confirmed from the Omniterra dashboard/docs (default: `X-Omniterra-Hmac-Sha256`).
+- `OMNITERRA_EVENT_ID_HEADER`: stable delivery/event ID header confirmed from Omniterra (default: `X-Omniterra-Webhook-Id`).
+- `OMNITERRA_STORE_MAP`: JSON object keyed by the external store identifier included in the event (`store_id`, `shop_id`, or `shop_domain`, depending on the provider payload). Each value contains `merchant_id` and `store_id` UUIDs.
+
+Both routes verify HMAC-SHA256 against the raw request body before parsing it. Shopify requests also require a registered `X-Shopify-Shop-Domain` and the `orders/create` topic. Events are routed to the explicitly mapped ORDIUM tenant/store and passed through the existing order/risk service with an idempotency key.
+
+### Current payload constraints and rollout checklist
+
+- The current ORDIUM order schema accepts Algerian phone numbers and `DZD` currency only. Orders with another currency or missing required name, phone, city/province, or shipping address are rejected with a validation response; do not enable live traffic until sample payloads meet these constraints or the schema is deliberately expanded.
+- Omniterra's exact signature header/encoding and payload field names must be confirmed against its live documentation/sample delivery. The route accepts hex or Base64 HMAC-SHA256 digests, but it does not guess a different signed message format.
+- `GET /api/v1/integrations/status` indicates configuration presence only; it does not prove credentials or a live webhook delivery.
+- Before production, run tests for valid and invalid signatures, unmapped shops, unsupported topics, missing fields, repeated delivery IDs, and the full create-order/risk-assessment path. Send a real test event from each provider and verify the order appears once in the intended ORDIUM store.
+- This initial configuration maps external shops through deployment environment JSON. For a self-service integration marketplace, move these mappings and per-shop encrypted secrets into tenant-scoped database records and provide authenticated connect/disconnect flows.
+
+
 ## Development
 
 Create and activate Python 3.13 virtual environment, then install the project with test dependencies:
