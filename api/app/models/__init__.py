@@ -28,3 +28,5 @@ from app.models.notification import Notification
 from app.models.store import Store
 
 from app.models.order_confirmation_attempt import OrderConfirmationAttempt
+
+from app.models.store_integration import StoreIntegration
