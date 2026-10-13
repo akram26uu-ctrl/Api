@@ -6,10 +6,7 @@ import logging
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from sqlalchemy.orm import Session
-
-from app.api.dependencies import get_database
+from fastapi import APIRouter, HTTPException, Request
 from app.core.config import settings
 from app.schemas.order import OrderCreate, OrderItemCreate
 from app.services.order_service import OrderService
@@ -41,7 +38,7 @@ def _store_config(mapping: dict, external_store: str) -> tuple[UUID, UUID]:
         raise HTTPException(503, "External store mapping is incomplete") from exc
 
 
-def _verify_hmac(raw_body: bytes, supplied: str | None, secret: str, *, base64_digest: bool = False) -> bool:
+def _verify_hmac(raw_body: bytes, supplied: str | None, secret: str) -> bool:
     if not supplied or not secret:
         return False
     digest = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).digest()
@@ -159,7 +156,6 @@ def _ingest(payload: dict, merchant_id: UUID, store_id: UUID, event_id: str):
 @router.post("/shopify/webhook")
 async def shopify_webhook(
     request: Request,
-    db: Session = Depends(get_database),
     signature: str | None = Header(default=None, alias="X-Shopify-Hmac-Sha256"),
     shop_domain: str | None = Header(default=None, alias="X-Shopify-Shop-Domain"),
     topic: str | None = Header(default=None, alias="X-Shopify-Topic"),
@@ -187,10 +183,10 @@ async def shopify_webhook(
 @router.post("/omniterra/webhook")
 async def omniterra_webhook(
     request: Request,
-    signature: str | None = Header(default=None, alias="X-Omniterra-Hmac-Sha256"),
-    event_id_header: str | None = Header(default=None, alias="X-Omniterra-Webhook-Id"),
 ):
     raw_body = await request.body()
+    signature = request.headers.get(settings.omniterra_signature_header)
+    event_id_header = request.headers.get(settings.omniterra_event_id_header)
     if not settings.omniterra_webhook_secret or not _verify_hmac(raw_body, signature, settings.omniterra_webhook_secret):
         raise HTTPException(401, "Invalid Omniterra webhook signature")
     try:
