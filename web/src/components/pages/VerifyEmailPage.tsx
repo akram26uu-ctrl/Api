@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2, MailCheck, RefreshCw } from 'lucide-react';
+import { Button } from '../common/Button';
 import { authApi } from '../../lib/api/auth';
 import { OrdiumApiError } from '../../lib/api/client';
 import { useLanguage } from '../../i18n/LanguageContext';
