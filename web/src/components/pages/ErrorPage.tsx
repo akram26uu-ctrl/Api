@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRight, Home, LockKeyhole, SearchX, ServerCrash, ShieldAlert, TimerReset } from 'lucide-react';
+import { ArrowLeft, Home, LockKeyhole, SearchX, ServerCrash, ShieldAlert, TimerReset } from 'lucide-react';
 
 interface ErrorPageProps { statusCode: number; onNavigate: (path: string) => void; }
 
