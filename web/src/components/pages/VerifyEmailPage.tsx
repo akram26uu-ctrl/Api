@@ -3,7 +3,6 @@ import { CheckCircle2, AlertCircle, Loader2, MailCheck, RefreshCw } from 'lucide
 import { authApi } from '../../lib/api/auth';
 import { OrdiumApiError } from '../../lib/api/client';
 import { useLanguage } from '../../i18n/LanguageContext';
-import { Button } from '../common/Button';
 
 interface VerifyEmailPageProps { token: string; onNavigate: (path: string) => void; onVerified: () => void; }
 
