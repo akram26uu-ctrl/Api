@@ -90,6 +90,22 @@ Authorization: Bearer <ordium_live_...>
 Test keys use the `ordium_test_...` prefix.
 
 
+## Multi-tenant store integration foundation
+
+The shared connection layer stores each merchant's platform connection in the database rather than a global JSON mapping:
+
+- `GET /api/v1/integrations/connections` lists connections owned by the authenticated merchant.
+- `POST /api/v1/integrations/connections` creates a connection for one of that merchant's active ORDIUM stores. The request contains `store_id`, `platform`, `external_store_id`, and `display_name`.
+- `PATCH /api/v1/integrations/connections/{integration_id}?active=false` pauses a connection.
+- `DELETE /api/v1/integrations/connections/{integration_id}` disconnects it.
+- Each connection gets a unique receiver URL: `POST /api/v1/integrations/webhooks/{platform}/{integration_id}`.
+
+Connection management requires a bearer API key with the `keys:manage` scope. Secrets for providers with per-webhook signing secrets are encrypted at rest and only returned once during connection creation. Keep `SECRET_KEY` stable across deployments; rotating it requires a planned re-encryption of stored integration secrets. Shopify uses its app-level `SHOPIFY_WEBHOOK_SECRET` because Shopify signs app webhooks with the app secret.
+
+The database migration is `a9d3f6c1e820_add_store_integrations.py`; deploy it with `alembic upgrade head` before using the new endpoints.
+
+This is the backend foundation, not yet a complete marketplace app-install flow. The dashboard connect wizard, one-time plugin pairing/OAuth flows, and provider-specific payload/signature verification must be implemented and tested before listing Shopify, WooCommerce, YouCan, or other plugins publicly. In particular, verify each provider's official webhook signature header, event shape, retry behavior, and app-review requirements; do not treat the shared receiver alone as proof that a platform adapter is production-ready.
+
 ## Shopify and Omniterra inbound webhooks
 
 ORDIUM exposes server-to-server intake endpoints:
