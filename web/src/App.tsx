@@ -26,6 +26,7 @@ import { CompanyPage } from './components/pages/CompanyPage';
 import { LoginPage } from './components/pages/LoginPage';
 import { RegisterPage } from './components/pages/RegisterPage';
 import { VerifyEmailPage } from './components/pages/VerifyEmailPage';
+import { ErrorPage } from './components/pages/ErrorPage';
 import { DashboardLayout } from './components/dashboard/DashboardLayout';
 import { LanguageProvider } from './i18n/LanguageContext';
 
@@ -39,9 +40,7 @@ export function AppContent() {
   const [currentPath, setCurrentPath] = useState<string>(() => {
     if (typeof window !== 'undefined' && window.location.pathname) {
       const p = window.location.pathname;
-      if (['/platform', '/intelligence', '/security', '/developers', '/pricing', '/docs', '/company', '/login', '/register', '/dashboard', '/verify-email'].includes(p)) {
-        return p;
-      }
+      return p;
     }
     return '/';
   });
@@ -139,6 +138,15 @@ export function AppContent() {
     />;
   }
 
+  // Branded ORDIUM error pages. Unknown URLs are real 404s, not blank marketing pages.
+  const errorRoutes: Record<string, number> = {
+    '/403': 403, '/forbidden': 403, '/404': 404, '/not-found': 404,
+    '/429': 429, '/500': 500, '/503': 503, '/service-unavailable': 503,
+  };
+  if (errorRoutes[currentPath]) {
+    return <ErrorPage statusCode={errorRoutes[currentPath]} onNavigate={navigateTo} />;
+  }
+
   // Dedicated Authentication Pages
   if (currentPath === '/login') {
     return (
@@ -218,6 +226,10 @@ export function AppContent() {
         {currentPath === '/docs' && <DocsPage />}
         {currentPath === '/company' && <CompanyPage />}
       </main>
+
+      {currentPath !== '/' && !['/platform', '/intelligence', '/security', '/developers', '/pricing', '/docs', '/company'].includes(currentPath) && (
+        <ErrorPage statusCode={404} onNavigate={navigateTo} />
+      )}
 
       {/* Global Brand Footer */}
       <Footer onNavigate={navigateTo} />
