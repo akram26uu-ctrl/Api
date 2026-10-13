@@ -9,7 +9,7 @@ from app.models.membership import Membership
 from app.models.session import Session as DbSession
 from app.models.user import User
 from app.models.organization import Organization
-from app.schemas.auth import LoginRequest, RegisterRequest, RegisterResponse, SessionResponse, AccountSettingsUpdateRequest, ChangePasswordRequest, SessionInfo
+from app.schemas.auth import LoginRequest, RegisterRequest, RegisterResponse, SessionResponse, AccountSettingsUpdateRequest, ChangePasswordRequest, SessionInfo, VerifyEmailRequest
 from app.services.ordium_api import OrdiumProvisioningClient, OrdiumApiError
 from app.services.passwords import hash_password, verify_password
 from app.services.verification import VerificationService
@@ -116,8 +116,8 @@ def register(data: RegisterRequest, request: Request, response: Response, db: Se
     return _registration_response(user, membership, initial_test_api_key=None, verification_required=False)
 
 @router.post("/verify-email", response_model=SessionResponse)
-def verify_email(token: str, response: Response, db: Session = Depends(get_db)):
-    user = VerificationService(db).consume(token.strip())
+def verify_email(data: VerifyEmailRequest, response: Response, db: Session = Depends(get_db)):
+    user = VerificationService(db).consume(data.token.strip())
     if user is None:
         raise HTTPException(status_code=400, detail="Invalid or expired verification token")
     membership = db.scalar(select(Membership).where(Membership.user_id == user.id).order_by(Membership.created_at.asc()))
