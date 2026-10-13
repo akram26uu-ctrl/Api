@@ -224,7 +224,9 @@ async def omniterra_webhook(
         or request.headers.get("X-Shopify-Topic")
         or ""
     ).lower()
-    if event_type and event_type not in {"order.created", "orders/create", "order_created"}:
+    if not event_type:
+        raise HTTPException(400, "Missing Omniterra event topic; configure the provider topic header or include the event name in the payload")
+    if event_type not in {"order.created", "orders/create", "order_created"}:
         return {"accepted": True, "ignored": True, "reason": "unsupported_event"}
     order = payload.get("data") if isinstance(payload.get("data"), dict) else payload.get("order")
     if not isinstance(order, dict):
