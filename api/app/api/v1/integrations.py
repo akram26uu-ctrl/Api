@@ -7,6 +7,7 @@ from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import ValidationError
 from app.core.config import settings
 from app.schemas.order import OrderCreate, OrderItemCreate
 from app.services.order_service import OrderService
@@ -129,7 +130,10 @@ def _ingest(payload: dict, merchant_id: UUID, store_id: UUID, event_id: str):
     order = payload.get("order") if isinstance(payload.get("order"), dict) else payload
     external_id = order.get("id") or order.get("order_id") or order.get("name")
     external_id = _required_text(external_id, "external order ID")
-    normalized = _normalize_order(order, external_id)
+    try:
+        normalized = _normalize_order(order, external_id)
+    except ValidationError as exc:
+        raise HTTPException(422, "Order payload does not match ORDIUM required fields") from exc
     from app.db.database import SessionLocal
     from app.models.store import Store
     with SessionLocal() as db:
@@ -193,8 +197,18 @@ async def omniterra_webhook(
     request: Request,
 ):
     raw_body = await request.body()
-    signature = request.headers.get(settings.omniterra_signature_header)
-    event_id_header = request.headers.get(settings.omniterra_event_id_header)
+    signature = (
+        request.headers.get(settings.omniterra_signature_header)
+        or request.headers.get("X-Omniterra-Hmac-Sha256")
+        or request.headers.get("X-Shopify-Hmac-Sha256")
+        or request.headers.get("X-NDC-Hmac-Sha256")
+    )
+    event_id_header = (
+        request.headers.get(settings.omniterra_event_id_header)
+        or request.headers.get("X-Omniterra-Webhook-Id")
+        or request.headers.get("X-Shopify-Webhook-Id")
+        or request.headers.get("X-NDC-Webhook-Id")
+    )
     if not settings.omniterra_webhook_secret or not _verify_hmac(raw_body, signature, settings.omniterra_webhook_secret):
         raise HTTPException(401, "Invalid Omniterra webhook signature")
     try:
@@ -203,14 +217,27 @@ async def omniterra_webhook(
         raise HTTPException(400, "Invalid Omniterra JSON payload") from exc
     if not isinstance(payload, dict):
         raise HTTPException(400, "Invalid Omniterra payload")
-    event_type = str(payload.get("event") or payload.get("topic") or payload.get("type") or "").lower()
+    event_type = str(
+        payload.get("event") or payload.get("topic") or payload.get("type")
+        or request.headers.get("X-Omniterra-Topic")
+        or request.headers.get("X-NDC-Topic")
+        or request.headers.get("X-Shopify-Topic")
+        or ""
+    ).lower()
     if event_type and event_type not in {"order.created", "orders/create", "order_created"}:
         return {"accepted": True, "ignored": True, "reason": "unsupported_event"}
     order = payload.get("data") if isinstance(payload.get("data"), dict) else payload.get("order")
     if not isinstance(order, dict):
         order = payload
     store = order.get("store") if isinstance(order.get("store"), dict) else {}
-    external_store = str(order.get("store_id") or order.get("shop_id") or order.get("shop_domain") or store.get("id") or store.get("domain") or "").strip().lower()
+    external_store = str(
+        order.get("store_id") or order.get("shop_id") or order.get("shop_domain")
+        or store.get("id") or store.get("domain")
+        or request.headers.get("X-Omniterra-Store-Id")
+        or request.headers.get("X-NDC-Store-Id")
+        or request.headers.get("X-Shopify-Shop-Domain")
+        or ""
+    ).strip().lower()
     if not external_store:
         raise HTTPException(422, "Omniterra payload must identify its store")
     merchant_id, store_id = _store_config(_json_map(settings.omniterra_store_map, "OMNITERRA_STORE_MAP"), external_store)
