@@ -119,8 +119,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
       setErrorMessage(t('auth.errors.password_required', 'Password is required.'));
       return;
     }
-    if (password.length < 8) {
-      setErrorMessage(t('auth.errors.password_length', 'Password must be at least 8 characters long.'));
+    if (password.length < 12 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      setErrorMessage(t('auth.errors.password_length', 'Password must be at least 12 characters and include uppercase, lowercase, and numeric characters.'));
       return;
     }
     if (password !== confirmPassword) {
