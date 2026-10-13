@@ -50,7 +50,6 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({ token, onNavig
         </h1>
         <p className="text-sm text-[#94A3B8]">{message}</p>
         {status === 'ready' && <Button variant="primary" onClick={() => void handleVerify()}>{t('auth.verify_button', 'Verify Email')}</Button>}
-        {status === 'loading' && <Button variant="primary" onClick={() => {}}>{t('auth.verify_loading_button', 'Verifying…')}</Button>}
         {status === 'success' && <Button variant="primary" onClick={onVerified}>{t('auth.open_console', 'Open Console')}</Button>}
         {status === 'error' && <Button variant="primary" onClick={() => onNavigate('/login')}>{t('auth.back_login', 'Back to Login')}</Button>}
       </div>
