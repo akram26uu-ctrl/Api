@@ -1,11 +1,13 @@
 import base64
 import hashlib
+import hmac
+import json
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from cryptography.fernet import Fernet, InvalidToken
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -17,9 +19,11 @@ from app.models.store_integration import StoreIntegration
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/integrations", tags=["Store integrations"])
+SUPPORTED_PLATFORMS = {"omniterra", "shopify", "woocommerce", "youcan"}
 
-# Derive a dedicated encryption key; do not reuse SECRET_KEY directly as a Fernet key.
+
 def _cipher() -> Fernet:
+    # Dedicated key derivation prevents storing integration secrets as plaintext.
     key = base64.urlsafe_b64encode(
         hashlib.sha256((settings.secret_key + ":store-integrations:v1").encode()).digest()
     )
@@ -35,6 +39,17 @@ def decrypt_webhook_secret(value: str) -> str:
         return _cipher().decrypt(value.encode("ascii")).decode("utf-8")
     except (InvalidToken, ValueError, UnicodeDecodeError) as exc:
         raise HTTPException(503, "Integration secret cannot be decrypted; verify the ORDIUM encryption key") from exc
+
+
+def _verify_signature(body: bytes, supplied: str | None, secret: str) -> bool:
+    if not supplied or not secret:
+        return False
+    digest = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).digest()
+    candidates = {digest.hex(), base64.b64encode(digest).decode("ascii")}
+    normalized = supplied.strip()
+    if normalized.lower().startswith("sha256="):
+        normalized = normalized.split("=", 1)[1]
+    return any(hmac.compare_digest(normalized, candidate) for candidate in candidates)
 
 
 class IntegrationCreate(BaseModel):
@@ -64,9 +79,8 @@ class IntegrationResponse(BaseModel):
     last_event_at: datetime | None = None
 
 
-def _response(item: StoreIntegration) -> IntegrationResponse:
-    # The endpoint URL is stable and shared by every tenant; tenant resolution is data-driven.
-    webhook_url = f"/api/v1/integrations/webhooks/{item.platform}"
+def _response(item: StoreIntegration, base_url: str = "") -> IntegrationResponse:
+    webhook_url = f"{base_url.rstrip('/')}/api/v1/integrations/webhooks/{item.platform}/{item.id}"
     return IntegrationResponse(
         id=item.id,
         store_id=item.store_id,
@@ -82,6 +96,7 @@ def _response(item: StoreIntegration) -> IntegrationResponse:
 
 @router.get("/connections", response_model=list[IntegrationResponse])
 def list_connections(
+    request: Request,
     db: Session = Depends(get_database),
     current: ApiKey = Depends(require_api_scope("keys:manage")),
 ):
@@ -91,7 +106,7 @@ def list_connections(
         .order_by(StoreIntegration.created_at.desc())
         .all()
     )
-    return [_response(item) for item in items]
+    return [_response(item, str(request.base_url)) for item in items]
 
 
 @router.post("/connections", status_code=201)
@@ -101,6 +116,8 @@ def create_connection(
     db: Session = Depends(get_database),
     current: ApiKey = Depends(require_api_scope("keys:manage")),
 ):
+    if data.platform not in SUPPORTED_PLATFORMS:
+        raise HTTPException(422, "Unsupported platform. Supported platforms: omniterra, shopify, woocommerce, youcan")
     store = db.query(Store).filter(
         Store.id == data.store_id,
         Store.merchant_id == current.merchant_id,
@@ -114,7 +131,6 @@ def create_connection(
         StoreIntegration.external_store_id == data.external_store_id,
     ).first()
     if existing is not None:
-        # Do not disclose which merchant owns an external store identifier.
         raise HTTPException(409, "This external store is already connected")
 
     secret = secrets.token_urlsafe(32)
@@ -141,11 +157,9 @@ def create_connection(
     db.commit()
     db.refresh(item)
     return {
-        **_response(item).model_dump(mode="json"),
-        # Return only at creation time. The database stores the encrypted value.
+        **_response(item, str(request.base_url)).model_dump(mode="json"),
         "webhook_secret": secret,
-        "webhook_url": f"{settings.allowed_hosts.split(',')[0].strip() if settings.allowed_hosts.strip() else ''}/api/v1/integrations/webhooks/{item.platform}",
-        "warning": "Copy the webhook_secret now; it is never returned again.",
+        "warning": "Copy the webhook_secret now. It is never returned again.",
     }
 
 
@@ -175,7 +189,7 @@ def set_connection_active(
     )
     db.commit()
     db.refresh(item)
-    return _response(item)
+    return _response(item, str(request.base_url))
 
 
 @router.delete("/connections/{integration_id}", status_code=204)
@@ -202,4 +216,89 @@ def delete_connection(
     )
     db.delete(item)
     db.commit()
-    return None
+    return Response(status_code=204)
+
+
+@router.post("/webhooks/{platform}/{integration_id}")
+async def receive_store_webhook(
+    platform: str,
+    integration_id: UUID,
+    request: Request,
+    db: Session = Depends(get_database),
+):
+    """Shared receiver; each integration has an isolated signing secret and tenant mapping."""
+    if platform not in SUPPORTED_PLATFORMS:
+        raise HTTPException(404, "Unsupported integration platform")
+    integration = db.query(StoreIntegration).filter(
+        StoreIntegration.id == integration_id,
+        StoreIntegration.platform == platform,
+        StoreIntegration.is_active.is_(True),
+    ).first()
+    if integration is None:
+        raise HTTPException(404, "Active integration not found")
+
+    raw_body = await request.body()
+    if len(raw_body) > settings.max_request_body_bytes:
+        raise HTTPException(413, "Webhook body too large")
+
+    secret = decrypt_webhook_secret(integration.webhook_secret_encrypted)
+    signature_headers = {
+        "omniterra": ("X-Omniterra-Hmac-Sha256", "X-NDC-Hmac-Sha256", "X-Shopify-Hmac-Sha256"),
+        "shopify": ("X-Shopify-Hmac-Sha256",),
+        "woocommerce": ("X-WC-Webhook-Signature",),
+        "youcan": ("X-YouCan-Hmac-Sha256", "X-YouCan-Signature"),
+    }[platform]
+    signature = next((request.headers.get(name) for name in signature_headers if request.headers.get(name)), None)
+    if not _verify_signature(raw_body, signature, secret):
+        raise HTTPException(401, "Invalid store webhook signature")
+
+    try:
+        payload = json.loads(raw_body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(400, "Invalid webhook JSON payload") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Invalid webhook payload")
+
+    topic = (
+        payload.get("event") or payload.get("topic") or payload.get("type")
+        or request.headers.get("X-Omniterra-Topic")
+        or request.headers.get("X-NDC-Topic")
+        or request.headers.get("X-Shopify-Topic")
+        or request.headers.get("X-WC-Webhook-Topic")
+        or ""
+    ).strip().lower()
+    allowed_topics = {
+        "omniterra": {"order.created", "orders/create", "order_created"},
+        "shopify": {"orders/create", "order.created", "order_created"},
+        "woocommerce": {"order.created", "order.created", "woocommerce_order_created"},
+        "youcan": {"order.created", "orders/create", "order_created"},
+    }[platform]
+    if topic not in allowed_topics:
+        raise HTTPException(400, "Unsupported or missing order-created event topic")
+
+    order = payload.get("data") if isinstance(payload.get("data"), dict) else payload.get("order")
+    if not isinstance(order, dict):
+        order = payload
+    external_order_id = order.get("id") or order.get("order_id") or order.get("name")
+    if external_order_id is None:
+        raise HTTPException(422, "Webhook payload is missing the external order ID")
+
+    from app.api.v1.integrations import _ingest
+    stable_event_id = (
+        request.headers.get("X-Omniterra-Webhook-Id")
+        or request.headers.get("X-NDC-Webhook-Id")
+        or request.headers.get("X-Shopify-Webhook-Id")
+        or request.headers.get("X-WC-Webhook-ID")
+        or payload.get("webhook_id")
+        or f"{platform}:{external_order_id}"
+    )
+    # _ingest owns a separate DB session for order creation; this session only tracks connection metadata.
+    result = _ingest(
+        order,
+        integration.merchant_id,
+        integration.store_id,
+        f"{platform}:{integration.id}:{stable_event_id}",
+    )
+    integration.last_event_at = datetime.now(timezone.utc)
+    db.commit()
+    return result
