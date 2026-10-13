@@ -116,8 +116,18 @@ def register(data: RegisterRequest, request: Request, response: Response, db: Se
     return _registration_response(user, membership, initial_test_api_key=None, verification_required=False)
 
 @router.post("/verify-email", response_model=SessionResponse)
-def verify_email(data: VerifyEmailRequest, response: Response, db: Session = Depends(get_db)):
-    user = VerificationService(db).consume(data.token.strip())
+def verify_email(
+    response: Response,
+    data: VerifyEmailRequest | None = None,
+    token: str | None = None,
+    db: Session = Depends(get_db),
+):
+    # Accept the previous query-string contract during staggered frontend/backend deploys.
+    # The current web client sends the token in the POST body to avoid URL/log leakage.
+    raw_token = data.token if data is not None else token
+    if not raw_token:
+        raise HTTPException(status_code=422, detail="Verification token is required")
+    user = VerificationService(db).consume(raw_token.strip())
     if user is None:
         raise HTTPException(status_code=400, detail="Invalid or expired verification token")
     membership = db.scalar(select(Membership).where(Membership.user_id == user.id).order_by(Membership.created_at.asc()))
