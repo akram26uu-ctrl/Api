@@ -6,7 +6,7 @@ import logging
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import ValidationError
 from app.core.config import settings
 from app.schemas.order import OrderCreate, OrderItemCreate
