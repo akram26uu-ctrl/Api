@@ -131,7 +131,15 @@ def _ingest(payload: dict, merchant_id: UUID, store_id: UUID, event_id: str):
     external_id = _required_text(external_id, "external order ID")
     normalized = _normalize_order(order, external_id)
     from app.db.database import SessionLocal
+    from app.models.store import Store
     with SessionLocal() as db:
+        registered_store = db.query(Store).filter(
+            Store.id == store_id,
+            Store.merchant_id == merchant_id,
+            Store.is_active.is_(True),
+        ).first()
+        if registered_store is None:
+            raise HTTPException(403, "Mapped ORDIUM store is inactive or does not belong to the mapped merchant")
         try:
             result = OrderService(db).create_order(
                 merchant_id=merchant_id,
