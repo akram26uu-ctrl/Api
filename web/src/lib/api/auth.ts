@@ -74,7 +74,7 @@ export const authApi = {
 
   async verifyEmail(token: string): Promise<AuthSession> {
     try {
-      const session = await controlPlaneFetch<AuthSession>(`/api/v1/auth/verify-email?token=${encodeURIComponent(token)}`, { method: 'POST' });
+      const session = await controlPlaneFetch<AuthSession>('/api/v1/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) });
       return session;
     } catch (error) {
       throw fromControlPlaneError(error);
