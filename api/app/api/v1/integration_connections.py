@@ -158,8 +158,12 @@ def create_connection(
     db.refresh(item)
     return {
         **_response(item, str(request.base_url)).model_dump(mode="json"),
-        "webhook_secret": secret,
-        "warning": "Copy the webhook_secret now. It is never returned again.",
+        "webhook_secret": secret if data.platform != "shopify" else None,
+        "webhook_secret_note": (
+            "Shopify app webhooks use the app-level SHOPIFY_WEBHOOK_SECRET configured by ORDIUM."
+            if data.platform == "shopify"
+            else "Copy the webhook_secret now. It is never returned again."
+        ),
     }
 
 
@@ -241,7 +245,13 @@ async def receive_store_webhook(
     if len(raw_body) > settings.max_request_body_bytes:
         raise HTTPException(413, "Webhook body too large")
 
-    secret = decrypt_webhook_secret(integration.webhook_secret_encrypted)
+    # Shopify signs app webhooks with the app-level secret, not a per-shop webhook secret.
+    if platform == "shopify":
+        secret = settings.shopify_webhook_secret
+        if not secret:
+            raise HTTPException(503, "Shopify app webhook signing is not configured in ORDIUM")
+    else:
+        secret = decrypt_webhook_secret(integration.webhook_secret_encrypted)
     signature_headers = {
         "omniterra": ("X-Omniterra-Hmac-Sha256", "X-NDC-Hmac-Sha256", "X-Shopify-Hmac-Sha256"),
         "shopify": ("X-Shopify-Hmac-Sha256",),
