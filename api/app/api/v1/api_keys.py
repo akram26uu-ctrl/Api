@@ -122,3 +122,29 @@ def rotate_api_key(
     AuditService(db).record(action="api_key.rotated", resource_type="api_key", resource_id=new_key.id, merchant_id=current.merchant_id, api_key_id=current.id, environment=new_key.environment, request_id=getattr(request.state, "request_id", None), metadata={"replaced_key_id": str(key.id)})
     db.commit(); db.refresh(new_key)
     return ApiKeyCreateResponse(id=str(new_key.id), name=new_key.name, environment=new_key.environment, scopes=new_key.scopes or [], api_key=raw, expires_at=new_key.expires_at, store_id=str(new_key.store_id) if new_key.store_id else None)
+
+
+@router.get("/scopes")
+def list_api_key_scopes(
+    current: ApiKey = Depends(require_api_scope("keys:manage")),
+):
+    """Return the supported scope catalog for the authenticated merchant's key-management UI."""
+    from app.schemas.api_key import AVAILABLE_API_KEY_SCOPES
+
+    descriptions = {
+        "orders:read": "Read orders belonging to the key's permitted store",
+        "orders:write": "Create or update order data",
+        "outcomes:write": "Submit order outcomes",
+        "metrics:read": "Read analytics and metrics",
+        "risk_profile:read": "Read risk profiles",
+        "risk_profile:write": "Update risk profiles",
+        "risk_features:read": "Read risk features",
+        "keys:manage": "Create, list, rotate, and revoke API keys",
+        "webhooks:manage": "Manage webhook subscriptions",
+        "audit:read": "Read audit events",
+    }
+    allowed = set(current.scopes or [])
+    return [
+        {"scope": scope, "description": descriptions[scope], "grantable": scope in allowed}
+        for scope in sorted(AVAILABLE_API_KEY_SCOPES)
+    ]
