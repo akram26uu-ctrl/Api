@@ -14,7 +14,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Shield, Lock, Mail, Building2, User, Phone, Globe, ShoppingBag,
   TrendingUp, MapPin, CheckCircle2, AlertCircle, ArrowRight, ArrowLeft,
-  Eye, EyeOff, Key, Terminal, Cpu, Info, ExternalLink
+  Eye, EyeOff, Key, Terminal, Cpu, Info, ExternalLink, RefreshCw
 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
@@ -64,7 +64,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
   const [requestId, setRequestId] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [verificationRequired, setVerificationRequired] = useState(false);
-  const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [verificationResendMessage, setVerificationResendMessage] = useState('');
+  const [verificationResendError, setVerificationResendError] = useState(false);
 
   // Password entropy calculation
   const passwordStrength = useMemo(() => {
@@ -152,7 +154,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
       });
 
       setVerificationRequired(Boolean(session.verification_required));
-      setVerificationToken(session.verification_token ?? null);
       setIsSuccess(true);
     } catch (err: any) {
       if (err instanceof OrdiumApiError) {
@@ -168,6 +169,24 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email.trim() || isResendingVerification) return;
+    setIsResendingVerification(true);
+    setVerificationResendMessage('');
+    setVerificationResendError(false);
+    try {
+      const result = await authApi.resendVerification(email.trim());
+      setVerificationResendMessage(result.message || t('auth.resend_generic', 'إذا كان الحساب بحاجة إلى التحقق، فسيتم إرسال رسالة جديدة.'));
+    } catch (err) {
+      setVerificationResendError(true);
+      setVerificationResendMessage(err instanceof OrdiumApiError
+        ? err.message
+        : t('auth.resend_error', 'تعذر إرسال الرسالة الآن. حاول لاحقًا.'));
+    } finally {
+      setIsResendingVerification(false);
     }
   };
 
@@ -260,9 +279,15 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
 
               </div>
 
-              {verificationRequired && verificationToken && (
-                <div className="p-3 rounded-xl bg-[#22D3EE]/10 border border-[#22D3EE]/20 text-xs text-[#A5F3FC] text-start">
-                  Development verification token is available. <button type="button" className="underline font-bold" onClick={() => onNavigate(`/verify-email?token=${encodeURIComponent(verificationToken)}`)}>Verify this account</button>
+
+              {verificationRequired && (
+                <div className="max-w-md mx-auto w-full space-y-3 rounded-xl border border-[#22D3EE]/20 bg-[#22D3EE]/5 p-4 text-start">
+                  <p className="text-sm font-semibold text-white">لم يصلك رابط التحقق؟</p>
+                  <p className="text-xs leading-6 text-[#94A3B8]">يمكنك إعادة إرسال رابط التحقق إلى البريد الذي استخدمته لإنشاء الحساب: <span dir="ltr" className="font-mono text-white">{email}</span></p>
+                  <Button type="button" variant="outline" className="w-full" disabled={isResendingVerification} onClick={() => void handleResendVerification()} leftIcon={<RefreshCw className="w-4 h-4" />}>
+                    {isResendingVerification ? 'جارٍ إرسال الرابط…' : 'إعادة إرسال رابط التحقق'}
+                  </Button>
+                  {verificationResendMessage && <p role="status" aria-live="polite" className={`text-xs leading-6 ${verificationResendError ? 'text-red-300' : 'text-emerald-300'}`}>{verificationResendMessage}</p>}
                 </div>
               )}
 
