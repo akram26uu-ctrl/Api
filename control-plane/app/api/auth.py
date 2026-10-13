@@ -161,10 +161,20 @@ def resend_verification(data: ResendVerificationRequest, request: Request, db: S
 
     now = datetime.now(timezone.utc)
     window_start = now - timedelta(hours=4)
+    # Exclude the original registration email from the resend quota, even if
+    # it was sent inside this four-hour window.
+    initial_token_id = (
+        select(EmailVerificationToken.id)
+        .where(EmailVerificationToken.user_id == user.id)
+        .order_by(EmailVerificationToken.created_at.asc(), EmailVerificationToken.id.asc())
+        .limit(1)
+        .scalar_subquery()
+    )
     recent_count = db.scalar(
         select(func.count(EmailVerificationToken.id)).where(
             EmailVerificationToken.user_id == user.id,
             EmailVerificationToken.created_at >= window_start,
+            EmailVerificationToken.id != initial_token_id,
         )
     ) or 0
     latest = db.scalar(
@@ -179,8 +189,8 @@ def resend_verification(data: ResendVerificationRequest, request: Request, db: S
             latest_created = latest_created.replace(tzinfo=timezone.utc)
         if latest_created > now - timedelta(minutes=2):
             raise HTTPException(status_code=429, detail="Please wait two minutes before requesting another verification email.")
-    # Initial email plus at most five resends in any rolling four-hour window.
-    if recent_count >= 6:
+    # At most five resend emails in any rolling four-hour window.
+    if recent_count >= 5:
         raise HTTPException(status_code=429, detail="You have reached the limit of five resend attempts in four hours. Try again later.")
 
     # Only the newest link remains usable after a resend.
