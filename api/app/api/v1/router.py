@@ -16,6 +16,7 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.stores import router as stores_router
 from app.api.v1.usage import router as usage_router
 from app.api.v1.integrations import router as integrations_router
+from app.api.v1.integration_connections import router as integration_connections_router
 
 
 router = APIRouter(
@@ -44,3 +45,4 @@ router.include_router(webhooks_router)
 router.include_router(audit_router)
 router.include_router(risk_features_router)
 router.include_router(integrations_router)
+router.include_router(integration_connections_router)
