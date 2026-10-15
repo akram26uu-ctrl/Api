@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, Column, DateTime, Enum as SqlEnum, Integer, JSON, String, func
+from sqlalchemy import Boolean, DateTime, Enum as SqlEnum, Integer, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -15,8 +15,6 @@ def _quota_period_default() -> datetime:
 
 
 class Merchant(Base):
-    # إضافة حقل لتفعيل/تعطيل وضع الظل (False = Active Blocking, True = Logging Only)
-    is_shadow_mode_enabled = Column(Boolean, default=True)
     __tablename__ = "merchants"
 
     id: Mapped[UUID] = mapped_column(
@@ -56,6 +54,12 @@ class Merchant(Base):
     )
 
     beta_access: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+
+    # Shadow mode: True = observe-only (rejections are logged as review),
+    # False = active blocking. Persisted by migration c6e1a9f3b8d4.
+    is_shadow_mode_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
 
