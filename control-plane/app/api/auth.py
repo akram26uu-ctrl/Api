@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.auth import COOKIE_NAME, clear_session_cookie, create_session, get_current_session, session_response, set_session_cookie
+from app.auth import COOKIE_NAME, _decrypt_dashboard_key, clear_session_cookie, create_session, get_current_session, session_response, set_session_cookie
 from app.db import get_db
 from app.models.membership import Membership
 from app.models.session import Session as DbSession
@@ -68,6 +68,51 @@ def _create_dashboard_keys(provisioning, merchant_id):
     test_id, test_key = provisioning.create_dashboard_key(merchant_id, "test")
     live_id, live_key = provisioning.create_dashboard_key(merchant_id, "live")
     return (test_id, test_key), (live_id, live_key)
+
+def _dashboard_keys_for_user(db, user, provisioning, merchant_id):
+    # Reuse the newest decryptable dashboard key pair from a prior non-revoked
+    # session. Provisioning a fresh pair on every login/verification accumulated
+    # orphaned API keys in the ORDIUM core for merchants with multiple sessions.
+    sessions = db.scalars(
+        select(DbSession)
+        .where(DbSession.user_id == user.id, DbSession.revoked_at.is_(None))
+        .order_by(DbSession.last_seen_at.desc())
+    ).all()
+    for row in sessions:
+        if row.ordium_api_key_id is None or row.ordium_live_api_key_id is None:
+            continue
+        try:
+            test_key = _decrypt_dashboard_key(row.ordium_api_key_encrypted)
+            live_key = _decrypt_dashboard_key(row.ordium_live_api_key_encrypted)
+        except Exception:
+            # An undecryptable session (e.g. rotated encryption key) cannot
+            # contribute keys; keep scanning older sessions.
+            continue
+        if test_key and live_key:
+            return (row.ordium_api_key_id, test_key), (row.ordium_live_api_key_id, live_key)
+    return _create_dashboard_keys(provisioning, merchant_id)
+
+def _dashboard_keys_shared(db, session) -> bool:
+    # True when another non-revoked session of the same user still references
+    # either dashboard key, so logout must not revoke keys that remain in use.
+    clauses = []
+    if session.ordium_api_key_id is not None:
+        clauses.append(DbSession.ordium_api_key_id == session.ordium_api_key_id)
+    if session.ordium_live_api_key_id is not None:
+        clauses.append(DbSession.ordium_live_api_key_id == session.ordium_live_api_key_id)
+    if not clauses:
+        return False
+    shared = db.scalar(
+        select(DbSession.id)
+        .where(
+            DbSession.user_id == session.user_id,
+            DbSession.id != session.id,
+            DbSession.revoked_at.is_(None),
+            or_(*clauses),
+        )
+        .limit(1)
+    )
+    return shared is not None
 
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 def register(data: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
@@ -139,7 +184,7 @@ def verify_email(
     try:
         provisioning.activate_merchant(membership.organization.merchant_id)
         provisioning.ensure_store(membership.organization.merchant_id)
-        (dashboard_test_id, dashboard_test_key), (dashboard_live_id, dashboard_live_key) = _create_dashboard_keys(provisioning, membership.organization.merchant_id)
+        (dashboard_test_id, dashboard_test_key), (dashboard_live_id, dashboard_live_key) = _dashboard_keys_for_user(db, user, provisioning, membership.organization.merchant_id)
     except OrdiumApiError as exc:
         db.rollback()
         raise HTTPException(status_code=503, detail="Workspace activation is temporarily unavailable") from exc
@@ -222,7 +267,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         raise HTTPException(status_code=403, detail="Organization membership not found")
     provisioning = OrdiumProvisioningClient()
     try:
-        (dashboard_test_id, dashboard_test_key), (dashboard_live_id, dashboard_live_key) = _create_dashboard_keys(provisioning, membership.organization.merchant_id)
+        (dashboard_test_id, dashboard_test_key), (dashboard_live_id, dashboard_live_key) = _dashboard_keys_for_user(db, user, provisioning, membership.organization.merchant_id)
     except OrdiumApiError as exc:
         raise HTTPException(status_code=503, detail="Unable to create dashboard session") from exc
     session, raw = create_session(db, user, dashboard_test_id, dashboard_test_key, dashboard_live_key)
@@ -317,7 +362,10 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         session = db.scalar(select(DbSession).where(DbSession.token_hash == token_hash))
         if session:
-            if session.ordium_api_key_id or session.ordium_live_api_key_id:
+            # Only revoke the dashboard keys when no other live session of this
+            # user still depends on them; otherwise logging out of one tab would
+            # break every remaining session using the shared keys.
+            if (session.ordium_api_key_id or session.ordium_live_api_key_id) and not _dashboard_keys_shared(db, session):
                 try:
                     user = db.get(User, session.user_id)
                     membership = db.scalar(select(Membership).where(Membership.user_id == user.id).order_by(Membership.created_at.asc())) if user else None
