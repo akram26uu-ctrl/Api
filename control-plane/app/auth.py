@@ -40,12 +40,20 @@ def create_session(db: Session, user: User, ordium_api_key_id=None, dashboard_te
     return session, raw
 
 
+def _as_utc(value: datetime) -> datetime:
+    # Timestamps read from the database may come back timezone-naive depending on
+    # the driver; normalize before any comparison with aware datetimes.
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 def get_current_session(request: Request, db: Session = Depends(get_db)) -> tuple[DbSession, User, Membership]:
     raw = request.cookies.get(COOKIE_NAME)
     if not raw:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
     session = db.scalar(select(DbSession).where(DbSession.token_hash == _hash_token(raw), DbSession.revoked_at.is_(None)))
-    if session is None or session.expires_at <= datetime.now(timezone.utc):
+    if session is None or _as_utc(session.expires_at) <= datetime.now(timezone.utc):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
     user = db.get(User, session.user_id)
     if user is None or user.status != "active":
