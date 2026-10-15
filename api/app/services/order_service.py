@@ -13,8 +13,9 @@ from sqlalchemy.orm import Session
 from app.models.address_identifier import AddressIdentifier
 from app.models.api_key import ApiKey
 from app.models.device_identifier import DeviceIdentifier
-from app.models.enums import OrderStatus
+from app.models.enums import OrderStatus, RiskDecision
 from app.models.idempotency_record import IdempotencyRecord
+from app.models.merchant import Merchant
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.notification import Notification
@@ -210,6 +211,26 @@ class OrderService:
                 raise ValueError("An order with this external order number already exists") from exc
 
             risk_result = self.risk_service.assess_order(order)
+
+            # Shadow mode: when enabled, the merchant observes rejections without
+            # being blocked. Downgrade REJECT to REVIEW before the response body,
+            # audit record, webhook payload, and notification are built so they all
+            # stay consistent. The mutated assessment decision is persisted by the
+            # final commit below.
+            merchant = api_key.merchant if api_key is not None else self.db.get(Merchant, merchant_id)
+            if (
+                merchant is not None
+                and getattr(merchant, "is_shadow_mode_enabled", False)
+                and risk_result.decision is RiskDecision.REJECT
+            ):
+                risk_result.assessment.decision = RiskDecision.REVIEW
+                risk_result = RiskResult(
+                    score=risk_result.score,
+                    decision=RiskDecision.REVIEW,
+                    assessment=risk_result.assessment,
+                    events=risk_result.events,
+                )
+
             graph_summary = self.graph_service.summarize_order(order)
 
             response_body = to_json_safe(self._build_response_body(order, risk_result, graph_summary))
@@ -235,13 +256,6 @@ class OrderService:
             # Persist only actionable risk notifications. They are created in the
             # same transaction as the order/risk assessment so the dashboard never
             # shows an alert for an order that failed to commit.
-            # التحقق مما إذا كان التاجر في وضع الظل (Shadow Mode)
-            is_shadow_mode = merchant.is_shadow_mode_enabled if hasattr(merchant, 'is_shadow_mode_enabled') else False
-
-            # إذا كان في وضع الظل، نغير قرار الحظر إلى مجرد مراجعة
-            if is_shadow_mode and risk_result.decision.value == "reject":
-                risk_result.decision.value = "review"
-
             if risk_result.decision.value in {"review", "reject"}:
                 severity = "critical" if risk_result.decision.value == "reject" else "warning"
                 title = "Order blocked by risk engine" if severity == "critical" else "Order requires review"
