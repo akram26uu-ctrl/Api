@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import time
 
 from app.utils.json import to_json_safe
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.risk_config import DEFAULT_RISK_PROFILE
@@ -230,9 +231,21 @@ class RiskService:
             is_active=True,
         )
 
-        return self.risk_profile_repository.create(
-            profile,
-        )
+        # Two concurrent first-assessments for the same merchant used to race:
+        # both saw no profile, both inserted, and the second request died on the
+        # unique constraint, rolling back the whole order transaction. Create the
+        # default profile inside a SAVEPOINT so a concurrent insert is caught and
+        # the winner's row is returned instead.
+        try:
+            with self.db.begin_nested():
+                self.db.add(profile)
+                self.db.flush()
+        except IntegrityError:
+            existing = self.risk_profile_repository.get_by_merchant_id(merchant_id)
+            if existing is None:
+                raise
+            return existing
+        return profile
 
     def assess_order(
         self,
