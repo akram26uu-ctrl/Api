@@ -61,6 +61,10 @@ def enforce_live_quota(db: Session, merchant_id) -> dict:
         .one()
     )
     usage = get_live_usage(db, merchant)
+    # The quota used to be advisory only (a warning flag was set but order
+    # creation continued), so monthly_order_limit was never enforced. Raise so
+    # OrderService surfaces HTTP 429 to the caller.
     if usage["evaluations_limit"] and usage["evaluations_used"] >= usage["evaluations_limit"]:
         usage["quota_exceeded_warning"] = True
+        raise ValueError("usage_quota_exceeded")
     return usage
