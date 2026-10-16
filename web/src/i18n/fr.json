@@ -143,7 +143,24 @@
       "last_name_required": "Le nom de famille est requis.",
       "organization_required": "Le nom de l'entreprise ou de la boutique est requis.",
       "terms_required": "Vous devez accepter les conditions d'utilisation et la politique de confidentialité."
-    }
+    },
+    "verify_button": "Vérifier l’e-mail",
+    "verify_ready": "Cliquez sur le bouton ci-dessous pour confirmer votre e-mail et activer votre espace de travail ORDIUM.",
+    "verify_missing_token": "Ce lien de vérification ne contient pas de jeton valide. Vous pouvez en demander un nouveau ci-dessous.",
+    "verify_loading": "Vérification sécurisée de votre compte…",
+    "verify_success": "Votre e-mail a été confirmé et votre espace de travail ORDIUM est actif.",
+    "verify_error": "Le lien de vérification est invalide ou a expiré. Veuillez en demander un nouveau.",
+    "verify_eyebrow": "ORDIUM / SÉCURITÉ DU COMPTE",
+    "verify_title_ready": "Confirmez votre adresse e-mail",
+    "verify_title_loading": "Vérification",
+    "verify_title_success": "E-mail confirmé",
+    "verify_title_error": "Échec de la vérification",
+    "open_console": "Ouvrir la Console",
+    "registration_verification_title": "Vérifiez votre adresse e-mail",
+    "registration_verification_desc": "Votre compte a été créé en toute sécurité. Consultez votre e-mail et suivez le lien d’activation avant de vous connecter.",
+    "forgot_password_title": "Réinitialisation du mot de passe",
+    "forgot_password_desc": "La récupération du compte est gérée par l’administrateur ORDIUM de votre organisation ou par vérification de la clé de sécurité.",
+    "back_login": "Retour à la connexion"
   },
   "hero": {
     "badge": "MOTEUR D'INFRASTRUCTURE ORDIUM v2.4",
@@ -448,7 +465,12 @@
       "no_orders_desc": "Les commandes apparaîtront ici lorsqu’elles arriveront dans votre boutique. Consultez les commandes et leur état de confirmation depuis cette page.",
       "open_simulator": "Voir les commandes",
       "evaluated_label": "évaluées",
-      "evaluated_detail": "commandes évaluées"
+      "evaluated_detail": "commandes évaluées",
+      "avg_execution": "Exécution moyenne",
+      "load_error_desc": "Nous n’avons pas pu charger les données de votre boutique pour le moment. Actualisez la page ; si le problème persiste, contactez le support.",
+      "load_error_title": "Impossible de charger les données de votre espace de travail",
+      "no_orders_title": "Aucune commande pour le moment",
+      "retry": "Réessayer"
     },
     "titles": {
       "overview": "Résumé de la boutique",
@@ -505,7 +527,32 @@
       "page_label": "Page",
       "previous_page": "Précédent",
       "next_page": "Suivant",
-      "customer_device": "Informations client"
+      "customer_device": "Informations client",
+      "chargeback": "RÉTROFACTURATION",
+      "legitimate": "LÉGITIME",
+      "false_positive": "FAUX POSITIF",
+      "cancelled_fraud": "ANNULÉE (FRAUDE)",
+      "return_abusive": "RETOURNÉE (ABUSIF)",
+      "outcome_update_error": "Impossible de mettre à jour le résultat de la commande. Veuillez réessayer.",
+      "confidence": "Conf.",
+      "customer": "Nom complet",
+      "decision": "DÉCISION",
+      "digital_delivery": "Livraison numérique / Aucune adresse physique",
+      "evaluated_in": "Évalué en",
+      "inspector_title": "Inspecteur de commande",
+      "ip_address": "Adresse IP",
+      "log_chargeback": "Consigner une rétrofacturation",
+      "mark_false_positive": "Marquer comme faux positif",
+      "mark_legitimate": "Marquer comme légitime",
+      "network_destination": "Réseau et destination de livraison",
+      "no_signals": "Aucun signal malveillant détecté. La transaction a réussi tous les contrôles de base.",
+      "outcome_desc": "Enregistrez les résultats réels de règlement pour auditer la précision du moteur de risque et former les futurs modèles.",
+      "phone": "Téléphone",
+      "record_merchant_outcome": "Enregistrer le résultat marchand",
+      "recorded_outcome": "Résultat enregistré",
+      "rules_model": "Modèle du moteur de règles",
+      "shipping_address": "Adresse de livraison",
+      "unresolved": "NON RÉSOLU"
     },
     "simulator": {
       "title": "Tester une commande",
@@ -577,7 +624,26 @@
       "recent_deliveries": "Envois récents",
       "url": "URL du point de terminaison",
       "events": "Événements souscrits",
-      "signing_secret": "Clé secrète de signature"
+      "signing_secret": "Clé secrète de signature",
+      "create_btn": "Créer un Webhook",
+      "disable": "Désactiver le Webhook",
+      "disable_title": "Désactiver le Webhook",
+      "disable_confirm": "L’envoi des événements vers ce point de terminaison cessera immédiatement. Vous pourrez en créer un nouveau plus tard.",
+      "disable_error": "Impossible de désactiver le webhook. Veuillez réessayer.",
+      "empty_desc": "Enregistrez votre première URL HTTPS pour diffuser les signaux de risque et les décisions directement dans votre backend ou votre plateforme de gestion des commandes.",
+      "empty_title": "Aucun Webhook configuré",
+      "failure_rate": "Taux d’échec",
+      "loading": "Chargement des webhooks enregistrés…",
+      "modal_desc": "Saisissez l’URL de destination pour recevoir les envois d’événements signés.",
+      "modal_title": "Ajouter un point de terminaison Webhook",
+      "saved_secret_btn": "J’ai enregistré ce secret",
+      "secret_hint": "Utilisez ce secret pour vérifier les signatures des requêtes HTTP entrantes via HMAC-SHA256 :",
+      "secret_modal_desc": "Conservez ce secret en toute sécurité. Il ne sera plus affiché.",
+      "secret_modal_title": "Secret de signature Webhook créé",
+      "send_test": "Envoyer un ping de test",
+      "subscribe_events": "S’abonner aux événements",
+      "subscribed_events": "Événements souscrits :",
+      "url_label": "URL de destination (HTTPS requis)"
     },
     "apikeys": {
       "title": "Clés API & Jetons d'Accès",
@@ -739,6 +805,10 @@
       "refresh": "Actualiser les indicateurs",
       "loading": "Chargement des indicateurs…",
       "error": "Impossible de charger les indicateurs. Réessayez avec le bouton Actualiser."
+    },
+    "common": {
+      "cancel": "Annuler",
+      "error": "Impossible d’effectuer l’action"
     }
   },
   "onboarding": {
