@@ -35,7 +35,7 @@ export const RiskCore3D: React.FC<RiskCore3DProps> = ({ className = '', interact
       powerPreference: 'high-performance'
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     container.appendChild(renderer.domElement);
 
     // Root Group
@@ -198,18 +198,17 @@ export const RiskCore3D: React.FC<RiskCore3DProps> = ({ className = '', interact
           camera.aspect = newWidth / newHeight;
           camera.updateProjectionMatrix();
           renderer.setSize(newWidth, newHeight);
+          if (prefersReducedMotion) renderer.render(scene, camera);
         }
       }
     });
     resizeObserver.observe(container);
 
     // Animation Loop
-    let animationFrameId: number;
+    let animationFrameId = 0;
     let clock = new THREE.Clock();
 
     const animate = () => {
-      animationFrameId = requestAnimationFrame(animate);
-
       const elapsedTime = clock.getElapsedTime();
 
       if (!prefersReducedMotion) {
@@ -264,6 +263,7 @@ export const RiskCore3D: React.FC<RiskCore3DProps> = ({ className = '', interact
       }
 
       renderer.render(scene, camera);
+      if (!prefersReducedMotion) animationFrameId = requestAnimationFrame(animate);
     };
 
     animate();

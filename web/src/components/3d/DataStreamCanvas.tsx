@@ -80,7 +80,7 @@ export const DataStreamCanvas: React.FC<{ className?: string }> = ({ className =
         }
       }
 
-      animId = requestAnimationFrame(render);
+      if (!prefersReducedMotion) animId = requestAnimationFrame(render);
     };
 
     render();

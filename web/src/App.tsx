@@ -4,7 +4,7 @@
  * and authenticated SaaS dashboard with full i18n & RTL support.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { authApi } from './lib/api/auth';
 import { AuthSession } from './lib/api/types';
@@ -19,17 +19,19 @@ import { FraudClusterSection } from './components/marketing/FraudClusterSection'
 import { ManualConfirmationSection } from './components/marketing/ManualConfirmationSection';
 import { DeveloperSection } from './components/marketing/DeveloperSection';
 import { RoadmapSection } from './components/marketing/RoadmapSection';
-import { PricingPage } from './components/pages/PricingPage';
-import { DocsPage } from './components/pages/DocsPage';
-import { SecurityPage } from './components/pages/SecurityPage';
-import { PlatformPage } from './components/pages/PlatformPage';
-import { CompanyPage } from './components/pages/CompanyPage';
-import { LoginPage } from './components/pages/LoginPage';
-import { RegisterPage } from './components/pages/RegisterPage';
-import { VerifyEmailPage } from './components/pages/VerifyEmailPage';
-import { ErrorPage } from './components/pages/ErrorPage';
-import { DashboardLayout } from './components/dashboard/DashboardLayout';
 import { LanguageProvider } from './i18n/LanguageContext';
+
+const PricingPage = lazy(() => import('./components/pages/PricingPage').then((m) => ({ default: m.PricingPage })));
+const DocsPage = lazy(() => import('./components/pages/DocsPage').then((m) => ({ default: m.DocsPage })));
+const SecurityPage = lazy(() => import('./components/pages/SecurityPage').then((m) => ({ default: m.SecurityPage })));
+const PlatformPage = lazy(() => import('./components/pages/PlatformPage').then((m) => ({ default: m.PlatformPage })));
+const CompanyPage = lazy(() => import('./components/pages/CompanyPage').then((m) => ({ default: m.CompanyPage })));
+const LoginPage = lazy(() => import('./components/pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./components/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })));
+const VerifyEmailPage = lazy(() => import('./components/pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
+const ErrorPage = lazy(() => import('./components/pages/ErrorPage').then((m) => ({ default: m.ErrorPage })));
+const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout').then((m) => ({ default: m.DashboardLayout })));
+
 
 export function AppContent() {
   const [viewMode, setViewMode] = useState<'website' | 'dashboard'>(() => {
@@ -241,7 +243,9 @@ export function AppContent() {
 export default function App() {
   return (
     <LanguageProvider>
-      <AppContent />
+      <Suspense fallback={<div className="min-h-screen bg-[#080B12] text-white flex items-center justify-center" role="status">جارٍ تحميل ORDIUM…</div>}>
+        <AppContent />
+      </Suspense>
       <Analytics />
     </LanguageProvider>
   );
