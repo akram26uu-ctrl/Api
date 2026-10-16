@@ -12,11 +12,12 @@ import { Button } from '../common/Button';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { authApi } from '../../lib/api/auth';
+import { AuthSession } from '../../lib/api/types';
 import { OrdiumApiError } from '../../lib/api/client';
 
 interface LoginPageProps {
   onNavigate: (path: string) => void;
-  onLoginSuccess?: () => void;
+  onLoginSuccess?: (session: AuthSession) => void;
   onLaunchConsole?: () => void;
 }
 
@@ -58,8 +59,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     setIsLoading(true);
     try {
       await authApi.login({ email, password });
+      // Confirm the browser accepted and sends the HttpOnly session cookie before leaving this form.
+      // If cookie/CORS configuration is wrong, keep the form mounted so the user can see the error.
+      const session = await authApi.me();
       if (onLoginSuccess) {
-        onLoginSuccess();
+        onLoginSuccess(session);
       } else if (onLaunchConsole) {
         onLaunchConsole();
       }
