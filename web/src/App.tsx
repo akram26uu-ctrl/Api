@@ -50,6 +50,10 @@ export function AppContent() {
 
   useEffect(() => {
     if (viewMode !== 'dashboard') return;
+    if (authSession) {
+      setAuthChecking(false);
+      return;
+    }
     let active = true;
     setAuthChecking(true);
     authApi.me().then((session) => {
@@ -65,7 +69,7 @@ export function AppContent() {
       if (active) setAuthChecking(false);
     });
     return () => { active = false; };
-  }, [viewMode]);
+  }, [viewMode, authSession]);
 
   // Handle browser back/forward buttons
   useEffect(() => {
@@ -98,7 +102,8 @@ export function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleLaunchDashboard = () => {
+  const handleLaunchDashboard = (verifiedSession?: AuthSession) => {
+    if (verifiedSession) setAuthSession(verifiedSession);
     setViewMode('dashboard');
     try {
       window.history.pushState(null, '', '/dashboard');
