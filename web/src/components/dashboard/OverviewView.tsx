@@ -66,7 +66,18 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
     return <div className="p-6"><EmptyState title={t('dashboard.overview.load_error_title', 'We could not load your workspace data')} description={t('dashboard.overview.load_error_desc', 'تعذر تحميل بيانات المتجر حاليًا. حدّث الصفحة، وإذا استمرت المشكلة تواصل مع الدعم.')} actionText={t('dashboard.overview.retry', 'إعادة المحاولة')} onAction={() => window.location.reload()} /></div>;
   }
 
-  const hasOrders = metrics.total_orders > 0 || recentOrders.length > 0;
+  const totalOrders = metrics.total_orders ?? 0;
+  const totalVolume = metrics.total_volume ?? 0;
+  const fraudBlockedVolume = metrics.fraud_blocked_volume ?? 0;
+  const ordersAnalyzed = metrics.orders_analyzed ?? 0;
+  const allowCount = metrics.allow_count ?? 0;
+  const allowPercentage = metrics.allow_percentage ?? 0;
+  const reviewCount = metrics.review_count ?? 0;
+  const reviewPercentage = metrics.review_percentage ?? 0;
+  const rejectCount = metrics.reject_count ?? 0;
+  const rejectPercentage = metrics.reject_percentage ?? 0;
+  const avgRiskScore = metrics.avg_risk_score ?? metrics.average_risk_score ?? 0;
+  const hasOrders = totalOrders > 0 || recentOrders.length > 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -76,19 +87,19 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title={t('dashboard.overview.orders_ingested', 'الطلبات المستلمة')}
-          value={metrics.total_orders.toLocaleString()}
-          change={hasOrders ? { value: `${(metrics.orders_analyzed ?? 0).toLocaleString()} ${t('dashboard.overview.evaluated_label', 'تم تقييمها')}`, trend: 'up', label: t('dashboard.overview.evaluated_detail', 'طلبات جرى تقييمها') } : undefined}
+          value={totalOrders.toLocaleString()}
+          change={hasOrders ? { value: `${ordersAnalyzed.toLocaleString()} ${t('dashboard.overview.evaluated_label', 'تم تقييمها')}`, trend: 'up', label: t('dashboard.overview.evaluated_detail', 'طلبات جرى تقييمها') } : undefined}
           icon={<Activity className="w-4 h-4 text-[#22D3EE]" />}
         />
         <MetricCard
           title={t('dashboard.overview.volume_protected', 'إجمالي قيمة الطلبات')}
-          value={`${(metrics.total_volume / 1000).toFixed(1)}k DZD`}
-          change={metrics.total_orders ? { value: `${Math.round((metrics.orders_analyzed / metrics.total_orders) * 100)}%`, trend: 'up', label: 'evaluated' } : undefined}
+          value={`${(totalVolume / 1000).toFixed(1)}k DZD`}
+          change={totalOrders > 0 ? { value: `${Math.round((ordersAnalyzed / totalOrders) * 100)}%`, trend: 'up', label: 'evaluated' } : undefined}
           icon={<DollarSign className="w-4 h-4 text-[#10B981]" />}
         />
         <MetricCard
           title={t('dashboard.overview.fraud_blocked_card', 'قيمة الطلبات المرفوضة')}
-          value={`${(metrics.fraud_blocked_volume / 1000).toFixed(1)}k DZD`}
+          value={`${(fraudBlockedVolume / 1000).toFixed(1)}k DZD`}
           subtitle={t('dashboard.overview.rejected_volume_hint', 'قيمة الطلبات التي صدر بحقها قرار رفض')}
           variant="accent"
           icon={<ShieldAlert className="w-4 h-4 text-[#6C5CE7]" />}
@@ -145,10 +156,10 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-[#10B981] font-bold">{t('dashboard.overview.allow_clean', 'ALLOW (Clean)')}</span>
-                  <span className="text-white font-bold">{metrics.allow_count} ({metrics.allow_percentage}%)</span>
+                  <span className="text-white font-bold">{allowCount} ({allowPercentage}%)</span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[#080B12] overflow-hidden">
-                  <div className="h-full bg-[#10B981] rounded-full" style={{ width: `${metrics.allow_percentage}%` }} />
+                  <div className="h-full bg-[#10B981] rounded-full" style={{ width: `${allowPercentage}%` }} />
                 </div>
               </div>
 
@@ -156,10 +167,10 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-[#F59E0B] font-bold">{t('dashboard.overview.review_friction', 'REVIEW (Friction / 3DS)')}</span>
-                  <span className="text-white font-bold">{metrics.review_count} ({metrics.review_percentage}%)</span>
+                  <span className="text-white font-bold">{reviewCount} ({reviewPercentage}%)</span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[#080B12] overflow-hidden">
-                  <div className="h-full bg-[#F59E0B] rounded-full" style={{ width: `${metrics.review_percentage}%` }} />
+                  <div className="h-full bg-[#F59E0B] rounded-full" style={{ width: `${reviewPercentage}%` }} />
                 </div>
               </div>
 
@@ -167,10 +178,10 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-[#EF4444] font-bold">{t('dashboard.overview.reject_fraud', 'REJECT (Fraud Blocked)')}</span>
-                  <span className="text-white font-bold">{metrics.reject_count} ({metrics.reject_percentage}%)</span>
+                  <span className="text-white font-bold">{rejectCount} ({rejectPercentage}%)</span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[#080B12] overflow-hidden">
-                  <div className="h-full bg-[#EF4444] rounded-full" style={{ width: `${metrics.reject_percentage}%` }} />
+                  <div className="h-full bg-[#EF4444] rounded-full" style={{ width: `${rejectPercentage}%` }} />
                 </div>
               </div>
             </div>
@@ -179,7 +190,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
           <div className="pt-6 border-t border-white/5 space-y-3">
             <div className="p-3 bg-[#080B12] rounded-xl border border-white/5 text-[11px] font-mono text-[#94A3B8] text-start">
               {t('dashboard.overview.average_risk_score', 'متوسط درجة المخاطر للطلبات:')}{' '}
-              <span className="text-white font-bold">{metrics.avg_risk_score} / 100</span>
+              <span className="text-white font-bold">{avgRiskScore} / 100</span>
             </div>
             <Button
               variant="outline"

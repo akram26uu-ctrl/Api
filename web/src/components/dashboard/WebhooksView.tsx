@@ -25,6 +25,11 @@ export const WebhooksView: React.FC = () => {
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Disable flow
+  const [disableTarget, setDisableTarget] = useState<WebhookEndpoint | null>(null);
+  const [isDisabling, setIsDisabling] = useState(false);
+  const [disableError, setDisableError] = useState<string | null>(null);
+
   const fetchWebhooks = async () => {
     setLoading(true);
     setLoadError(null);
@@ -69,6 +74,21 @@ export const WebhooksView: React.FC = () => {
       setTestStatus(`Delivery failed: ${err.message}`);
     }
     setTimeout(() => setTestStatus(null), 4000);
+  };
+
+  const handleDisable = async () => {
+    if (!disableTarget) return;
+    setIsDisabling(true);
+    setDisableError(null);
+    try {
+      await ordiumClient.deleteWebhook(disableTarget.id);
+      setEndpoints(prev => prev.map(item => (item.id === disableTarget.id ? { ...item, status: 'disabled' as const } : item)));
+      setDisableTarget(null);
+    } catch (err: any) {
+      setDisableError(err?.message || t('dashboard.webhooks.disable_error', 'Could not disable the webhook. Please retry.'));
+    } finally {
+      setIsDisabling(false);
+    }
   };
 
   return (
@@ -189,6 +209,17 @@ export const WebhooksView: React.FC = () => {
                   >
                     {t('dashboard.webhooks.send_test', 'Send Test Ping')}
                   </Button>
+                  {ep.status === 'active' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setDisableTarget(ep); setDisableError(null); }}
+                      className="text-red-300 border-red-500/30 hover:bg-red-500/10"
+                      leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                    >
+                      {t('dashboard.webhooks.disable', 'Disable Webhook')}
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -205,6 +236,35 @@ export const WebhooksView: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* Disable Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(disableTarget)}
+        onClose={() => { if (!isDisabling) setDisableTarget(null); }}
+        title={t('dashboard.webhooks.disable_title', 'Disable Webhook')}
+        description={t('dashboard.webhooks.disable_confirm', 'Event delivery to this endpoint will stop immediately. You can create a new endpoint later.')}
+      >
+        <div className="space-y-4 text-xs font-mono text-start">
+          <div className="p-3 bg-[#080B12] border border-white/10 rounded-xl text-[#22D3EE] break-all" dir="ltr">
+            {disableTarget?.url}
+          </div>
+          {disableError && <p className="text-red-300" role="alert">{disableError}</p>}
+          <div className="pt-2 flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setDisableTarget(null)} disabled={isDisabling}>
+              {t('dashboard.common.cancel', 'إلغاء')}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              isLoading={isDisabling}
+              onClick={() => void handleDisable()}
+              className="!bg-red-500 hover:!bg-red-600 text-white"
+            >
+              {t('dashboard.webhooks.disable', 'Disable Webhook')}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Create Modal */}
       <Modal
@@ -258,7 +318,7 @@ export const WebhooksView: React.FC = () => {
               {t('dashboard.common.cancel', 'إلغاء')}
             </Button>
             <Button variant="primary" size="sm" onClick={handleCreateWebhook}>
-              {t('dashboard.webhooks.create_btn', 'إنشاء وإنشاء السر')}
+              {t('dashboard.webhooks.create_btn', 'Create Webhook')}
             </Button>
           </div>
         </div>
