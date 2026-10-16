@@ -49,7 +49,11 @@ export function AppContent() {
   });
 
   useEffect(() => {
-    if (viewMode !== 'dashboard' || authSession) return;
+    if (viewMode !== 'dashboard') return;
+    if (authSession) {
+      setAuthChecking(false);
+      return;
+    }
     let active = true;
     setAuthChecking(true);
     authApi.me().then((session) => {
