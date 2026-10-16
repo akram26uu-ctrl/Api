@@ -29,7 +29,7 @@ export class OrdiumApiError extends Error {
       404: ['NOT_FOUND', 'Requested resource could not be found.'],
       409: ['CONFLICT', 'The request conflicts with the current ORDIUM state.'],
       422: ['UNPROCESSABLE_ENTITY', 'Validation failed for the submitted data.'],
-      429: ['RATE_LIMIT_EXCEEDED', 'Rate limit exceeded. Please retry later.'],
+      429: ['RATE_LIMITED', 'Rate limit exceeded. Please retry later.'],
     };
     const [code, message] = messages[status] || ['INTERNAL_SERVER_ERROR', 'ORDIUM service error.'];
     return new OrdiumApiError(status, code, customMessage || message, reqId, field);
@@ -57,11 +57,6 @@ export async function ordiumFetch<T>(endpoint: string, options: RequestInit = {}
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
-}
-
-function splitName(name: string): [string, string] {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return [parts[0] || 'Customer', parts.slice(1).join(' ') || 'Customer'];
 }
 
 function normalizeEnvironment(env?: Environment): 'live' | 'test' { return env === 'live' ? 'live' : 'test'; }
@@ -131,6 +126,12 @@ function mapRisk(raw: any): RiskAssessment {
   };
 }
 
+const OUTCOME_STATUS_MAP: Record<string, OrderOutcome> = {
+  delivered: 'legitimate',
+  cancelled: 'cancelled_fraud',
+  returned: 'return_abusive',
+};
+
 function mapOrder(raw: any): Order {
   const [first, last] = [raw.first_name || 'Customer', raw.last_name || 'Customer'];
   const risk = mapRisk(raw.risk || {});
@@ -147,7 +148,7 @@ function mapOrder(raw: any): Order {
     shipping_address: { street1: '', city: '', state: raw.commune || '', postal_code: '', country: 'DZ' },
     items: (raw.items || []).map((item: any) => ({ id: item.id, name: item.product_name, sku: item.sku || '', price: Number(item.unit_price), quantity: item.quantity, category: item.product_category || undefined })),
     risk,
-    outcome: raw.outcome_status === 'delivered' ? 'legitimate' : raw.outcome_status === 'cancelled' ? 'chargeback' : raw.outcome_status === 'returned' ? 'false_positive' : 'pending',
+    outcome: OUTCOME_STATUS_MAP[raw.outcome_status] ?? 'pending',
   };
 }
 
@@ -247,8 +248,15 @@ class OrdiumClientService {
 
   async updateOrderOutcome(orderId: string, outcome: OrderOutcome): Promise<Order> {
     if (DEMO_MODE) { const updated = MockDatabase.updateOrderOutcome(orderId, outcome); if (!updated) throw OrdiumApiError.fromStatus(404); return updated; }
-    const statusMap: Record<string, string> = { legitimate: 'delivered', chargeback: 'cancelled', false_positive: 'returned', delivered: 'delivered', cancelled: 'cancelled', returned: 'returned' };
-    await ordiumFetch(`/orders/${encodeURIComponent(orderId)}/outcome${activeStoreId ? `?store_id=${encodeURIComponent(activeStoreId)}` : ''}`, { method: 'POST', body: JSON.stringify({ outcome_status: statusMap[outcome] || 'returned', source: 'dashboard' }) });
+    const statusMap: Record<string, string> = { legitimate: 'delivered', chargeback: 'cancelled', false_positive: 'returned', delivered: 'delivered', cancelled: 'cancelled', returned: 'returned', cancelled_fraud: 'cancelled', return_abusive: 'returned' };
+    const outcomeStatus = statusMap[outcome] || 'returned';
+    const basePath = `/orders/${encodeURIComponent(orderId)}/outcome${activeStoreId ? `?store_id=${encodeURIComponent(activeStoreId)}` : ''}`;
+    try {
+      await ordiumFetch(basePath, { method: 'POST', body: JSON.stringify({ outcome_status: outcomeStatus, source: 'dashboard' }) });
+    } catch (error) {
+      if (!(error instanceof OrdiumApiError) || error.statusCode !== 409) throw error;
+      await ordiumFetch(basePath, { method: 'PUT', body: JSON.stringify({ outcome_status: outcomeStatus, source: 'dashboard' }) });
+    }
     return this.getOrder(orderId);
   }
 
