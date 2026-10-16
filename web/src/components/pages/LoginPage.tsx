@@ -57,7 +57,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
     setIsLoading(true);
     try {
-      const session = await authApi.login({ email, password });
+      await authApi.login({ email, password });
       if (onLoginSuccess) {
         onLoginSuccess();
       } else if (onLaunchConsole) {
