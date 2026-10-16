@@ -158,7 +158,12 @@
     "verify_success": "تم التحقق من بريدك وأصبحت مساحة عمل ORDIUM جاهزة.",
     "verify_title_error": "فشل التحقق",
     "verify_title_loading": "جارٍ التحقق من البريد",
-    "verify_title_success": "تم التحقق من البريد"
+    "verify_title_success": "تم التحقق من البريد",
+    "verify_button": "تأكيد البريد",
+    "verify_ready": "اضغط على الزر أدناه لتأكيد بريدك وتفعيل حساب ORDIUM.",
+    "verify_missing_token": "رابط التحقق لا يحتوي على رمز صالح. يمكنك طلب رابط جديد أدناه.",
+    "verify_eyebrow": "ORDIUM / أمان الحساب",
+    "verify_title_ready": "تأكيد البريد الإلكتروني"
   },
   "hero": {
     "badge": "محرك البنية التحتية أورديوم v2.4",
@@ -581,7 +586,10 @@
       "results_label": "طلب",
       "page_label": "صفحة",
       "previous_page": "السابق",
-      "next_page": "التالي"
+      "next_page": "التالي",
+      "cancelled_fraud": "أُلغي (احتيال)",
+      "return_abusive": "مرتجع (إساءة استخدام)",
+      "outcome_update_error": "تعذر تحديث نتيجة الطلب. حاول مرة أخرى."
     },
     "simulator": {
       "title": "تجربة الطلبات",
@@ -693,7 +701,11 @@
       "send_test": "إرسال اختبار",
       "subscribe_events": "الأحداث المشترك بها",
       "subscribed_events": "الأحداث المشترك بها:",
-      "url_label": "عنوان الوجهة (HTTPS مطلوب)"
+      "url_label": "عنوان الوجهة (HTTPS مطلوب)",
+      "disable": "تعطيل Webhook",
+      "disable_title": "تعطيل Webhook",
+      "disable_confirm": "سيتوقف إرسال الأحداث إلى هذا العنوان فورًا. يمكنك إنشاء نقطة نهاية جديدة لاحقًا.",
+      "disable_error": "تعذر تعطيل Webhook. حاول مرة أخرى."
     },
     "apikeys": {
       "title": "مفاتيح API وبيانات الاعتماد",
