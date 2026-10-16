@@ -69,6 +69,28 @@ def _create_dashboard_keys(provisioning, merchant_id):
     live_id, live_key = provisioning.create_dashboard_key(merchant_id, "live")
     return (test_id, test_key), (live_id, live_key)
 
+def _revoke_session_dashboard_keys(db: Session, session: DbSession) -> None:
+    """Revoke the ORDIUM dashboard API keys bound to a browser session.
+
+    Called whenever a session is revoked (password change, revoke-others, or
+    single-session revoke) so the per-session dashboard keys cannot be reused.
+    Best-effort: external revocation failures are logged but never block local
+    session revocation, matching the logout contract.
+    """
+    if not (session.ordium_api_key_id or session.ordium_live_api_key_id):
+        return
+    try:
+        user = db.get(User, session.user_id)
+        membership = db.scalar(select(Membership).where(Membership.user_id == user.id).order_by(Membership.created_at.asc())) if user else None
+        if membership and membership.organization.merchant_id:
+            provisioning = OrdiumProvisioningClient()
+            if session.ordium_api_key_id:
+                provisioning.revoke_api_key(membership.organization.merchant_id, session.ordium_api_key_id)
+            if session.ordium_live_api_key_id:
+                provisioning.revoke_api_key(membership.organization.merchant_id, session.ordium_live_api_key_id)
+    except Exception:
+        logger.exception("Failed to revoke dashboard API keys for session %s", session.id)
+
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 def register(data: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     _rate_limit(request, "register", 10)
@@ -283,6 +305,7 @@ def change_password(
         )
     ).all()
     for other_session in other_sessions:
+        _revoke_session_dashboard_keys(db, other_session)
         other_session.revoked_at = now
     db.commit()
     return Response(status_code=204)
@@ -351,7 +374,9 @@ def revoke_other_sessions(session_data=Depends(get_current_session), db: Session
     from datetime import datetime, timezone
     rows = db.scalars(select(DbSession).where(DbSession.user_id == user.id, DbSession.id != current.id, DbSession.revoked_at.is_(None))).all()
     now = datetime.now(timezone.utc)
-    for row in rows: row.revoked_at = now
+    for row in rows:
+        _revoke_session_dashboard_keys(db, row)
+        row.revoked_at = now
     db.commit(); return Response(status_code=204)
 
 @router.post("/sessions/{session_id}/revoke", status_code=204)
@@ -361,8 +386,9 @@ def revoke_session(session_id: str, session_data=Depends(get_current_session), d
     try: target_id = UUID(session_id)
     except ValueError as exc: raise HTTPException(404, "Session not found") from exc
     if target_id == current.id:
-        raise HTTPException(400, "Use logout to revoke the current session")
+        raise HTTPException(status_code=400, detail="Use logout to revoke the current session")
     target = db.scalar(select(DbSession).where(DbSession.id == target_id, DbSession.user_id == user.id, DbSession.revoked_at.is_(None)))
-    if target is None: raise HTTPException(404, "Session not found")
+    if target is None: raise HTTPException(status_code=404, detail="Session not found")
     from datetime import datetime, timezone
+    _revoke_session_dashboard_keys(db, target)
     target.revoked_at = datetime.now(timezone.utc); db.commit(); return Response(status_code=204)
