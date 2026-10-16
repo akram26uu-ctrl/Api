@@ -57,8 +57,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     }
 
     setIsLoading(true);
+    let credentialsAccepted = false;
     try {
       await authApi.login({ email, password });
+      credentialsAccepted = true;
       // Confirm the browser accepted and sends the HttpOnly session cookie before leaving this form.
       // If cookie/CORS configuration is wrong, keep the form mounted so the user can see the error.
       const session = await authApi.me();
@@ -68,7 +70,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         onLaunchConsole();
       }
     } catch (err: any) {
-      if (err instanceof OrdiumApiError) {
+      if (credentialsAccepted) {
+        setRequestId(err instanceof OrdiumApiError ? err.requestId : `req_${Date.now()}`);
+        setErrorMessage(t('auth.errors.session_not_persisted', 'Sign-in was accepted, but the browser session could not be verified. Please try again; if this continues, the account service cookie/CORS configuration needs checking.'));
+      } else if (err instanceof OrdiumApiError) {
         setRequestId(err.requestId);
         if (err.statusCode === 401) {
           setErrorMessage(t('auth.errors.invalid_credentials', 'Invalid email or password.'));
