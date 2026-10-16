@@ -49,6 +49,7 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
   const [confirmationNote, setConfirmationNote] = useState('');
   const [lastContactChannel, setLastContactChannel] = useState<'whatsapp' | 'manual_call'>('manual_call');
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
+  const [outcomeError, setOutcomeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !order) return;
@@ -94,8 +95,8 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
     try {
       await ordiumClient.updateOrderOutcome(order.id, outcome);
       onUpdateOutcome?.(order.id, outcome);
-    } catch {
-      // ignore
+    } catch (err) {
+      setOutcomeError((err as Error)?.message || t('dashboard.orders.outcome_update_error', 'Could not update the order outcome. Please retry.'));
     } finally {
       setIsUpdatingOutcome(false);
     }
@@ -124,25 +125,25 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
         {/* Outcome Tag */}
         <div className="text-end">
           <span className="text-[10px] font-mono text-[#94A3B8] uppercase block">{t('dashboard.orders.recorded_outcome', 'Recorded Outcome')}</span>
-          <span
-            className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
-              order.outcome === 'chargeback'
-                ? 'bg-[#EF4444]/20 text-[#EF4444]'
-                : order.outcome === 'legitimate'
-                ? 'bg-[#10B981]/20 text-[#10B981]'
-                : order.outcome === 'false_positive'
-                ? 'bg-[#F59E0B]/20 text-[#F59E0B]'
-                : 'bg-white/5 text-[#94A3B8]'
-            }`}
-          >
-            {order.outcome === 'chargeback'
-              ? t('dashboard.orders.chargeback', 'CHARGEBACK')
-              : order.outcome === 'legitimate'
-              ? t('dashboard.orders.legitimate', 'LEGITIMATE')
-              : order.outcome === 'false_positive'
-              ? t('dashboard.orders.false_positive', 'FALSE POSITIVE')
-              : t('dashboard.orders.unresolved', 'UNRESOLVED')}
-          </span>
+          {(() => {
+            const outcomeStyles: Record<string, string> = {
+              chargeback: 'bg-[#EF4444]/20 text-[#EF4444]',
+              cancelled_fraud: 'bg-[#EF4444]/20 text-[#EF4444]',
+              legitimate: 'bg-[#10B981]/20 text-[#10B981]',
+              false_positive: 'bg-[#F59E0B]/20 text-[#F59E0B]',
+              return_abusive: 'bg-[#F59E0B]/20 text-[#F59E0B]',
+            };
+            const outcomeLabels: Record<string, string> = {
+              chargeback: t('dashboard.orders.chargeback', 'CHARGEBACK'),
+              cancelled_fraud: t('dashboard.orders.cancelled_fraud', 'CANCELLED (FRAUD)'),
+              legitimate: t('dashboard.orders.legitimate', 'LEGITIMATE'),
+              false_positive: t('dashboard.orders.false_positive', 'FALSE POSITIVE'),
+              return_abusive: t('dashboard.orders.return_abusive', 'RETURNED (ABUSIVE)'),
+            };
+            const style = outcomeStyles[order.outcome] || 'bg-white/5 text-[#94A3B8]';
+            const label = outcomeLabels[order.outcome] || t('dashboard.orders.unresolved', 'UNRESOLVED');
+            return <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${style}`}>{label}</span>;
+          })()}
         </div>
       </div>
 
@@ -290,6 +291,7 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
                 {t('dashboard.orders.mark_false_positive', 'Mark False Positive')}
               </Button>
             </div>
+            {outcomeError && <p className="text-red-300" role="alert">{outcomeError}</p>}
           </div>
         </div>
       )}
