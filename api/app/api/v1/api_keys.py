@@ -105,7 +105,8 @@ def rotate_api_key(
     if store_id:
         try: selected_store = UUID(store_id)
         except ValueError as exc: raise HTTPException(422, "Invalid store_id") from exc
-        if current.store_id is not None and selected_store != current.store_id: raise HTTPException(403, "API key is restricted to its store")
+        if current.store_id is not None and selected_store != current.store_id:
+            raise HTTPException(403, "API key is restricted to its store")
     key = db.query(ApiKey).filter(ApiKey.id == api_key_id, ApiKey.merchant_id == current.merchant_id).first()
     if key is None:
         raise HTTPException(404, "API key not found")
@@ -115,8 +116,27 @@ def rotate_api_key(
         raise HTTPException(404, "API key not found")
     if not set(key.scopes or []).issubset(set(current.scopes or [])):
         raise HTTPException(403, "The target API key has scopes beyond the permissions of the current API key")
+    target_store_id = selected_store if selected_store is not None else key.store_id
+    if target_store_id is None:
+        # The key being rotated is merchant-scoped. Rotating it without a target
+        # store would silently produce another merchant-scoped key, so resolve
+        # the store only when it is unambiguous; otherwise ask the caller to
+        # disambiguate via the store_id query parameter.
+        active_stores = (
+            db.query(Store)
+            .filter(Store.merchant_id == current.merchant_id, Store.is_active.is_(True))
+            .limit(2)
+            .all()
+        )
+        if len(active_stores) == 1:
+            target_store_id = active_stores[0].id
+        else:
+            raise HTTPException(
+                409,
+                "Cannot rotate a merchant-scoped key when the active store is ambiguous",
+            )
     service = ApiKeyService(db)
-    new_key, raw = service.create_key(current.merchant, key.name, key.environment, key.scopes or [], key_kind="customer", store_id=key.store_id)
+    new_key, raw = service.create_key(current.merchant, key.name, key.environment, key.scopes or [], key_kind="customer", store_id=target_store_id)
     new_key.expires_at = key.expires_at
     key.is_active = False
     AuditService(db).record(action="api_key.rotated", resource_type="api_key", resource_id=new_key.id, merchant_id=current.merchant_id, api_key_id=current.id, environment=new_key.environment, request_id=getattr(request.state, "request_id", None), metadata={"replaced_key_id": str(key.id)})

@@ -143,6 +143,10 @@ def get_risk_profile(
         )._get_or_create_profile(
             merchant.id,
         )
+        # _get_or_create_profile only flushes; commit so the created profile
+        # survives this request (previously every GET 500'd on the detached
+        # instance during response serialization).
+        db.commit()
 
     return profile_to_response(profile)
 
@@ -155,13 +159,14 @@ def update_risk_profile(
     profile = RiskProfileRepository(db).get_by_merchant_id(api_key.merchant_id)
     if profile is None:
         profile = RiskService(db)._get_or_create_profile(api_key.merchant_id)
+        db.commit()
     values = data.model_dump(exclude_none=True)
-    if "review_threshold" in values and "reject_threshold" not in values and values["review_threshold"] >= profile.reject_threshold:
-        raise HTTPException(422, "review_threshold must be lower than reject_threshold")
-    if "reject_threshold" in values and "review_threshold" not in values and profile.review_threshold >= values["reject_threshold"]:
-        raise HTTPException(422, "review_threshold must be lower than reject_threshold")
     for field, value in values.items():
         setattr(profile, field, value)
+    # Validate the final pair, not just the individual deltas, so a combined
+    # review/reject update can never persist an inverted threshold pair.
+    if profile.review_threshold >= profile.reject_threshold:
+        raise HTTPException(422, "review_threshold must be lower than reject_threshold")
     profile.version = int(profile.version) + 1
     db.commit(); db.refresh(profile)
     return profile_to_response(profile)

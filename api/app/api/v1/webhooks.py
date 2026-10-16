@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -82,7 +82,8 @@ def test_webhook(
     if store_id:
         try: selected_store = UUID(store_id)
         except ValueError as exc: raise HTTPException(422, "Invalid store_id") from exc
-        if current.store_id is not None and selected_store != current.store_id: raise HTTPException(403, "API key is restricted to its store")
+        if current.store_id is not None and selected_store != current.store_id:
+            raise HTTPException(403, "API key is restricted to its store")
     endpoint = db.query(WebhookEndpoint).filter(
         WebhookEndpoint.id == endpoint_id,
         WebhookEndpoint.merchant_id == current.merchant_id,
@@ -92,7 +93,6 @@ def test_webhook(
     ).first()
     if endpoint is None:
         raise HTTPException(404, "Webhook endpoint not found")
-    service = WebhookService(db)
     payload = {
         "event": "webhook.test",
         "test": True,
@@ -101,9 +101,6 @@ def test_webhook(
     }
     # Reuse the production delivery path so test pings receive the same
     # signing headers, redirect policy, and destination validation.
-    delivery = service.enqueue(current.merchant_id, current.environment, "order.risk_assessed", payload)[0] if False else None
-    from app.models.webhook_delivery import WebhookDelivery
-    from uuid import uuid4
     delivery = WebhookDelivery(
         endpoint_id=endpoint.id, environment=current.environment, event_id=uuid4(),
         event_type="webhook.test", payload=payload, status="pending", attempts=0,
