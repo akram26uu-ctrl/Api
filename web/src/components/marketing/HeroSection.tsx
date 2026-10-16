@@ -3,10 +3,10 @@
  * Large cinematic hero with 3D Risk Intelligence Core and real-time signal stream.
  */
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { ArrowRight, ArrowLeft, Terminal, Shield, CheckCircle2, Zap, Lock } from 'lucide-react';
 import { Button } from '../common/Button';
-import { RiskCore3D } from '../3d/RiskCore3D';
+const RiskCore3D = lazy(() => import('../3d/RiskCore3D').then((module) => ({ default: module.RiskCore3D })));
 import { useLanguage } from '../../i18n/LanguageContext';
 
 interface HeroSectionProps {
@@ -91,7 +91,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onStart, onExploreApi 
           {/* Right Column: 3D Risk Intelligence Core */}
           <div className="lg:col-span-6 relative flex items-center justify-center">
             <div className="w-full h-[460px] sm:h-[540px] relative rounded-2xl bg-[#080B12]/40 border border-white/5 backdrop-blur-sm overflow-hidden shadow-2xl">
-              <RiskCore3D interactive={true} />
+              <Suspense fallback={<div className="w-full h-full min-h-[420px] bg-[#080B12]/40" aria-hidden="true" />}>
+                <RiskCore3D interactive={true} />
+              </Suspense>
 
               {/* Holographic Decision Pulse Markers */}
               <div className="absolute top-4 right-4 rtl:right-auto rtl:left-4 z-20 flex flex-col gap-2 pointer-events-none">
