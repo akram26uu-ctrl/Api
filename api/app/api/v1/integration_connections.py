@@ -280,7 +280,10 @@ async def receive_store_webhook(
     allowed_topics = {
         "omniterra": {"order.created", "orders/create", "order_created"},
         "shopify": {"orders/create", "order.created", "order_created"},
-        "woocommerce": {"order.created", "order.created", "woocommerce_order_created"},
+        # WooCommerce natively emits "order.created" (X-WC-Webhook-Topic) and
+        # "order_created" (legacy action payloads); the duplicate "order.created"
+        # entry previously masked the missing "order_created" topic.
+        "woocommerce": {"order.created", "order_created", "woocommerce_order_created"},
         "youcan": {"order.created", "orders/create", "order_created"},
     }[platform]
     if topic not in allowed_topics:
