@@ -143,7 +143,24 @@
       "last_name_required": "Last name is required.",
       "organization_required": "Store or company name is required.",
       "terms_required": "You must accept the Terms of Service and Privacy Policy to continue."
-    }
+    },
+    "verify_button": "Verify Email",
+    "verify_ready": "Click the button below to confirm your email and activate your ORDIUM workspace.",
+    "verify_missing_token": "This verification link does not contain a valid token. You can request a new link below.",
+    "verify_loading": "Verifying your account securely…",
+    "verify_success": "Your email has been confirmed and your ORDIUM workspace is active.",
+    "verify_error": "The verification link is invalid or has expired. Please request a new one.",
+    "verify_eyebrow": "ORDIUM / ACCOUNT SECURITY",
+    "verify_title_ready": "Confirm Your Email",
+    "verify_title_loading": "Verifying",
+    "verify_title_success": "Email Confirmed",
+    "verify_title_error": "Verification Failed",
+    "open_console": "Open Console",
+    "registration_verification_title": "Verify Your Email Address",
+    "registration_verification_desc": "Your account has been created securely. Check your email and follow the activation link before signing in.",
+    "forgot_password_title": "Password Reset",
+    "forgot_password_desc": "Account recovery is managed by your organization's ORDIUM administrator or via security key verification.",
+    "back_login": "Back to Login"
   },
   "hero": {
     "badge": "ORDIUM INFRASTRUCTURE ENGINE v2.4",
@@ -448,7 +465,12 @@
       "no_orders_desc": "Orders will appear here when they reach your store. Review orders and confirmation status from the orders page.",
       "open_simulator": "View orders",
       "evaluated_label": "evaluated",
-      "evaluated_detail": "orders assessed"
+      "evaluated_detail": "orders assessed",
+      "avg_execution": "Average Execution",
+      "load_error_desc": "We could not load your store data right now. Refresh the page; if the problem persists, contact support.",
+      "load_error_title": "We could not load your workspace data",
+      "no_orders_title": "No orders yet",
+      "retry": "Retry"
     },
     "titles": {
       "overview": "Store summary",
@@ -505,7 +527,32 @@
       "page_label": "Page",
       "previous_page": "Previous",
       "next_page": "Next",
-      "customer_device": "Customer information"
+      "customer_device": "Customer information",
+      "chargeback": "CHARGEBACK",
+      "legitimate": "LEGITIMATE",
+      "false_positive": "FALSE POSITIVE",
+      "cancelled_fraud": "CANCELLED (FRAUD)",
+      "return_abusive": "RETURNED (ABUSIVE)",
+      "outcome_update_error": "Could not update the order outcome. Please retry.",
+      "confidence": "Conf",
+      "customer": "Full Name",
+      "decision": "DECISION",
+      "digital_delivery": "Digital delivery / No physical address",
+      "evaluated_in": "Evaluated in",
+      "inspector_title": "Order Inspector",
+      "ip_address": "IP Address",
+      "log_chargeback": "Log Chargeback",
+      "mark_false_positive": "Mark False Positive",
+      "mark_legitimate": "Mark Legitimate",
+      "network_destination": "Network & Shipping Destination",
+      "no_signals": "No malicious signals detected. Transaction passed all baseline checks.",
+      "outcome_desc": "Label real-world settlement outcomes to audit risk engine accuracy and train future models.",
+      "phone": "Phone",
+      "record_merchant_outcome": "Record Merchant Outcome",
+      "recorded_outcome": "Recorded Outcome",
+      "rules_model": "Rules Engine Model",
+      "shipping_address": "Shipping Address",
+      "unresolved": "UNRESOLVED"
     },
     "simulator": {
       "title": "Test an order",
@@ -577,7 +624,26 @@
       "recent_deliveries": "Recent Dispatch Deliveries",
       "url": "Endpoint URL",
       "events": "Subscribed Events",
-      "signing_secret": "Signing Secret"
+      "signing_secret": "Signing Secret",
+      "create_btn": "Create Webhook",
+      "disable": "Disable Webhook",
+      "disable_title": "Disable Webhook",
+      "disable_confirm": "Event delivery to this endpoint will stop immediately. You can create a new endpoint later.",
+      "disable_error": "Could not disable the webhook. Please retry.",
+      "empty_desc": "Register your first HTTPS URL to stream risk signals and decisions directly into your backend or order management platform.",
+      "empty_title": "No Webhooks Configured",
+      "failure_rate": "Failure rate",
+      "loading": "Loading registered webhooks…",
+      "modal_desc": "Enter the destination URL to receive signed event dispatches.",
+      "modal_title": "Add Webhook Endpoint",
+      "saved_secret_btn": "I Have Saved This Secret",
+      "secret_hint": "Use this secret to verify incoming HTTP request signatures using HMAC-SHA256:",
+      "secret_modal_desc": "Store this secret securely. It will not be shown again.",
+      "secret_modal_title": "Webhook Signing Secret Created",
+      "send_test": "Send Test Ping",
+      "subscribe_events": "Subscribe to Events",
+      "subscribed_events": "Subscribed Events:",
+      "url_label": "Destination URL (HTTPS Required)"
     },
     "apikeys": {
       "title": "API Credentials & Tokens",
@@ -739,6 +805,10 @@
       "refresh": "Refresh metrics",
       "loading": "Loading metrics…",
       "error": "Could not load confirmation metrics. Use Refresh metrics to try again."
+    },
+    "common": {
+      "cancel": "Cancel",
+      "error": "Action failed"
     }
   },
   "onboarding": {
