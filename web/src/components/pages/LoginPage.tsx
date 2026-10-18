@@ -71,8 +71,44 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       }
     } catch (err: any) {
       if (credentialsAccepted) {
-        setRequestId(err instanceof OrdiumApiError ? err.requestId : `req_${Date.now()}`);
-        setErrorMessage(t('auth.errors.session_not_persisted', 'Sign-in was accepted, but the browser session could not be verified. Please try again; if this continues, the account service cookie/CORS configuration needs checking.'));
+        const authError = err instanceof OrdiumApiError ? err : null;
+        setRequestId(authError?.requestId || `req_${Date.now()}`);
+
+        // Keep the security check, but report the failure mode accurately so
+        // a server response is not incorrectly diagnosed as a cookie/CORS issue.
+        let diagnostic = t(
+          'auth.errors.session_not_persisted',
+          'Sign-in was accepted, but the browser session could not be verified.'
+        );
+        if (authError?.statusCode === 401) {
+          diagnostic = t(
+            'auth.errors.session_cookie_missing',
+            'The account service did not receive a valid session cookie after sign-in (HTTP 401). The session cookie may not have been stored or sent by the browser.'
+          );
+        } else if (authError?.statusCode === 403) {
+          diagnostic = t(
+            'auth.errors.session_forbidden',
+            'The account service rejected this session (HTTP 403). Check the account status and session authorization.'
+          );
+        } else if (authError?.statusCode === 0 || authError?.statusCode === undefined) {
+          diagnostic = t(
+            'auth.errors.session_network',
+            'Sign-in succeeded, but the session check could not reach the account service. This can indicate a network or CORS failure.'
+          );
+        } else if (authError?.statusCode === 404) {
+          diagnostic = t(
+            'auth.errors.session_endpoint_missing',
+            'Sign-in succeeded, but the deployed account service does not provide the session verification endpoint (HTTP 404).'
+          );
+        } else if (authError && authError.statusCode >= 500) {
+          diagnostic = t(
+            'auth.errors.session_server_error',
+            `Sign-in succeeded, but the account service failed while verifying the session (HTTP ${authError.statusCode}).`
+          );
+        } else if (authError?.message) {
+          diagnostic = authError.message;
+        }
+        setErrorMessage(diagnostic);
       } else if (err instanceof OrdiumApiError) {
         setRequestId(err.requestId);
         if (err.statusCode === 401) {
