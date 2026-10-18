@@ -43,7 +43,12 @@ export const API_CONFIG = {
 
 export async function ordiumFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   if (!CONTROL_PLANE_CONFIG.baseUrl) throw OrdiumApiError.fromStatus(503, 'Account service is not configured.');
-  const url = `${CONTROL_PLANE_CONFIG.baseUrl}/api/v1/dashboard${endpoint}`;
+  const dashboardPath = 'api/v1/dashboard' + endpoint;
+  // In production, keep the browser session cookie on the Web origin and proxy
+  // dashboard requests to Control Plane server-side. /api/account is auth-only.
+  const url = (import.meta as any).env?.DEV
+    ? `${CONTROL_PLANE_CONFIG.baseUrl}/api/v1/dashboard${endpoint}`
+    : `/api/dashboard?path=${encodeURIComponent(dashboardPath)}`;
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
   headers.set('X-Ordium-Client-Version', '1.5.2-web');
