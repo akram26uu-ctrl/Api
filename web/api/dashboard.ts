@@ -9,17 +9,16 @@
  * Configure ORDIUM_CONTROL_PLANE_URL as a server-side Vercel environment
  * variable (the same target used by /api/account).
  */
-const ALLOWED_PATHS = [
-  /^api\/v1\/dashboard\/orders(?:\/[0-9a-fA-F-]{36})?(?:\/outcome|\/confirmation-attempts)?$/,
-  /^api\/v1\/dashboard\/order-confirmations\/metrics$/,
-  /^api\/v1\/dashboard\/metrics\/(?:summary|risk-performance|risk-calibration|risk-attribution|risk-backtest|risk-quality)$/,
-  /^api\/v1\/dashboard\/api-keys(?:\/[0-9a-fA-F-]{36}\/(?:revoke|rotate))?$/,
-  /^api\/v1\/dashboard\/stores(?:\/[0-9a-fA-F-]{36})?$/,
-  /^api\/v1\/dashboard\/webhooks(?:\/[0-9a-fA-F-]{36}\/(?:disable|test))?$/,
-  /^api\/v1\/dashboard\/(?:risk-profile|usage|risk-features|identity-graph|notifications|audit-logs)$/,
-  /^api\/v1\/dashboard\/notifications\/[0-9a-fA-F-]{36}\/read$/,
-  /^api\/v1\/dashboard\/notifications\/read-all$/,
-];
+// Constrain the proxy to the dashboard namespace and safe path characters.
+// Control Plane applies its own authenticated endpoint allowlist.
+function isSafeDashboardPath(path: string): boolean {
+  return path.startsWith("api/v1/dashboard/") &&
+    path.length <= 512 &&
+    /^[a-zA-Z0-9_./-]+$/.test(path) &&
+    !path.includes("..") &&
+    !path.includes("//") &&
+    !path.endsWith("/");
+}
 
 export default async function handler(req: any, res: any) {
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(String(req.method || "").toUpperCase())) {
@@ -30,12 +29,7 @@ export default async function handler(req: any, res: any) {
 
   const rawPath = req.query?.path;
   const path = Array.isArray(rawPath) ? rawPath.join("/") : String(rawPath || "");
-  if (
-    !ALLOWED_PATHS.some((pattern) => pattern.test(path)) ||
-    path.includes("..") ||
-    path.includes("\\") ||
-    path.includes("%")
-  ) {
+  if (!isSafeDashboardPath(path)) {
     res.status(404).json({ detail: "Dashboard endpoint not found" });
     return;
   }
