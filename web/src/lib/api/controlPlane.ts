@@ -1,21 +1,14 @@
 import { AuthSession, RegisterPayload, LoginCredentials } from './types';
 
-/**
- * The control plane owns account/session endpoints.
- * Local development talks directly to localhost:8010. Production uses a
- * same-origin Vercel function so the HttpOnly cookie is first-party.
- */
 const configuredControlPlaneUrl =
   typeof import.meta !== 'undefined'
     ? ((import.meta as any).env?.VITE_ORDIUM_CONTROL_PLANE_URL as string | undefined)
     : undefined;
 
 const isDevelopment = Boolean((import.meta as any).env?.DEV);
-const CONTROL_PLANE_URL = (
-  isDevelopment
-    ? (configuredControlPlaneUrl?.trim() || 'http://localhost:8010')
-    : '/api/account'
-).replace(/\/+$/, '');
+const CONTROL_PLANE_URL = isDevelopment
+  ? (configuredControlPlaneUrl?.trim() || 'http://localhost:8010').replace(/\/+$/, '')
+  : '/api/account';
 
 export class ControlPlaneError extends Error {
   readonly statusCode: number;
@@ -26,8 +19,8 @@ export class ControlPlaneError extends Error {
     super(message);
     this.name = 'ControlPlaneError';
     this.statusCode = statusCode;
-    this.code = code;
     this.requestId = requestId;
+    this.code = code;
   }
 }
 
@@ -44,7 +37,7 @@ function errorMessage(status: number): string {
     case 502:
     case 504: return 'The ORDIUM account service is temporarily unavailable.';
     case 503: return 'ORDIUM workspace provisioning is temporarily unavailable.';
-    default: return 'The ORDIUM account service returned an unexpected response.';
+    default: return 'The ORDIUM account service returned an unexpected response (HTTP ' + status + ').';
   }
 }
 
@@ -58,36 +51,27 @@ async function readErrorPayload(response: Response): Promise<{ detail?: string; 
 }
 
 export async function controlPlaneFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  // Only account-auth endpoints may use this cookie-bearing client.
   if (!endpoint.startsWith('/api/v1/auth/')) {
-    throw new ControlPlaneError(
-      403,
-      'CREDENTIAL_ISOLATION',
+    throw new ControlPlaneError(403, 'CREDENTIAL_ISOLATION',
       'Non-auth requests must use the dashboard proxy, not the control-plane client directly.',
-      'req_' + Date.now(),
-    );
+      'req_' + Date.now());
   }
 
   const headers = new Headers(options.headers || {});
-  if (!headers.has('Content-Type') && options.body) {
-    headers.set('Content-Type', 'application/json');
-  }
+  if (!headers.has('Content-Type') && options.body) headers.set('Content-Type', 'application/json');
+
+  const url = isDevelopment
+    ? CONTROL_PLANE_URL + endpoint
+    : CONTROL_PLANE_URL + '?path=' + encodeURIComponent(endpoint.slice(1));
 
   let response: Response;
   try {
-    response = await fetch(CONTROL_PLANE_URL + endpoint, {
-      ...options,
-      headers,
-      credentials: 'include',
-    });
+    response = await fetch(url, { ...options, headers, credentials: 'include' });
   } catch (error) {
     const reason = error instanceof Error ? error.message : '';
-    throw new ControlPlaneError(
-      0,
-      'CONTROL_PLANE_UNREACHABLE',
+    throw new ControlPlaneError(0, 'CONTROL_PLANE_UNREACHABLE',
       'Unable to reach the ORDIUM account service.' + (reason ? ' (' + reason + ')' : ''),
-      'req_' + Date.now(),
-    );
+      'req_' + Date.now());
   }
 
   const requestId = response.headers.get('X-Request-ID') || 'req_' + Date.now();
