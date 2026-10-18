@@ -2,20 +2,20 @@ import { AuthSession, RegisterPayload, LoginCredentials } from './types';
 
 /**
  * The control plane owns account/session endpoints.
- *
- * In local development Vite runs the web app on localhost:3000 and the
- * control plane runs on localhost:8010. Production must provide the URL
- * explicitly through VITE_ORDIUM_CONTROL_PLANE_URL.
+ * Local development talks directly to localhost:8010. Production uses a
+ * same-origin Vercel function so the HttpOnly cookie is first-party.
  */
 const configuredControlPlaneUrl =
   typeof import.meta !== 'undefined'
     ? ((import.meta as any).env?.VITE_ORDIUM_CONTROL_PLANE_URL as string | undefined)
     : undefined;
 
+const isDevelopment = Boolean((import.meta as any).env?.DEV);
 const CONTROL_PLANE_URL = (
-  configuredControlPlaneUrl?.trim() ||
-  ((import.meta as any).env?.DEV ? 'http://localhost:8010' : '')
-).replace(/\/$/, '');
+  isDevelopment
+    ? (configuredControlPlaneUrl?.trim() || 'http://localhost:8010')
+    : '/api/account'
+).replace(/\/+$/, '');
 
 export class ControlPlaneError extends Error {
   readonly statusCode: number;
@@ -58,23 +58,13 @@ async function readErrorPayload(response: Response): Promise<{ detail?: string; 
 }
 
 export async function controlPlaneFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  // Auth credential isolation: only /api/v1/auth/ routes may use the control-plane client directly.
-  // All other API calls must go through the dashboard proxy which injects encrypted credentials.
+  // Only account-auth endpoints may use this cookie-bearing client.
   if (!endpoint.startsWith('/api/v1/auth/')) {
     throw new ControlPlaneError(
       403,
       'CREDENTIAL_ISOLATION',
       'Non-auth requests must use the dashboard proxy, not the control-plane client directly.',
-      `req_${Date.now()}`,
-    );
-  }
-
-  if (!CONTROL_PLANE_URL) {
-    throw new ControlPlaneError(
-      503,
-      'CONTROL_PLANE_UNCONFIGURED',
-      'Account service is not configured. Set VITE_ORDIUM_CONTROL_PLANE_URL.',
-      `req_${Date.now()}`,
+      'req_' + Date.now(),
     );
   }
 
@@ -85,7 +75,7 @@ export async function controlPlaneFetch<T>(endpoint: string, options: RequestIni
 
   let response: Response;
   try {
-    response = await fetch(`${CONTROL_PLANE_URL}${endpoint}`, {
+    response = await fetch(CONTROL_PLANE_URL + endpoint, {
       ...options,
       headers,
       credentials: 'include',
@@ -95,13 +85,12 @@ export async function controlPlaneFetch<T>(endpoint: string, options: RequestIni
     throw new ControlPlaneError(
       0,
       'CONTROL_PLANE_UNREACHABLE',
-      `Unable to reach the ORDIUM account service at ${CONTROL_PLANE_URL}. Start the Control Plane on port 8010.${reason ? ` (${reason})` : ''}`,
-      `req_${Date.now()}`,
+      'Unable to reach the ORDIUM account service.' + (reason ? ' (' + reason + ')' : ''),
+      'req_' + Date.now(),
     );
   }
 
-  const requestId = response.headers.get('X-Request-ID') || `req_${Date.now()}`;
-
+  const requestId = response.headers.get('X-Request-ID') || 'req_' + Date.now();
   if (!response.ok) {
     const payload = await readErrorPayload(response);
     const detail =
@@ -109,25 +98,13 @@ export async function controlPlaneFetch<T>(endpoint: string, options: RequestIni
       (typeof payload.message === 'string' && payload.message) ||
       (typeof payload.error === 'string' && payload.error) ||
       errorMessage(response.status);
-
-    throw new ControlPlaneError(
-      response.status,
-      `HTTP_${response.status}`,
-      detail,
-      requestId,
-    );
+    throw new ControlPlaneError(response.status, 'HTTP_' + response.status, detail, requestId);
   }
 
   if (response.status === 204) return undefined as T;
-
   const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    return undefined as T;
-  }
-
+  if (!contentType.includes('application/json')) return undefined as T;
   return response.json() as Promise<T>;
 }
 
-export const CONTROL_PLANE_CONFIG = {
-  baseUrl: CONTROL_PLANE_URL,
-};
+export const CONTROL_PLANE_CONFIG = { baseUrl: CONTROL_PLANE_URL };
