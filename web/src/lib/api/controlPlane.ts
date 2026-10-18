@@ -3,19 +3,21 @@ import { AuthSession, RegisterPayload, LoginCredentials } from './types';
 /**
  * The control plane owns account/session endpoints.
  *
- * In local development Vite runs the web app on localhost:3000 and the
- * control plane runs on localhost:8010. Production must provide the URL
- * explicitly through VITE_ORDIUM_CONTROL_PLANE_URL.
+ * Local development talks directly to localhost:8010. In production, auth
+ * requests go through a same-origin Vercel function so the HttpOnly session
+ * cookie is first-party and works in browsers that block third-party cookies.
  */
 const configuredControlPlaneUrl =
   typeof import.meta !== 'undefined'
     ? ((import.meta as any).env?.VITE_ORDIUM_CONTROL_PLANE_URL as string | undefined)
     : undefined;
 
+const isDevelopment = Boolean((import.meta as any).env?.DEV);
 const CONTROL_PLANE_URL = (
-  configuredControlPlaneUrl?.trim() ||
-  ((import.meta as any).env?.DEV ? 'http://localhost:8010' : '')
-).replace(/\/$/, '');
+  isDevelopment
+    ? (configuredControlPlaneUrl?.trim() || 'http://localhost:8010')
+    : '/api/account'
+).replace(/\\/$/, '');
 
 export class ControlPlaneError extends Error {
   readonly statusCode: number;
@@ -73,7 +75,7 @@ export async function controlPlaneFetch<T>(endpoint: string, options: RequestIni
     throw new ControlPlaneError(
       503,
       'CONTROL_PLANE_UNCONFIGURED',
-      'Account service is not configured. Set VITE_ORDIUM_CONTROL_PLANE_URL.',
+      'Account service is not configured.',
       `req_${Date.now()}`,
     );
   }
@@ -95,7 +97,7 @@ export async function controlPlaneFetch<T>(endpoint: string, options: RequestIni
     throw new ControlPlaneError(
       0,
       'CONTROL_PLANE_UNREACHABLE',
-      `Unable to reach the ORDIUM account service at ${CONTROL_PLANE_URL}. Start the Control Plane on port 8010.${reason ? ` (${reason})` : ''}`,
+      `Unable to reach the ORDIUM account service.${reason ? ` (${reason})` : ''}`,
       `req_${Date.now()}`,
     );
   }
