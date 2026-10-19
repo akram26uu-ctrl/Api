@@ -31,13 +31,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
   const ChevronIcon = isRTL ? ChevronLeft : ChevronRight;
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#080B12]/85 backdrop-blur-xl transition-all">
+    <header className="ordium-navbar sticky top-0 z-40 w-full border-b border-white/5 bg-[#080B12]/85 backdrop-blur-xl transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand Logo */}
-        <div
+        <button
+          type="button"
           onClick={() => { onNavigate('/'); setMobileMenuOpen(false); }}
-          className="flex items-center gap-2.5 cursor-pointer group select-none"
+          aria-label="ORDIUM home"
+          className="flex items-center gap-2.5 cursor-pointer group select-none text-start bg-transparent border-0 p-0"
         >
           <div className="relative w-8 h-8 rounded-lg bg-[#0D1320] border border-white/10 flex items-center justify-center overflow-hidden group-hover:border-[#22D3EE]/50 transition-colors">
             <div className="absolute inset-0 bg-gradient-to-br from-[#6C5CE7]/30 to-[#22D3EE]/20 opacity-50 group-hover:opacity-100 transition-opacity" />
@@ -49,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
               {t('brand.tagline', 'Risk Intelligence')}
             </span>
           </div>
-        </div>
+        </button>
 
         {/* Desktop Nav Links */}
         <nav className="hidden lg:flex items-center gap-4 xl:gap-6 px-4">
