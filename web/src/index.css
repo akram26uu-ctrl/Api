@@ -605,3 +605,89 @@ a {
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Mobile Safari dashboard viewport and chrome regression guard. */
+html, body, #root {
+  min-height: 100%;
+}
+
+.dashboard-shell {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-shell > div:last-of-type {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-shell .dashboard-topbar {
+  position: relative;
+  top: auto;
+  z-index: 40;
+  display: flex;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 4rem;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.dashboard-shell .dashboard-main {
+  position: relative;
+  display: block;
+  flex: 1 1 0%;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 1023px) {
+  .dashboard-shell {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .dashboard-shell > div:last-of-type {
+    width: 100%;
+  }
+
+  .dashboard-shell .dashboard-topbar {
+    min-height: 4rem;
+    flex-basis: 4rem;
+    padding-inline: max(.5rem, env(safe-area-inset-left, 0px)) max(.5rem, env(safe-area-inset-right, 0px));
+  }
+
+  .dashboard-shell .dashboard-main {
+    min-height: 0;
+    flex: 1 1 0%;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 1023px) {
+    .dashboard-shell {
+      height: 100vh;
+      height: 100dvh;
+      min-height: -webkit-fill-available;
+    }
+
+    .dashboard-shell .dashboard-topbar {
+      flex-shrink: 0;
+    }
+  }
+}
