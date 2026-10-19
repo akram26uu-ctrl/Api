@@ -302,58 +302,80 @@ export const WebhooksView: React.FC = () => {
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title={t('dashboard.webhooks.modal_title', 'Add Webhook Endpoint')}
-        description={t('dashboard.webhooks.modal_desc', 'Enter the destination URL to receive signed event dispatches.')}
+        title={t('dashboard.webhooks.modal_title', 'إضافة Webhook جديد')}
+        description={t('dashboard.webhooks.modal_desc', 'اختر عنوان HTTPS والأحداث التي تريد إرسالها إلى نظامك.')}
+        maxWidth="lg"
       >
-        <div className="space-y-4 text-xs font-mono text-start">
+        <form className="space-y-5 text-start" onSubmit={event => { event.preventDefault(); void handleCreateWebhook(); }}>
+          <div className="rounded-xl border border-[#52D9E8]/15 bg-[#52D9E8]/[0.045] p-3.5 text-sm leading-relaxed text-[#B8C7D8]">
+            <div className="mb-1.5 flex items-center gap-2 font-semibold text-white">
+              <Shield className="h-4 w-4 text-[#52D9E8]" />
+              {t('dashboard.webhooks.signed_delivery', 'تسليم آمن للأحداث')}
+            </div>
+            {t('dashboard.webhooks.signing_hint', 'سيُعرض سر التوقيع مرة واحدة بعد الإنشاء. خزّنه في خادمك واستخدمه للتحقق من توقيع HMAC-SHA256.')}
+          </div>
           <div>
-            <label className="text-[#94A3B8] block mb-1">{t('dashboard.webhooks.url_label', 'Destination URL (HTTPS Required)')}</label>
+            <label htmlFor="ordium-webhook-url" className="mb-2 block text-sm font-semibold text-[#E6EDF6]">
+              {t('dashboard.webhooks.url_label', 'عنوان الوجهة (HTTPS)')}
+            </label>
             <input
+              id="ordium-webhook-url"
+              name="webhookUrl"
               type="url"
+              required
+              autoComplete="url"
+              spellCheck={false}
               placeholder="https://api.yourstore.com/webhooks/ordium"
               value={newUrl}
-              onChange={e => setNewUrl(e.target.value)}
-              className="w-full bg-[#080B12] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-[#22D3EE]"
+              onChange={event => setNewUrl(event.target.value)}
+              className="w-full min-h-12 rounded-xl border border-white/10 bg-[#080B12] px-4 py-3 text-sm text-white placeholder:text-[#718096] focus:outline-none focus:border-[#52D9E8] focus:ring-2 focus:ring-[#52D9E8]/15"
               dir="ltr"
             />
+            <p className="mt-1.5 text-[11px] text-[#718096]">{t('dashboard.webhooks.https_hint', 'استخدم نقطة HTTPS عامة يمكن لخوادم ORDIUM الوصول إليها.')}</p>
           </div>
-
-          <div>
-            <label className="text-[#94A3B8] block mb-2">{t('dashboard.webhooks.subscribe_events', 'Subscribe to Events')}</label>
+          <fieldset className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <legend className="text-sm font-semibold text-[#E6EDF6]">{t('dashboard.webhooks.subscribe_events', 'الأحداث المراد استقبالها')}</legend>
+              <span className="text-[11px] text-[#A5B1C3]">{newEvents.length} {t('dashboard.webhooks.events_selected', 'أحداث محددة')}</span>
+            </div>
             <div className="space-y-2">
               {[
-                { id: 'order.risk_assessed', label: 'order.risk_assessed (Risk assessment completed)' },
-                { id: 'order.outcome.updated', label: 'order.outcome.updated (Delivery / outcome recorded)' },
-                { id: '*', label: '* (Wildcard: All webhook events)' }
-              ].map(ev => (
-                <label key={ev.id} className="flex items-center gap-2 cursor-pointer text-white">
-                  <input
-                    type="checkbox"
-                    checked={newEvents.includes(ev.id)}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setNewEvents([...newEvents, ev.id]);
-                      } else {
-                        setNewEvents(newEvents.filter(x => x !== ev.id));
-                      }
-                    }}
-                    className="rounded bg-[#080B12] border-white/20 text-[#22D3EE] focus:ring-0"
-                  />
-                  <span dir="ltr">{ev.label}</span>
-                </label>
-              ))}
+                { id: 'order.risk_assessed', title: 'تقييم مخاطر الطلب', desc: 'يصل عند انتهاء تقييم الطلب', code: 'order.risk_assessed' },
+                { id: 'order.outcome.updated', title: 'تحديث نتيجة الطلب', desc: 'يصل عند تسجيل نتيجة التأكيد أو التسليم', code: 'order.outcome.updated' },
+                { id: '*', title: 'كل الأحداث المتاحة', desc: 'اشترك في جميع أنواع الأحداث المدعومة', code: '*' }
+              ].map(ev => {
+                const checked = newEvents.includes(ev.id);
+                return (
+                  <label key={ev.id} className={"flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors " + (checked ? 'border-[#52D9E8]/30 bg-[#52D9E8]/[0.06]' : 'border-white/[0.09] bg-black/10 hover:border-white/20')}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={event => setNewEvents(prev => {
+                        if (event.target.checked) return ev.id === '*' ? ['*'] : [...prev.filter(item => item !== '*'), ev.id].filter((item, index, all) => all.indexOf(item) === index);
+                        return prev.filter(item => item !== ev.id);
+                      })}
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-white/20 bg-[#080B12] text-[#52D9E8] focus:ring-2 focus:ring-[#52D9E8]/40"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-[#E6EDF6]">{ev.title}</span>
+                      <span className="mt-0.5 block text-xs leading-relaxed text-[#8D9AAF]">{ev.desc}</span>
+                      <code className="mt-1.5 inline-block text-[10px] text-[#52D9E8]" dir="ltr">{ev.code}</code>
+                    </span>
+                  </label>
+                );
+              })}
             </div>
-          </div>
-
-          <div className="pt-4 border-t border-white/5 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsCreateModalOpen(false)}>
+            {!newEvents.length && <p className="text-xs text-amber-300" role="alert">{t('dashboard.webhooks.event_required', 'اختر حدثًا واحدًا على الأقل.')}</p>}
+          </fieldset>
+          <div className="flex flex-col-reverse gap-2 border-t border-white/[0.08] pt-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" size="md" onClick={() => setIsCreateModalOpen(false)}>
               {t('dashboard.common.cancel', 'إلغاء')}
             </Button>
-            <Button variant="primary" size="sm" onClick={handleCreateWebhook}>
-              {t('dashboard.webhooks.create_btn', 'Create Webhook')}
+            <Button type="submit" variant="primary" size="md" isLoading={isCreating} disabled={!newUrl.trim() || !newEvents.length}>
+              {t('dashboard.webhooks.create_btn', 'إنشاء Webhook')}
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
     </div>
   );
