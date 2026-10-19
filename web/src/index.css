@@ -135,3 +135,473 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ORDIUM Signature UI system — cohesive marketing + merchant workspace */
+:root {
+  color-scheme: dark;
+  --ordium-canvas: #080b12;
+  --ordium-surface: #0e1420;
+  --ordium-surface-raised: #131d2c;
+  --ordium-border: rgba(148, 163, 184, .14);
+  --ordium-border-strong: rgba(148, 163, 184, .24);
+  --ordium-text: #f4f7fb;
+  --ordium-muted: #a5b1c3;
+  --ordium-subtle: #718096;
+  --ordium-accent: #786bff;
+  --ordium-accent-strong: #958aff;
+  --ordium-signal: #52d9e8;
+  --ordium-success: #48d6a0;
+  --ordium-warning: #f5c465;
+  --ordium-danger: #fb7185;
+  --ordium-radius-sm: 10px;
+  --ordium-radius-md: 16px;
+  --ordium-radius-lg: 22px;
+  --ordium-shadow-card: 0 16px 44px rgba(0, 0, 0, .16);
+  --ordium-shadow-float: 0 24px 70px rgba(0, 0, 0, .32);
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-color: rgba(148, 163, 184, .32) #080b12;
+}
+
+body {
+  color: var(--ordium-text);
+  background: var(--ordium-canvas);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  color: #fff;
+  background: rgba(120, 107, 255, .42);
+}
+
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ordium-signal);
+  outline-offset: 3px;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+/* Public website: restrained signal-grid, richer depth and readable surfaces. */
+.marketing-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background:
+    radial-gradient(ellipse at 12% -8%, rgba(120, 107, 255, .13), transparent 34rem),
+    radial-gradient(ellipse at 92% 24%, rgba(82, 217, 232, .065), transparent 30rem),
+    #080b12;
+}
+
+.marketing-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .22;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, .07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, .07) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+}
+
+.ordium-navbar {
+  border-color: rgba(148, 163, 184, .13) !important;
+  background: rgba(8, 11, 18, .78) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .08);
+  backdrop-filter: blur(22px) saturate(140%);
+}
+
+.ordium-navbar nav button {
+  position: relative;
+  min-height: 40px;
+}
+
+.ordium-navbar nav button::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  bottom: 1px;
+  left: 8px;
+  height: 2px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--ordium-accent), var(--ordium-signal));
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 180ms ease;
+}
+
+.ordium-navbar nav button:hover::after,
+.ordium-navbar nav button[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+.ordium-hero {
+  min-height: min(900px, calc(100svh - 4rem));
+  padding-block: clamp(3.5rem, 8vw, 7rem);
+}
+
+.ordium-hero h1 {
+  max-width: 13ch;
+  margin-inline: auto;
+  font-size: clamp(2.55rem, 5.8vw, 5rem);
+  letter-spacing: -.055em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+[dir="rtl"] .ordium-hero h1 {
+  letter-spacing: 0;
+  line-height: 1.22;
+}
+
+.ordium-hero p {
+  text-wrap: pretty;
+}
+
+.ordium-hero .ordium-hero-visual {
+  border-color: rgba(148, 163, 184, .18) !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(ellipse at 52% 44%, rgba(120, 107, 255, .12), transparent 56%),
+    linear-gradient(145deg, rgba(17, 26, 41, .72), rgba(8, 11, 18, .8)) !important;
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .28), inset 0 1px rgba(255, 255, 255, .045);
+}
+
+.marketing-shell section:not(.ordium-hero) {
+  scroll-margin-top: 5rem;
+}
+
+.marketing-shell :is(h2, h3) {
+  text-wrap: balance;
+}
+
+.marketing-shell :is(a, button) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* App chrome. */
+.dashboard-shell {
+  --dashboard-sidebar-width: 17rem;
+  background:
+    radial-gradient(ellipse at 78% -10%, rgba(120, 107, 255, .10), transparent 34rem),
+    radial-gradient(ellipse at 15% 100%, rgba(82, 217, 232, .035), transparent 36rem),
+    var(--ordium-canvas) !important;
+  color: var(--ordium-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-shell > div:last-of-type {
+  min-width: 0;
+}
+
+.dashboard-shell .dashboard-main {
+  background: transparent;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.dashboard-topbar {
+  min-height: 4.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .13) !important;
+  background: rgba(8, 11, 18, .82) !important;
+  backdrop-filter: blur(24px) saturate(130%);
+}
+
+.ordium-sidebar {
+  width: var(--dashboard-sidebar-width);
+  border-color: rgba(148, 163, 184, .13) !important;
+  background:
+    linear-gradient(180deg, rgba(15, 21, 33, .98), rgba(9, 13, 21, .98)) !important;
+}
+
+.ordium-sidebar .ordium-brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(120, 107, 255, .45);
+  background:
+    radial-gradient(circle at 25% 20%, rgba(82, 217, 232, .24), transparent 60%),
+    linear-gradient(145deg, rgba(120, 107, 255, .25), rgba(14, 20, 32, .9));
+  box-shadow: 0 8px 24px rgba(120, 107, 255, .12), inset 0 1px rgba(255, 255, 255, .08);
+}
+
+.ordium-sidebar .ordium-nav-item {
+  position: relative;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.ordium-sidebar .ordium-nav-item:hover {
+  background: rgba(148, 163, 184, .065);
+  border-color: rgba(148, 163, 184, .09);
+  transform: translateX(2px);
+}
+
+[dir="rtl"] .ordium-sidebar .ordium-nav-item:hover {
+  transform: translateX(-2px);
+}
+
+.ordium-sidebar .ordium-nav-item[aria-current="page"] {
+  color: #fff;
+  border-color: rgba(120, 107, 255, .32);
+  background: linear-gradient(100deg, rgba(120, 107, 255, .19), rgba(82, 217, 232, .07));
+  box-shadow: inset 3px 0 0 var(--ordium-accent), 0 8px 18px rgba(0, 0, 0, .10);
+}
+
+[dir="rtl"] .ordium-sidebar .ordium-nav-item[aria-current="page"] {
+  box-shadow: inset -3px 0 0 var(--ordium-accent), 0 8px 18px rgba(0, 0, 0, .10);
+}
+
+.dashboard-content {
+  width: 100%;
+  max-width: 1720px;
+  padding: clamp(1rem, 2.2vw, 2rem);
+  margin-inline: auto;
+}
+
+.dashboard-page-heading {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: clamp(1.25rem, 2.4vw, 2rem);
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: var(--ordium-radius-lg);
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(82, 217, 232, .12), transparent 25rem),
+    linear-gradient(120deg, rgba(120, 107, 255, .12), rgba(17, 26, 41, .64) 48%, rgba(14, 20, 32, .92));
+  box-shadow: var(--ordium-shadow-card), inset 0 1px rgba(255, 255, 255, .035);
+}
+
+.dashboard-page-heading::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: -3rem;
+  bottom: -4rem;
+  width: 13rem;
+  height: 13rem;
+  border: 1px solid rgba(82, 217, 232, .12);
+  border-radius: 50%;
+  box-shadow: 0 0 0 24px rgba(82, 217, 232, .025), 0 0 0 48px rgba(120, 107, 255, .025);
+  pointer-events: none;
+}
+
+.dashboard-page-heading h2 {
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  line-height: 1.25;
+  font-weight: 750;
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+
+[dir="rtl"] .dashboard-page-heading h2 {
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+.dashboard-page-heading p {
+  max-width: 44rem;
+  color: var(--ordium-muted);
+  line-height: 1.75;
+}
+
+.dashboard-panel {
+  background:
+    linear-gradient(145deg, rgba(19, 29, 44, .82), rgba(14, 20, 32, .94)) !important;
+  border: 1px solid rgba(148, 163, 184, .15);
+  border-radius: var(--ordium-radius-md);
+  box-shadow: var(--ordium-shadow-card);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.dashboard-panel:hover {
+  border-color: rgba(148, 163, 184, .24);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, .18);
+}
+
+.dashboard-content .grid > :is(div, article) {
+  min-width: 0;
+}
+
+.dashboard-content table {
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-content thead th {
+  letter-spacing: .045em;
+  font-weight: 650;
+  color: #aab6c8;
+}
+
+.dashboard-content tbody tr {
+  transition: background-color 140ms ease;
+}
+
+.dashboard-content tbody tr:hover {
+  background: rgba(148, 163, 184, .045);
+}
+
+.dashboard-content :is(input, select, textarea) {
+  min-height: 44px;
+  border-color: rgba(148, 163, 184, .22);
+  border-radius: 12px;
+  color: var(--ordium-text);
+  background-color: rgba(10, 15, 24, .72);
+}
+
+.dashboard-content :is(input, select, textarea)::placeholder {
+  color: #7f8ca0;
+}
+
+.dashboard-content :is(input, select, textarea):hover {
+  border-color: rgba(148, 163, 184, .36);
+}
+
+.dashboard-content :is(input, select, textarea):focus {
+  border-color: var(--ordium-signal);
+  box-shadow: 0 0 0 3px rgba(82, 217, 232, .09);
+}
+
+.dashboard-content :is(button, a) {
+  touch-action: manipulation;
+}
+
+.dashboard-shell button[class*="bg-[#6C63F5]"],
+.dashboard-shell button[class*="bg-[#6C5CE7]"] {
+  box-shadow: 0 8px 22px rgba(120, 107, 255, .16);
+}
+
+.dashboard-shell :is(.rounded-xl, .rounded-2xl) {
+  scroll-margin-block: 1rem;
+}
+
+/* Tables remain readable without forcing the entire page to scroll sideways. */
+.dashboard-content .overflow-x-auto {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.dashboard-content .overflow-x-auto table {
+  min-width: 640px;
+}
+
+.dashboard-content .overflow-x-auto:focus-within {
+  outline: 1px solid rgba(82, 217, 232, .25);
+  outline-offset: 2px;
+}
+
+.dashboard-content .font-mono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.015em;
+}
+
+.dashboard-shell :is(.animate-pulse, .animate-ping) {
+  animation-duration: 2.8s;
+}
+
+@keyframes ordium-page-enter {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-page-enter {
+  animation: ordium-page-enter 240ms ease-out both;
+}
+
+@media (max-width: 1023px) {
+  .dashboard-shell {
+    --dashboard-sidebar-width: min(18rem, calc(100vw - 3rem));
+  }
+
+  .dashboard-content {
+    padding: 1rem;
+  }
+
+  .dashboard-page-heading {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 639px) {
+  .ordium-hero {
+    min-height: auto;
+    padding-block: 3.25rem 3.75rem;
+  }
+
+  .ordium-hero h1 {
+    font-size: clamp(2.3rem, 11vw, 3.4rem);
+    line-height: 1.07;
+  }
+
+  [dir="rtl"] .ordium-hero h1 {
+    line-height: 1.28;
+  }
+
+  .ordium-hero .ordium-hero-visual {
+    min-height: 360px;
+    border-radius: 22px !important;
+  }
+
+  .dashboard-page-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    border-radius: 18px;
+  }
+
+  .dashboard-page-heading > :last-child {
+    width: 100%;
+  }
+
+  .dashboard-page-heading > :last-child button,
+  .dashboard-page-heading > :last-child a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dashboard-content .dashboard-panel {
+    border-radius: 14px;
+  }
+
+  .dashboard-topbar {
+    min-height: 4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  .marketing-shell *,
+  .marketing-shell *::before,
+  .marketing-shell *::after,
+  .dashboard-shell *,
+  .dashboard-shell *::before,
+  .dashboard-shell *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
