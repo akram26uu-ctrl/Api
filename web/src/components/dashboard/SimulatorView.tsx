@@ -217,7 +217,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
           <Button variant="primary" size="sm" onClick={() => setSimulationError(null)}>{t('common.close', 'إغلاق')}</Button>
         </div>
       </Modal>
-      <div className="p-6 space-y-6">
+      <div className="dashboard-content space-y-6 sm:space-y-8">
       {/* Simulator workspace header */}
       <div className="relative overflow-hidden rounded-2xl border border-[#22D3EE]/15 bg-gradient-to-br from-[#0D1320] via-[#0D1320] to-[#111827] shadow-2xl">
         <div className="absolute -top-20 -end-16 h-40 w-40 rounded-full bg-[#22D3EE]/8 blur-3xl pointer-events-none" />
@@ -318,7 +318,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Column: Form / JSON Editor */}
-        <div className="lg:col-span-7 bg-[#0D1320] border border-white/10 rounded-2xl p-6 space-y-4">
+        <div className="dashboard-panel lg:col-span-7 p-4 sm:p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-white/5 pb-3">
             <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
               {mode === 'form' ? t('dashboard.simulator.order_details', 'تفاصيل الطلب التجريبي') : t('dashboard.simulator.payload_editor', 'بيانات متقدمة (JSON)')}
@@ -335,7 +335,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
                     type="text"
                     value={formData.order_number}
                     onChange={e => setFormData({ ...formData, order_number: e.target.value })}
-                    className="w-full bg-[#080B12] border border-white/10 rounded-lg p-2 text-white focus:outline-none focus:border-[#22D3EE]"
+                    className="w-full min-h-11 bg-[#080B12] border border-white/[0.12] rounded-lg p-3 text-white focus:outline-none focus:border-[#43D9E8] focus:ring-2 focus:ring-[#43D9E8]/15"
                   />
                 </div>
                 <div>
@@ -471,7 +471,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
               value={jsonText}
               onChange={e => setJsonText(e.target.value)}
               rows={16}
-              className="w-full bg-[#080B12] border border-white/10 rounded-xl p-3 font-mono text-xs text-white focus:outline-none focus:border-[#22D3EE] leading-relaxed resize-none"
+              className="w-full min-h-48 bg-[#080B12] border border-white/[0.12] rounded-xl p-3 sm:p-4 font-mono text-xs text-white focus:outline-none focus:border-[#43D9E8] focus:ring-2 focus:ring-[#43D9E8]/15 leading-relaxed resize-y"
               spellCheck={false}
               dir="ltr"
             />
@@ -491,7 +491,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
         </div>
 
         {/* Right Column: Instant Evaluation Result */}
-        <div className="lg:col-span-5 bg-[#0D1320] border border-white/10 rounded-2xl p-6 space-y-6">
+        <div className="dashboard-panel lg:col-span-5 p-4 sm:p-6 space-y-6">
           <div className="flex items-center justify-between border-b border-white/5 pb-3">
             <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
               {t('dashboard.simulator.result_title', 'Evaluation Result')}
