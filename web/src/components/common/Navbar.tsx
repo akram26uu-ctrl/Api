@@ -61,6 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
               <button
                 key={link.path}
                 onClick={() => onNavigate(link.path)}
+                aria-current={currentPath === link.path ? "page" : undefined}
                 className={`text-xs font-medium tracking-wide transition-colors whitespace-nowrap py-1 ${
                   isActive ? 'text-[#22D3EE] font-semibold' : 'text-[#94A3B8] hover:text-white'
                 }`}
@@ -140,6 +141,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2.5 text-[#94A3B8] hover:text-white rounded-xl hover:bg-white/5 min-w-[44px] min-h-[44px] flex items-center justify-center border border-white/5"
             aria-label="Toggle Navigation"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="ordium-mobile-nav"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -148,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-b border-white/10 bg-[#0D1320] px-4 py-4 space-y-3 animate-in slide-in-from-top-2">
+        <div id="ordium-mobile-nav" className="lg:hidden border-b border-white/10 bg-[#0D1320] px-4 py-4 space-y-3 animate-in slide-in-from-top-2">
           {/* Mobile Language Switcher Bar */}
           <div className="py-2.5 px-3 rounded-xl bg-white/[0.03] border border-white/10">
             <span className="text-[11px] font-mono text-[#94A3B8] uppercase block mb-2">
