@@ -246,9 +246,8 @@ export const WebhooksView: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full justify-center sm:w-auto"
+                      className="w-full justify-center sm:w-auto text-red-300 border-red-500/30 hover:bg-red-500/10"
                       onClick={() => { setDisableTarget(ep); setDisableError(null); }}
-                      className="text-red-300 border-red-500/30 hover:bg-red-500/10"
                       leftIcon={<Trash2 className="w-3.5 h-3.5" />}
                     >
                       {t('dashboard.webhooks.disable', 'Disable Webhook')}
