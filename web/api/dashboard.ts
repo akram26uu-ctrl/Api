@@ -45,7 +45,7 @@ export default async function handler(req: any, res: any) {
     process.env.ORDIUM_CONTROL_PLANE_URL ||
     process.env.VITE_ORDIUM_CONTROL_PLANE_URL ||
     ""
-  ).trim().replace(/\\/+$/, "");
+  ).trim().replace(/\/+$/, "");
   if (!base) {
     res.status(503).json({ detail: "Dashboard proxy is not configured." });
     return;
