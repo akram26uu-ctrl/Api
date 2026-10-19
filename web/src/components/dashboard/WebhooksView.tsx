@@ -92,9 +92,9 @@ export const WebhooksView: React.FC = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="dashboard-content space-y-6 sm:space-y-8">
       {/* Top Banner */}
-      <div className="bg-[#0D1320] border border-white/10 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-start">
+      <div className="dashboard-panel p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-start">
         <div>
           <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
             <Webhook className="w-4 h-4 text-[#22D3EE]" />
@@ -183,7 +183,7 @@ export const WebhooksView: React.FC = () => {
           {endpoints.map(ep => (
             <div
               key={ep.id}
-              className="bg-[#0D1320] border border-white/10 rounded-2xl p-5 space-y-4 shadow-xl text-start"
+              className="dashboard-panel p-4 sm:p-5 space-y-4 text-start"
             >
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">

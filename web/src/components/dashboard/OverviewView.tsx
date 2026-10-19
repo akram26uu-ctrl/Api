@@ -80,7 +80,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
   const hasOrders = totalOrders > 0 || recentOrders.length > 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="dashboard-content space-y-6 sm:space-y-8">
       <OrderConfirmationMetrics />
 
       {/* 4 Core Metric Cards */}
@@ -116,7 +116,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
         {/* Left: 3D Risk Core */}
-        <div className="lg:col-span-7 bg-[#0D1320] border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col justify-between">
+        <div className="dashboard-panel lg:col-span-7 p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between pb-3 border-b border-white/5 text-xs font-mono">
             <span className="font-bold text-white flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#22D3EE] animate-pulse" />
@@ -125,7 +125,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
             <span className="text-[#94A3B8]">{t('dashboard.overview.store_risk_context', 'مؤشرات المخاطر المرتبطة بالمتجر')}</span>
           </div>
 
-          <div className="h-[280px] sm:h-[320px] w-full rounded-xl overflow-hidden bg-[#080B12] relative my-2">
+          <div className="h-[240px] sm:h-[320px] w-full rounded-xl overflow-hidden bg-[#080B12] relative my-3 border border-white/[0.06]">
             <RiskCore3D interactive={false} />
             <div className="absolute bottom-2 left-2 rtl:left-auto rtl:right-2 z-10 text-[10px] font-mono text-[#94A3B8] bg-[#080B12]/80 px-2 py-1 rounded">
               {t('dashboard.overview.decision_radar', 'تحليل قرارات الطلبات')}
@@ -144,7 +144,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
         </div>
 
         {/* Right: Decision Distribution */}
-        <div className="lg:col-span-5 bg-[#0D1320] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between">
+        <div className="dashboard-panel lg:col-span-5 p-5 sm:p-6 flex flex-col justify-between">
           <div className="space-y-4">
             <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider text-start">
               {t('dashboard.overview.decision_breakdown', 'توزيع القرارات')}
