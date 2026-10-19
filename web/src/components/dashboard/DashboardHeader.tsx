@@ -191,9 +191,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             role="dialog"
             aria-modal="true"
             aria-labelledby="ordium-account-settings-title"
-            className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-3rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#0D1320] shadow-2xl flex flex-col"
+            className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-3rem)] overflow-hidden rounded-2xl border border-white/[0.12] bg-[#101827] shadow-2xl shadow-black/40 flex flex-col"
           >
-            <div className="flex items-start justify-between gap-4 p-4 sm:p-5 border-b border-white/5 shrink-0">
+            <div className="flex items-start justify-between gap-4 p-4 sm:p-6 border-b border-white/[0.08] shrink-0">
               <div className="min-w-0">
                 <h2 id="ordium-account-settings-title" className="text-base font-semibold text-white">{t('dashboard.profile.settings', t('dashboard.profile.settings','إعدادات الحساب'))}</h2>
                 <p className="text-xs text-[#64748B] mt-1">{t('dashboard.profile.settings_desc', 'إدارة حساب ORDIUM وبيانات مساحة العمل.')}</p>
@@ -212,7 +212,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               </button>
             </div>
 
-            <div className="overflow-y-auto p-4 sm:p-5">
+            <div className="overflow-y-auto p-4 sm:p-6">
               {settingsError && <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-300">{settingsError}</div>}
               {settingsMessage && <div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-300">{settingsMessage}</div>}
 
@@ -237,10 +237,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                     <div className="flex items-center gap-2 mb-3"><User className="w-4 h-4 text-[#22D3EE]" /><h3 className="text-sm font-semibold text-white">{t('dashboard.profile.personal_title', t('dashboard.profile.personal_title','المعلومات الشخصية'))}</h3></div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {([['first_name',t('dashboard.profile.first_name','الاسم الأول')],['last_name',t('dashboard.profile.last_name','اسم العائلة')]] as const).map(([key,label]) => (
-                        <label key={key} className="space-y-1.5"><span className="text-[11px] text-[#94A3B8]">{t(`dashboard.profile.${key}`, label)}</span><input value={profileForm[key]} onChange={e => setProfileForm(f => ({...f,[key]:e.target.value}))} className="w-full rounded-xl border border-white/10 bg-[#080B12] px-3 py-2.5 text-sm text-white outline-none focus:border-[#22D3EE]/50" required /></label>
+                        <label key={key} className="space-y-1.5"><span className="text-[11px] text-[#94A3B8]">{t(`dashboard.profile.${key}`, label)}</span><input value={profileForm[key]} onChange={e => setProfileForm(f => ({...f,[key]:e.target.value}))} className="w-full min-h-11 rounded-xl border border-white/[0.12] bg-[#080B12] px-3 py-3 text-sm text-white outline-none focus:border-[#43D9E8] focus:ring-2 focus:ring-[#43D9E8]/15" required /></label>
                       ))}
                     </div>
-                    <label className="block space-y-1.5 mt-3"><span className="text-[11px] text-[#94A3B8] flex items-center gap-1.5"><Mail className="w-3 h-3" />{t('dashboard.profile.email', t('dashboard.profile.email','البريد الإلكتروني'))}</span><input value={session.user.email} disabled readOnly className="w-full rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2.5 text-sm text-[#64748B] cursor-not-allowed" /><span className="text-[10px] text-[#64748B]">{t('dashboard.profile.email_locked', 'Email address cannot be changed from the dashboard.')}</span></label>
+                    <label className="block space-y-1.5 mt-3"><span className="text-[11px] text-[#94A3B8] flex items-center gap-1.5"><Mail className="w-3 h-3" />{t('dashboard.profile.email', t('dashboard.profile.email','البريد الإلكتروني'))}</span><input value={session.user.email} disabled readOnly className="w-full min-h-11 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-3 text-sm text-[#94A3B8] cursor-not-allowed" /><span className="text-[10px] text-[#64748B]">{t('dashboard.profile.email_locked', 'Email address cannot be changed from the dashboard.')}</span></label>
                     <label className="block space-y-1.5 mt-3"><span className="text-[11px] text-[#94A3B8]">رقم الهاتف</span><input value={profileForm.phone || ''} onChange={e => setProfileForm(f => ({...f,phone:e.target.value}))} className="w-full rounded-xl border border-white/10 bg-[#080B12] px-3 py-2.5 text-sm text-white outline-none focus:border-[#22D3EE]/50" /></label>
                   </div>
                   <div className="pt-4 border-t border-white/5"><div className="flex items-center gap-2 mb-3"><Building2 className="w-4 h-4 text-[#22D3EE]"/><h3 className="text-sm font-semibold text-white">معلومات مساحة العمل</h3></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{([['organization_name',t('dashboard.profile.organization_name','اسم المؤسسة')],['country',t('dashboard.profile.country','الدولة')],['wilaya',t('dashboard.profile.wilaya','الولاية')],['city',t('dashboard.profile.city','المدينة')],['website_url',t('dashboard.profile.website_url','الموقع')],['ecommerce_platform',t('dashboard.profile.ecommerce_platform','منصة التجارة الإلكترونية')],['business_type',t('dashboard.profile.business_type','نوع النشاط')],['primary_market',t('dashboard.profile.primary_market','السوق الرئيسي')],['monthly_orders',t('dashboard.profile.monthly_orders','الطلبات الشهرية')]] as const).map(([key,label]) => <label key={key} className="space-y-1.5"><span className="text-[11px] text-[#94A3B8]">{label}</span><input value={(profileForm as any)[key] || ''} onChange={e => setProfileForm(f => ({...f,[key]:e.target.value}))} className="w-full rounded-xl border border-white/10 bg-[#080B12] px-3 py-2.5 text-sm text-white outline-none focus:border-[#22D3EE]/50" /></label>)}</div></div>
