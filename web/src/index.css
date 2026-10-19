@@ -60,3 +60,78 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.35);
 }
+
+
+/* ORDIUM 2026/27 dashboard design system: calm, data-first, mobile-first. */
+:root {
+  --ordium-canvas: #070A10;
+  --ordium-surface: #0D1320;
+  --ordium-surface-raised: #111A29;
+  --ordium-border: rgba(148, 163, 184, 0.14);
+  --ordium-text: #F1F5F9;
+  --ordium-muted: #A1AEC1;
+  --ordium-accent: #6C63F5;
+  --ordium-signal: #43D9E8;
+}
+
+.dashboard-shell {
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(108, 99, 245, 0.075), transparent 34rem),
+    var(--ordium-canvas);
+  color: var(--ordium-text);
+}
+
+.dashboard-content {
+  width: 100%;
+  max-width: 1680px;
+  margin-inline: auto;
+  padding: 1.25rem;
+}
+
+.dashboard-panel {
+  background: linear-gradient(145deg, rgba(17, 26, 41, 0.96), rgba(13, 19, 32, 0.98));
+  border: 1px solid var(--ordium-border);
+  border-radius: 1.125rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-panel:hover {
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+.dashboard-shell button,
+.dashboard-shell a,
+.dashboard-shell input,
+.dashboard-shell select,
+.dashboard-shell textarea {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 160ms;
+}
+
+.dashboard-shell :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--ordium-signal);
+  outline-offset: 3px;
+}
+
+.dashboard-shell :is(input, select, textarea) {
+  min-height: 2.75rem;
+}
+
+@media (min-width: 640px) {
+  .dashboard-content { padding: 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-content { padding: 2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-shell *,
+  .dashboard-shell *::before,
+  .dashboard-shell *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
