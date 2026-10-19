@@ -35,8 +35,8 @@ export const UsageView: React.FC = () => {
   const percent = Math.min(100, Math.max(0, Number(usage.percent_used ?? 0)));
   const nearLimit = percent >= 80;
   return (
-    <div className="p-6 space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0D1320] to-[#111827] p-5 sm:p-6 shadow-2xl">
+    <div className="dashboard-content space-y-6 sm:space-y-8" dir={isRTL ? 'rtl' : 'ltr'}>
+      <section className="dashboard-panel relative overflow-hidden p-5 sm:p-6">
         <div className="absolute -top-16 -end-12 h-36 w-36 rounded-full bg-[#22D3EE]/10 blur-3xl" />
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="flex items-start gap-4">
@@ -55,7 +55,7 @@ export const UsageView: React.FC = () => {
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-[#0D1320] p-5 sm:p-6">
+        <div className="dashboard-panel lg:col-span-2 p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div><div className="text-xs text-[#64748B]">{t('dashboard.usage.monthly_quota', 'الحصة الشهرية')}</div><div className="mt-1 text-3xl font-bold text-white tracking-tight">{usage.evaluations_used.toLocaleString()} <span className="text-sm font-medium text-[#64748B]">/ {usage.evaluations_limit.toLocaleString()}</span></div></div>
             <div className={`rounded-xl border px-3 py-2 text-end ${nearLimit ? 'border-amber-400/20 bg-amber-400/5' : 'border-[#22D3EE]/15 bg-[#22D3EE]/5'}`}><div className="text-[10px] text-[#64748B]">{t('dashboard.usage.remaining', 'المتبقي')}</div><div className={`text-sm font-bold ${nearLimit ? 'text-amber-300' : 'text-[#22D3EE]'}`}>{usage.evaluations_remaining.toLocaleString()}</div></div>
@@ -64,7 +64,7 @@ export const UsageView: React.FC = () => {
           <div className="mt-2 flex justify-between gap-3 text-[11px] text-[#64748B]"><span>{percent}% {t('dashboard.usage.used', 'مستخدم')}</span><span>{t('dashboard.usage.reset', 'التجديد')}: {resetDate}</span></div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-[#0D1320] p-5">
+        <div className="dashboard-panel p-5">
           <div className="flex items-center gap-2 text-[#22D3EE]"><Gauge className="w-4 h-4" /><span className="text-xs font-semibold text-white">{t('dashboard.usage.plan_limits', 'حدود الخطة')}</span></div>
           <div className="mt-4 space-y-3 text-xs">
             <div className="flex justify-between"><span className="text-[#64748B]">{t('dashboard.usage.plan', 'الخطة')}</span><span className="text-white font-medium">{usage.plan_name}</span></div>
