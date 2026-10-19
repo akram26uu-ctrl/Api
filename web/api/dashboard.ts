@@ -9,8 +9,6 @@
  * Configure ORDIUM_CONTROL_PLANE_URL as a server-side Vercel environment
  * variable (the same target used by /api/account).
  */
-// Constrain the proxy to the dashboard namespace and safe path characters.
-// Control Plane applies its own authenticated endpoint allowlist.
 function isSafeDashboardPath(path: string): boolean {
   return path.startsWith("api/v1/dashboard/") &&
     path.length <= 512 &&
@@ -27,8 +25,17 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const rawPath = req.query?.path;
-  const path = Array.isArray(rawPath) ? rawPath.join("/") : String(rawPath || "");
+  // ordiumFetch currently serializes the endpoint (including its query string)
+  // into the "path" parameter, e.g.:
+  //   path=api/v1/dashboard/webhooks?store_id=<uuid>
+  // Split it before validating so a legitimate query string isn't mistaken for
+  // an unsafe path. Query parameters are encoded again by URLSearchParams below.
+  const rawTarget = req.query?.path;
+  const serializedTarget = Array.isArray(rawTarget) ? rawTarget.join("/") : String(rawTarget || "");
+  const queryIndex = serializedTarget.indexOf("?");
+  const path = queryIndex >= 0 ? serializedTarget.slice(0, queryIndex) : serializedTarget;
+  const embeddedQuery = queryIndex >= 0 ? serializedTarget.slice(queryIndex + 1) : "";
+
   if (!isSafeDashboardPath(path)) {
     res.status(404).json({ detail: "Dashboard endpoint not found" });
     return;
@@ -49,7 +56,13 @@ export default async function handler(req: any, res: any) {
     target = new URL("/" + path, base);
     const incomingUrl = new URL(req.url || "/", "https://ordium-proxy.invalid");
     incomingUrl.searchParams.delete("path");
-    target.search = incomingUrl.search;
+
+    // Preserve query params serialized inside "path" and any normal query
+    // params supplied to this proxy, without allowing either to alter the path.
+    const mergedQuery = new URLSearchParams(embeddedQuery);
+    for (const [key, value] of incomingUrl.searchParams) mergedQuery.append(key, value);
+    target.search = mergedQuery.toString() ? `?${mergedQuery.toString()}` : "";
+
     if (target.protocol !== "https:" && process.env.NODE_ENV === "production") {
       res.status(500).json({ detail: "Control Plane must use HTTPS in production." });
       return;
