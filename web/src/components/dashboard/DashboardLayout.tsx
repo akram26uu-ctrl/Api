@@ -115,10 +115,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
           onLogout={onLogout}
         />
 
-        <main className="flex-1 overflow-y-auto" key={`${selectedStoreId || "none"}-${keyRefreshCounter}`}>
+        <main className="dashboard-main flex-1 overflow-y-auto" key={`${selectedStoreId || "none"}-${keyRefreshCounter}`}>
           {storesLoading ? (
             <div className="min-h-full flex items-center justify-center text-xs text-[#64748B]">{t('dashboard.stores.loading', 'جارٍ تحميل المتاجر…')}</div>
-          ) : selectedStoreId ? <>
+          ) : selectedStoreId ? <div className="dashboard-page-enter">
           {activeTab === 'overview' && (
             <>
               {showOnboarding && (
@@ -138,7 +138,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
           {activeTab === 'webhooks' && <WebhooksView />}
           {activeTab === 'apikeys' && <ApiKeysView environment={environment} />}
           {activeTab === 'usage' && <UsageView />}
-          </> : (
+          </div> : (
             <div className="min-h-full flex items-center justify-center p-6 text-center">
               <div className="max-w-md"><p className="text-sm font-semibold text-white">{t('dashboard.stores.required_title', 'أنشئ متجرك أولًا')}</p><p className="text-xs text-[#64748B] mt-2">{t('dashboard.stores.required_desc', 'للبدء واستقبال الطلبات، يجب إنشاء متجر واحد على الأقل.')}</p></div>
             </div>
