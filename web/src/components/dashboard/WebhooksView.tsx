@@ -215,27 +215,28 @@ export const WebhooksView: React.FC = () => {
           {endpoints.map(ep => (
             <div
               key={ep.id}
-              className="dashboard-panel p-4 sm:p-5 space-y-4 text-start"
+              className="dashboard-panel relative overflow-hidden p-4 sm:p-6 space-y-5 text-start"
             >
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-start gap-3">
                   <span
-                    className={`w-2.5 h-2.5 rounded-full ${
+                    className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${
                       ep.status === 'active' ? 'bg-[#10B981] animate-pulse' : 'bg-[#EF4444]'
                     }`}
                   />
-                  <div>
-                    <h3 className="text-sm font-bold text-white font-mono" dir="ltr">{ep.url}</h3>
-                    <div className="text-[11px] font-mono text-[#94A3B8]">
+                  <div className="min-w-0">
+                    <h3 className="text-sm sm:text-base font-semibold text-white font-mono break-all" dir="ltr">{ep.url}</h3>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[#94A3B8]">
                       {t('dashboard.apikeys.created', 'Created')} {new Date(ep.created_at).toLocaleDateString()} · {t('dashboard.webhooks.failure_rate', 'Failure rate')}: {ep.failure_rate}%
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-center">
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full justify-center sm:w-auto"
                     onClick={() => handleTestDispatch(ep.id)}
                     leftIcon={<Send className="w-3.5 h-3.5 text-[#22D3EE]" />}
                   >
@@ -245,6 +246,7 @@ export const WebhooksView: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="w-full justify-center sm:w-auto"
                       onClick={() => { setDisableTarget(ep); setDisableError(null); }}
                       className="text-red-300 border-red-500/30 hover:bg-red-500/10"
                       leftIcon={<Trash2 className="w-3.5 h-3.5" />}
@@ -256,10 +258,10 @@ export const WebhooksView: React.FC = () => {
               </div>
 
               {/* Subscribed events */}
-              <div className="pt-3 border-t border-white/5 flex flex-wrap items-center gap-2 text-xs font-mono">
+              <div className="pt-4 border-t border-white/[0.08] flex flex-wrap items-center gap-2 text-xs">
                 <span className="text-[#94A3B8] text-[11px]">{t('dashboard.webhooks.subscribed_events', 'Subscribed Events:')}</span>
                 {ep.events.map(ev => (
-                  <span key={ev} className="px-2 py-0.5 rounded bg-white/5 text-[#22D3EE] text-[11px]" dir="ltr">
+                  <span key={ev} className="rounded-lg border border-[#52D9E8]/15 bg-[#52D9E8]/[0.06] px-2.5 py-1 text-[#78E3EC] text-[11px] font-mono" dir="ltr">
                     {ev}
                   </span>
                 ))}
