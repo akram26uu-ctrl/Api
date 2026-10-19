@@ -81,6 +81,27 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigateTab }) => 
 
   return (
     <div className="dashboard-content space-y-6 sm:space-y-8">
+      <section className="dashboard-page-heading">
+        <div className="relative z-10 min-w-0">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8e86ff]">
+            {t('dashboard.overview.eyebrow', 'ORDIUM · ذكاء المخاطر')}
+          </p>
+          <h2>{t('dashboard.overview.page_heading', 'نظرة عامة على المتجر')}</h2>
+          <p className="mt-2 text-sm">
+            {t('dashboard.overview.page_description', 'تابع الطلبات ومؤشرات المخاطر وقرارات التقييم من مساحة عمل واحدة.')}
+          </p>
+        </div>
+        <div className="relative z-10 shrink-0">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => onNavigateTab('orders')}
+            rightIcon={<ArrowIcon className="w-4 h-4" />}
+          >
+            {t('dashboard.overview.view_orders_cta', 'عرض الطلبات')}
+          </Button>
+        </div>
+      </section>
       <OrderConfirmationMetrics />
 
       {/* 4 Core Metric Cards */}
