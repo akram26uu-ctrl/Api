@@ -55,12 +55,12 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   ];
 
   const sidebarContent = (
-    <div className="w-[17rem] border-r rtl:border-r-0 rtl:border-l border-white/[0.08] bg-[#090D15]/95 flex flex-col justify-between shrink-0 h-full min-h-0 overflow-y-auto overscroll-contain">
+    <div className="ordium-sidebar w-[17rem] border-r rtl:border-r-0 rtl:border-l border-white/[0.08] bg-[#090D15]/95 flex flex-col justify-between shrink-0 h-full min-h-0 overflow-y-auto overscroll-contain">
       {/* Brand Top */}
       <div>
         <div className="h-[4.5rem] px-6 border-b border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6C63F5]/20 to-[#43D9E8]/10 border border-[#43D9E8]/20 flex items-center justify-center shadow-lg shadow-black/20">
+            <div className="ordium-brand-mark w-9 h-9 rounded-xl bg-gradient-to-br from-[#6C63F5]/20 to-[#43D9E8]/10 border border-[#43D9E8]/20 flex items-center justify-center shadow-lg shadow-black/20">
               <Cpu className="w-4 h-4 text-[#22D3EE]" />
             </div>
             <div>
@@ -98,7 +98,8 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   onSelectTab(item.id);
                   if (onCloseMobile) onCloseMobile();
                 }}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium transition-all text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#43D9E8] ${
+                aria-current={isActive ? "page" : undefined}
+                className={`ordium-nav-item w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium transition-all text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#43D9E8] ${
                   isActive
                     ? 'bg-gradient-to-r from-[#6C63F5]/15 to-[#43D9E8]/[0.06] text-white border border-[#6C63F5]/30 shadow-sm font-semibold'
                     : 'text-[#A1AEC1] hover:text-white hover:bg-white/[0.045] active:bg-white/[0.08]'

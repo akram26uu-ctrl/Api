@@ -84,7 +84,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'OP';
 
   return (
-    <header className="sticky top-0 z-40 min-h-16 border-b border-white/5 bg-[#080B12]/95 backdrop-blur-xl px-2 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-3">
+    <header className="dashboard-topbar sticky top-0 z-40 min-h-16 border-b border-white/5 bg-[#080B12]/95 backdrop-blur-xl px-2 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-3">
       {/* Left: Mobile sidebar control, optional desktop title, and store selector */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         {onToggleMobileSidebar && (

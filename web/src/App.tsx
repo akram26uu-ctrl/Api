@@ -182,7 +182,7 @@ export function AppContent() {
 
   // Public Marketing & Developer Platform
   return (
-    <div className="min-h-screen bg-[#080B12] text-[#F8FAFC] flex flex-col relative selection:bg-[#6C5CE7]/30 selection:text-white">
+    <div className="marketing-shell min-h-screen bg-[#080B12] text-[#F8FAFC] flex flex-col relative selection:bg-[#6C5CE7]/30 selection:text-white">
       {/* Subtle 3D particle and signal line backdrop */}
       <DataStreamCanvas />
 

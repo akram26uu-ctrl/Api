@@ -19,7 +19,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onStart, onExploreApi 
   const ArrowIcon = isRTL ? ArrowLeft : ArrowRight;
 
   return (
-    <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden pt-8 pb-16">
+    <section className="ordium-hero relative min-h-[92vh] flex items-center justify-center overflow-hidden pt-8 pb-16">
       {/* Background radial gradients */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#6C5CE7]/15 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute top-1/3 left-1/3 w-[450px] h-[450px] bg-[#22D3EE]/10 rounded-full blur-[120px] pointer-events-none" />
@@ -90,7 +90,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onStart, onExploreApi 
 
           {/* Right Column: 3D Risk Intelligence Core */}
           <div className="lg:col-span-6 relative flex items-center justify-center">
-            <div className="w-full h-[460px] sm:h-[540px] relative rounded-2xl bg-[#080B12]/40 border border-white/5 backdrop-blur-sm overflow-hidden shadow-2xl">
+            <div className="ordium-hero-visual w-full h-[460px] sm:h-[540px] relative rounded-2xl bg-[#080B12]/40 border border-white/5 backdrop-blur-sm overflow-hidden shadow-2xl">
               <Suspense fallback={<div className="w-full h-full min-h-[420px] bg-[#080B12]/40" aria-hidden="true" />}>
                 <RiskCore3D interactive={true} />
               </Suspense>

@@ -27,9 +27,9 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-150 rounded-lg cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#43D9E8] focus-visible:ring-offset-2 focus-visible:ring-offset-[#070A10] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap';
 
   const sizeStyles = {
-    sm: 'text-xs px-3 py-1.5 gap-1.5',
-    md: 'text-sm px-4 py-2 gap-2',
-    lg: 'text-base px-6 py-2.5 gap-2.5'
+    sm: 'min-h-[40px] text-xs px-3 py-2 gap-1.5',
+    md: 'min-h-[44px] text-sm px-4 py-2.5 gap-2',
+    lg: 'min-h-[48px] text-base px-6 py-3 gap-2.5'
   };
 
   const variantStyles = {
