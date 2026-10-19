@@ -171,9 +171,9 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
         />
       ) : (
         <div className="dashboard-panel overflow-hidden">
-          <table className="w-full text-start border-collapse text-xs font-mono">
+          <div className="overflow-x-auto"><table className="min-w-[760px] w-full text-start border-collapse text-xs font-mono">
             <thead>
-              <tr className="border-b border-white/5 bg-[#080B12]/60 text-[11px] text-[#94A3B8] uppercase">
+              <tr className="border-b border-white/[0.08] bg-[#101827] text-[11px] text-[#A1AEC1] uppercase">
                 <th className="py-3 px-4 text-start">{t('dashboard.apikeys.key_name', 'الاسم')}</th>
                 <th className="py-3 px-4 text-start">{t('dashboard.apikeys.secret_token', 'المفتاح')}</th>
                 <th className="py-3 px-4 text-start">{t('dashboard.apikeys.created', 'تاريخ الإنشاء')}</th>
@@ -220,7 +220,7 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
