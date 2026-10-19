@@ -305,9 +305,9 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
             </div>
           </div>
 
-          <fieldset className="space-y-3">
+          <div role="group" aria-labelledby="ordium-api-scopes-label" className="space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <legend className="text-sm font-semibold text-[#E6EDF6]">{t('dashboard.apikeys.scopes', 'صلاحيات المفتاح')}</legend>
+              <span id="ordium-api-scopes-label" className="text-sm font-semibold text-[#E6EDF6]">{t('dashboard.apikeys.scopes', 'صلاحيات المفتاح')}</span>
               <span className="text-[11px] text-[#A5B1C3]">{newScopes.length} {t('dashboard.apikeys.selected_scopes', 'محددة')}</span>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -344,7 +344,7 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
             {!newScopes.length && (
               <p className="text-xs text-amber-300" role="alert">{t('dashboard.apikeys.scope_required', 'اختر صلاحية واحدة على الأقل.')}</p>
             )}
-          </fieldset>
+          </div>
 
           <div className="flex flex-col-reverse gap-2 border-t border-white/[0.08] pt-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" size="md" onClick={() => setIsCreateModalOpen(false)}>
