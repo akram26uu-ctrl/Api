@@ -18,6 +18,7 @@ export const WebhooksView: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newUrl, setNewUrl] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   const [newEvents, setNewEvents] = useState<string[]>(['order.risk_assessed', 'order.outcome.updated']);
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
 
@@ -49,18 +50,33 @@ export const WebhooksView: React.FC = () => {
   }, []);
 
   const handleCreateWebhook = async () => {
-    if (!newUrl) return;
+    const url = newUrl.trim();
+    if (!url || !newEvents.length || isCreating) return;
+
+    let parsedUrl: URL;
     try {
-      const created = await ordiumClient.createWebhook({
-        url: newUrl,
-        events: newEvents
-      });
+      parsedUrl = new URL(url);
+    } catch {
+      setErrorMessage(t('dashboard.webhooks.invalid_url', 'أدخل عنوان URL صحيحًا يبدأ بـ https://.'));
+      return;
+    }
+    if (parsedUrl.protocol !== 'https:') {
+      setErrorMessage(t('dashboard.webhooks.https_required', 'يجب أن يستخدم Webhook عنوان HTTPS آمنًا.'));
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const created = await ordiumClient.createWebhook({ url, events: newEvents });
       setEndpoints(prev => [created, ...prev]);
       setCreatedSecret(created.secret || 'whsec_test_secret_revealed_once');
       setIsCreateModalOpen(false);
       setNewUrl('');
+      setNewEvents(['order.risk_assessed', 'order.outcome.updated']);
     } catch (err: any) {
-      setErrorMessage(`Failed to create webhook: ${err.message}`);
+      setErrorMessage('Failed to create webhook: ' + err.message);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -93,27 +109,43 @@ export const WebhooksView: React.FC = () => {
 
   return (
     <div className="dashboard-content space-y-6 sm:space-y-8">
-      {/* Top Banner */}
-      <div className="dashboard-panel p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-start">
-        <div>
-          <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
-            <Webhook className="w-4 h-4 text-[#22D3EE]" />
-            <span>{t('dashboard.webhooks.title', 'اشتراكات Webhook وتوجيه الأحداث')}</span>
+      <section className="dashboard-page-heading">
+        <div className="relative z-10 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-[#9D96FF] uppercase">
+            <Webhook className="h-4 w-4" />
+            <span>{t('dashboard.webhooks.eyebrow', 'تسليم الأحداث')}</span>
+            <span className="rounded-full border border-[#52D9E8]/20 bg-[#52D9E8]/[0.08] px-2.5 py-1 text-[#52D9E8] tracking-normal">
+              {t('dashboard.webhooks.signed_delivery', 'HMAC · توقيع آمن')}
+            </span>
+          </div>
+          <h2 className="mt-3 flex items-center gap-3">
+            <Send className="h-6 w-6 shrink-0 text-[#52D9E8]" />
+            {t('dashboard.webhooks.title', 'Webhooks · توجيه الأحداث')}
           </h2>
-          <p className="text-xs text-[#94A3B8] mt-1">
-            {t('dashboard.webhooks.subtitle', 'Receive automated real-time notifications for order evaluations, flagged syndicates, and chargebacks.')}
+          <p className="mt-2 text-sm">
+            {t('dashboard.webhooks.subtitle', 'أرسل إشعارات موقّعة إلى أنظمتك عند تقييم الطلبات أو تحديث نتائجها. اختبر كل نقطة اتصال وتابع حالتها من هنا.')}
           </p>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs">
+            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-[#C7D2E0]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#52D9E8]" />
+              {loading ? '—' : endpoints.length.toLocaleString()} {t('dashboard.webhooks.summary_total', 'نقطة اتصال')}
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-xl border border-[#48D6A0]/20 bg-[#48D6A0]/[0.06] px-3 py-2 text-[#8AE7BD]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#48D6A0]" />
+              {loading ? '—' : endpoints.filter(ep => ep.status === 'active').length.toLocaleString()} {t('dashboard.webhooks.summary_active', 'نشطة')}
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-[#A5B1C3]">
+              <Shield className="h-3.5 w-3.5" />
+              {t('dashboard.webhooks.summary_signature', 'توقيع HMAC-SHA256')}
+            </span>
+          </div>
         </div>
-
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => setIsCreateModalOpen(true)}
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
-          {t('dashboard.webhooks.add_endpoint', 'Add Endpoint')}
-        </Button>
-      </div>
+        <div className="relative z-10 shrink-0">
+          <Button variant="primary" size="md" onClick={() => setIsCreateModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
+            {t('dashboard.webhooks.add_endpoint', 'إضافة نقطة اتصال')}
+          </Button>
+        </div>
+      </section>
 
       {testStatus && (
         <div className="p-3 rounded-xl bg-[#0D1320] border border-[#22D3EE]/40 text-xs font-mono text-[#22D3EE] flex items-center gap-2 animate-in fade-in">
