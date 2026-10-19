@@ -55,12 +55,12 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   ];
 
   const sidebarContent = (
-    <div className="w-64 border-r rtl:border-r-0 rtl:border-l border-white/5 bg-[#080B12] flex flex-col justify-between shrink-0 h-full min-h-0 overflow-y-auto overscroll-contain">
+    <div className="w-[17rem] border-r rtl:border-r-0 rtl:border-l border-white/[0.08] bg-[#090D15]/95 flex flex-col justify-between shrink-0 h-full min-h-0 overflow-y-auto overscroll-contain">
       {/* Brand Top */}
       <div>
-        <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between">
+        <div className="h-[4.5rem] px-6 border-b border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-[#0D1320] border border-white/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6C63F5]/20 to-[#43D9E8]/10 border border-[#43D9E8]/20 flex items-center justify-center shadow-lg shadow-black/20">
               <Cpu className="w-4 h-4 text-[#22D3EE]" />
             </div>
             <div>
@@ -84,7 +84,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         </div>
 
         {/* Nav Links */}
-        <div className="p-3 space-y-1">
+        <div className="p-4 space-y-1.5">
           <div className="px-3 py-2 text-[10px] font-mono uppercase text-[#94A3B8] font-bold tracking-wider text-start">
             {t('dashboard.sidebar.risk_platform', 'إدارة المتجر')}
           </div>
@@ -98,10 +98,10 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   onSelectTab(item.id);
                   if (onCloseMobile) onCloseMobile();
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all text-start ${
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium transition-all text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#43D9E8] ${
                   isActive
-                    ? 'bg-[#0D1320] text-white border border-[#22D3EE]/30 shadow-lg shadow-[#22D3EE]/5 font-semibold'
-                    : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
+                    ? 'bg-gradient-to-r from-[#6C63F5]/15 to-[#43D9E8]/[0.06] text-white border border-[#6C63F5]/30 shadow-sm font-semibold'
+                    : 'text-[#A1AEC1] hover:text-white hover:bg-white/[0.045] active:bg-white/[0.08]'
                 }`}
               >
                 <span className={isActive ? 'text-[#22D3EE]' : 'text-[#94A3B8]'}>
@@ -115,14 +115,14 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       </div>
 
       {/* Bottom Actions */}
-      <div className="p-4 border-t border-white/5 space-y-3 shrink-0">
+      <div className="p-4 border-t border-white/[0.08] space-y-3 shrink-0">
         {/* Language selector in sidebar */}
         <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#0D1320] border border-white/5 text-xs font-mono">
           <span className="text-[#94A3B8] text-[11px]">{t('language.select', 'Language')}:</span>
           <LanguageSwitcher variant="dropdown" align="start" />
         </div>
 
-        <div className="p-3 rounded-xl bg-[#0D1320] border border-white/5 text-[11px] text-[#94A3B8] space-y-1.5 text-start">
+        <div className="p-4 rounded-xl bg-[#101827] border border-white/[0.08] text-[11px] text-[#A1AEC1] space-y-1.5 text-start">
           <div className="font-semibold text-white">{t('dashboard.sidebar.store_workspace', 'مساحة عمل المتجر')}</div>
           <div className="leading-relaxed">{t('dashboard.sidebar.store_workspace_hint', 'تابع الطلبات وسجّل نتائج التواصل من صفحة الطلبات.')}</div>
         </div>
