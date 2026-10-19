@@ -91,7 +91,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
   };
 
   return (
-    <div className="flex h-[100dvh] min-h-0 bg-[#080B12] text-[#F8FAFC] overflow-hidden">
+    <div className="dashboard-shell flex h-[100dvh] min-h-0 text-[#F1F5F9] overflow-hidden">
       {/* Sidebar (Desktop + Mobile Drawer) */}
       <DashboardSidebar
         activeTab={activeTab}
