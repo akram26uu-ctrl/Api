@@ -72,8 +72,8 @@ export const RulesEngineView: React.FC = () => {
   if (!draft) return <div className="p-6"><div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-sm text-white">{error || t('dashboard.rules.unavailable', 'ملف المخاطر غير متاح.')}</div></div>;
 
   return (
-    <div className="p-6 space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0D1320] via-[#0D1320] to-[#111827] p-5 sm:p-6 shadow-2xl">
+    <div className="dashboard-content space-y-6 sm:space-y-8" dir={isRTL ? 'rtl' : 'ltr'}>
+      <section className="dashboard-panel relative overflow-hidden p-5 sm:p-6">
         <div className="absolute -top-20 -end-10 h-44 w-44 rounded-full bg-violet-500/10 blur-3xl" />
         <div className="relative flex flex-col xl:flex-row xl:items-center justify-between gap-5">
           <div className="flex items-start gap-4">
@@ -98,7 +98,7 @@ export const RulesEngineView: React.FC = () => {
       {error && <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-xs text-red-300">{error}</div>}
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-white/10 bg-[#0D1320] p-5">
+        <div className="dashboard-panel p-5">
           <div className="flex items-center gap-2 text-[#22D3EE]"><Gauge className="w-4 h-4" /><span className="text-xs font-semibold text-white">{t('dashboard.rules.decision_model', 'منطق القرار')}</span></div>
           <div className="mt-4 flex items-end gap-2"><span className="text-3xl font-bold text-white">{draft.review_threshold}</span><span className="pb-1 text-xs text-[#64748B]">REVIEW</span><span className="mx-1 pb-1 text-[#334155]">→</span><span className="text-3xl font-bold text-white">{draft.reject_threshold}</span><span className="pb-1 text-xs text-[#64748B]">REJECT</span></div>
           {!thresholdValid && <div className="mt-3 text-[11px] text-red-300 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" />{t('dashboard.rules.threshold_invalid', 'يجب أن تكون REVIEW أقل من REJECT.')}</div>}
@@ -115,7 +115,7 @@ export const RulesEngineView: React.FC = () => {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-[#0D1320] overflow-hidden shadow-2xl">
+      <section className="dashboard-panel overflow-hidden">
         <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between gap-4">
           <div><h3 className="text-sm font-semibold text-white">{t('dashboard.rules.signal_weights', 'أوزان إشارات المخاطر')}</h3><p className="mt-1 text-[11px] text-[#64748B]">{t('dashboard.rules.signal_weights_desc', 'كل قيمة تمثل مقدار مساهمة الإشارة في درجة المخاطر عند تحققها.')}</p></div>
           <span className="hidden sm:inline text-[10px] text-[#64748B] font-mono">0 — 100</span>
@@ -123,9 +123,9 @@ export const RulesEngineView: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/5">
           {RULES.map(([key, label, description]) => {
             const value = Number(draft[key] ?? 0);
-            return <div key={key} className="bg-[#0D1320] p-4 sm:p-5 hover:bg-[#101827] transition-colors">
+            return <div key={key} className="bg-[#101827]/65 p-4 sm:p-5 hover:bg-[#142033] transition-colors">
               <div className="flex items-start justify-between gap-3"><div><div className="text-xs font-semibold text-white">{label}</div><div className="mt-1 text-[10px] text-[#64748B]">{description}</div></div><span className={`min-w-10 text-center rounded-lg border px-2 py-1 text-xs font-bold ${value === 0 ? 'border-white/10 text-[#64748B]' : 'border-[#22D3EE]/15 bg-[#22D3EE]/5 text-[#67E8F9]'}`}>{value}</span></div>
-              <div className="mt-4 flex items-center gap-3"><input aria-label={label} type="range" min={0} max={100} value={value} onChange={e => setValue(key, Number(e.target.value))} className="flex-1 accent-cyan-400" /><input aria-label={`${label} value`} type="number" min={0} max={100} value={value} onChange={e => setValue(key, Number(e.target.value))} className="w-16 rounded-lg bg-[#080B12] border border-white/10 px-2 py-1.5 text-center text-xs text-white font-mono focus:outline-none focus:border-[#22D3EE]" /></div>
+              <div className="mt-4 flex items-center gap-3"><input aria-label={label} type="range" min={0} max={100} value={value} onChange={e => setValue(key, Number(e.target.value))} className="flex-1 accent-cyan-400" /><input aria-label={`${label} value`} type="number" min={0} max={100} value={value} onChange={e => setValue(key, Number(e.target.value))} className="w-16 min-h-11 rounded-lg bg-[#080B12] border border-white/[0.12] px-2 py-2 text-center text-sm text-white font-mono focus:outline-none focus:border-[#43D9E8] focus:ring-2 focus:ring-[#43D9E8]/15" /></div>
             </div>;
           })}
         </div>

@@ -76,9 +76,9 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="dashboard-content space-y-6 sm:space-y-8">
       {/* Top Banner */}
-      <div className="bg-[#0D1320] border border-white/10 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-start">
+      <div className="dashboard-panel p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-start">
         <div>
           <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
             <Key className="w-4 h-4 text-[#22D3EE]" />
@@ -107,7 +107,7 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
         description={t('dashboard.apikeys.secret_modal_desc', 'Please copy your secret key right now. For security purposes, you will never see it again.')}
       >
         <div className="space-y-4 text-xs font-mono text-start">
-          <div className="p-3.5 bg-[#080B12] border border-[#22D3EE]/40 rounded-xl text-[#22D3EE] font-bold break-all select-all flex items-center justify-between gap-3" dir="ltr">
+          <div className="p-3.5 bg-[#080B12] border border-[#43D9E8]/30 rounded-xl text-[#67E8F9] font-bold break-all select-all flex items-center justify-between gap-3" dir="ltr">
             <span>{createdSecret}</span>
             <button
               onClick={copySecret}
@@ -170,10 +170,10 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
           icon={<Key className="w-8 h-8 text-[#94A3B8]" />}
         />
       ) : (
-        <div className="bg-[#0D1320] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-          <table className="w-full text-start border-collapse text-xs font-mono">
+        <div className="dashboard-panel overflow-hidden">
+          <div className="overflow-x-auto"><table className="min-w-[760px] w-full text-start border-collapse text-xs font-mono">
             <thead>
-              <tr className="border-b border-white/5 bg-[#080B12]/60 text-[11px] text-[#94A3B8] uppercase">
+              <tr className="border-b border-white/[0.08] bg-[#101827] text-[11px] text-[#A1AEC1] uppercase">
                 <th className="py-3 px-4 text-start">{t('dashboard.apikeys.key_name', 'الاسم')}</th>
                 <th className="py-3 px-4 text-start">{t('dashboard.apikeys.secret_token', 'المفتاح')}</th>
                 <th className="py-3 px-4 text-start">{t('dashboard.apikeys.created', 'تاريخ الإنشاء')}</th>
@@ -220,7 +220,7 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
@@ -239,7 +239,7 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
               placeholder="e.g., Shopify Checkout Backend, Cloudflare Worker"
               value={newKeyName}
               onChange={e => setNewKeyName(e.target.value)}
-              className="w-full bg-[#080B12] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-[#22D3EE]"
+              className="w-full min-h-11 bg-[#080B12] border border-white/[0.12] rounded-lg p-3 text-white focus:outline-none focus:border-[#43D9E8] focus:ring-2 focus:ring-[#43D9E8]/15"
             />
           </div>
 
