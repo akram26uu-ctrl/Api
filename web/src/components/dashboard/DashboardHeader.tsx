@@ -6,7 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AccountSettingsUpdate, AuthSession, Environment, Store } from '../../lib/api/types';
-import { Menu, ChevronDown, User, Settings, LogOut, LockKeyhole, Building2, Mail, Save, ShieldCheck, Store as StoreIcon, Settings2 } from 'lucide-react';
+import { PanelLeft, ChevronDown, User, Settings, LogOut, LockKeyhole, Building2, Mail, Save, ShieldCheck, Store as StoreIcon, Settings2 } from 'lucide-react';
 import { authApi, SessionInfo } from '../../lib/api/auth';
 import { Button } from '../common/Button';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
@@ -84,28 +84,28 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'OP';
 
   return (
-    <header className="sticky top-0 z-40 h-16 border-b border-white/5 bg-[#080B12]/95 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between gap-2">
-      {/* Left: Mobile Menu & Title & Live Indicator */}
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="sticky top-0 z-40 min-h-16 border-b border-white/5 bg-[#080B12]/95 backdrop-blur-xl px-2 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-3">
+      {/* Left: Mobile sidebar control, optional desktop title, and store selector */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         {onToggleMobileSidebar && (
           <button
             onClick={onToggleMobileSidebar}
-            className="lg:hidden p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5 shrink-0"
+            className="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5 shrink-0"
             aria-label="Toggle navigation menu"
           >
-            <Menu className="w-5 h-5" />
+            <PanelLeft className="w-5 h-5" strokeWidth={1.8} />
           </button>
         )}
 
-        <h1 className="text-sm sm:text-base font-semibold text-white tracking-tight truncate">
+        <h1 className="hidden lg:block text-sm sm:text-base font-semibold text-white tracking-tight truncate">
           {title}
         </h1>
 
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           <span className="hidden sm:inline text-[10px] text-[#64748B]">{t('dashboard.header.store_label', 'المتجر')}</span>
-          <div className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#0D1320] px-1.5 py-1">
+          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-[#0D1320] px-1 sm:px-1.5 py-1 min-w-0 max-w-[min(42vw,13rem)] sm:max-w-none">
             <StoreIcon className="w-3.5 h-3.5 text-[#22D3EE] shrink-0" />
-            <select disabled={!stores.length} value={selectedStoreId || ''} onChange={e => onStoreChange(e.target.value)} className="max-w-[170px] bg-transparent px-1 text-xs text-white outline-none disabled:text-[#64748B]">
+            <select disabled={!stores.length} value={selectedStoreId || ''} onChange={e => onStoreChange(e.target.value)} className="w-[min(25vw,6.5rem)] sm:w-auto sm:max-w-[170px] bg-transparent px-0.5 sm:px-1 text-xs text-white outline-none disabled:text-[#64748B] truncate">
               {stores.length ? stores.map(store => <option key={store.id} value={store.id}>{store.name}</option>) : <option value="">{t('dashboard.header.no_store', 'لا يوجد متجر')}</option>}
             </select>
             <button type="button" onClick={onManageStores} className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5" aria-label={t('dashboard.header.manage_stores', 'إدارة المتاجر')} title={t('dashboard.header.manage_stores', 'إدارة المتاجر')}>
@@ -116,11 +116,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       </div>
 
       {/* Right: Notifications, Language & Account */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         {selectedStoreId && <NotificationsCenter environment={environment} />}
 
         {/* Language Switcher in Header */}
-        <div className="flex items-center ps-2 border-s border-white/10 shrink-0">
+        <div className="flex items-center ps-1 sm:ps-2 border-s border-white/10 shrink-0">
           <LanguageSwitcher variant="dropdown" align="end" />
         </div>
 
