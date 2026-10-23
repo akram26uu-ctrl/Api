@@ -1,9 +1,12 @@
+import asyncio
 import logging
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.v1.router import router as api_router
@@ -28,6 +31,9 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.enable_docs else None,
 )
 
+# Compress sizable JSON responses while leaving small health checks untouched.
+app.add_middleware(GZipMiddleware, minimum_size=500, compresslevel=5)
+
 allowed_hosts = [item.strip() for item in settings.allowed_hosts.split(",") if item.strip()]
 if allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
@@ -50,6 +56,7 @@ if allowed_origins:
             "X-Ordium-Client-Version",
             "X-Ordium-Environment",
         ],
+        expose_headers=["X-Request-ID"],
     )
 
 # Custom middleware is registered in reverse execution order so logging is outermost,
@@ -81,8 +88,16 @@ def healthz():
 
 
 @app.get("/readyz", tags=["System"])
-def readyz():
-    if not test_database_connection():
+async def readyz():
+    # A slow database must not stall the event loop or hold a readiness probe open.
+    try:
+        database_ready = await asyncio.wait_for(
+            run_in_threadpool(test_database_connection),
+            timeout=2.0,
+        )
+    except TimeoutError:
+        database_ready = False
+    if not database_ready:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "not_ready"},
