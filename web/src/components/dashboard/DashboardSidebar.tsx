@@ -1,10 +1,10 @@
 /** ORDIUM Dashboard Sidebar Navigation */
 import React, { useEffect, useRef } from 'react';
-import { LayoutDashboard, ShoppingCart, ClipboardCheck, Network, Zap, Sliders, Webhook, Key, BarChart3, Cpu, X } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, ClipboardCheck, Network, Zap, Sliders, Webhook, Key, BarChart3, Cpu, X, Link2 } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 
-export type DashboardTab = 'overview' | 'confirmation' | 'orders' | 'network' | 'simulator' | 'rules' | 'webhooks' | 'apikeys' | 'usage';
+export type DashboardTab = 'overview' | 'confirmation' | 'orders' | 'network' | 'simulator' | 'rules' | 'integrations' | 'webhooks' | 'apikeys' | 'usage';
 
 interface DashboardSidebarProps {
   activeTab: DashboardTab;
@@ -49,7 +49,8 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ activeTab, o
     { id: 'network' as DashboardTab, label: t('dashboard.sidebar.network', 'تحليل المخاطر'), icon: <Network className="w-4 h-4" /> },
     { id: 'simulator' as DashboardTab, label: t('dashboard.sidebar.simulator', 'طلب تجريبي'), icon: <Zap className="w-4 h-4" /> },
     { id: 'rules' as DashboardTab, label: t('dashboard.sidebar.rules', 'قواعد المخاطر'), icon: <Sliders className="w-4 h-4" /> },
-    { id: 'webhooks' as DashboardTab, label: t('dashboard.sidebar.webhooks', 'تكاملات المتجر'), icon: <Webhook className="w-4 h-4" /> },
+    { id: 'integrations' as DashboardTab, label: t('dashboard.sidebar.integrations', 'ربط المتجر'), icon: <Link2 className="w-4 h-4" /> },
+    { id: 'webhooks' as DashboardTab, label: t('dashboard.sidebar.webhooks', 'إشعارات الأنظمة'), icon: <Webhook className="w-4 h-4" /> },
     { id: 'apikeys' as DashboardTab, label: t('dashboard.sidebar.apikeys', 'إعدادات الربط'), icon: <Key className="w-4 h-4" /> },
     { id: 'usage' as DashboardTab, label: t('dashboard.sidebar.usage', 'الاستخدام'), icon: <BarChart3 className="w-4 h-4" /> }
   ];
