@@ -106,6 +106,48 @@ The database migration is `a9d3f6c1e820_add_store_integrations.py`; deploy it wi
 
 This is the backend foundation, not yet a complete marketplace app-install flow. The dashboard connect wizard, one-time plugin pairing/OAuth flows, and provider-specific payload/signature verification must be implemented and tested before listing Shopify, WooCommerce, YouCan, or other plugins publicly. In particular, verify each provider's official webhook signature header, event shape, retry behavior, and app-review requirements; do not treat the shared receiver alone as proof that a platform adapter is production-ready.
 
+### Connect a custom or self-hosted store
+
+A store built in-house, hosted on an unfamiliar platform, or lacking an ORDIUM plugin can send order-created webhooks to the generic adapter:
+
+- Create a connection with `POST /api/v1/integrations/connections`, using `platform: "custom"`, the ORDIUM `store_id`, a stable unique `external_store_id` (for example, the store's domain), and a readable `display_name`. The API key must have `keys:manage`.
+- Save the returned `webhook_url` and `webhook_secret` securely. The secret is only returned when the connection is created; ORDIUM stores it encrypted.
+- Configure the store to send an HTTP POST with JSON to that URL on order creation. Sign the exact raw request body using HMAC-SHA256 and the webhook secret. Send the digest as hex or Base64 in `X-ORDIUM-Signature`; the optional `sha256=` prefix is accepted. The body must not be re-serialized after signing.
+- Identify the event as `order.created` in the JSON `event` field or the `X-ORDIUM-Topic` header. Send a stable delivery ID in `X-ORDIUM-Event-ID` where possible so retries can be deduplicated.
+- Send this canonical payload shape (providers may transform their native order into this shape before sending):
+
+```json
+{
+  "event": "order.created",
+  "event_id": "delivery-123",
+  "data": {
+    "id": "STORE-ORDER-123",
+    "customer": {
+      "first_name": "Ali",
+      "last_name": "Bena",
+      "phone": "0550123456"
+    },
+    "shipping_address": {
+      "wilaya": "Alger",
+      "commune": "Bab El Oued",
+      "address": "12 Rue Exemple"
+    },
+    "total_price": "4200.00",
+    "currency": "DZD",
+    "items": [
+      {
+        "name": "Product",
+        "sku": "SKU-001",
+        "quantity": 2,
+        "unit_price": "2100.00"
+      }
+    ]
+  }
+}
+```
+
+The generic adapter still applies ORDIUM's existing order validation: currently Algerian phone numbers, a valid customer name, wilaya, commune, delivery address, a positive total, and `DZD` currency are required. Other currencies and store-specific field names must be mapped before sending. This provides a standard webhook path, not automatic compatibility with every provider's native payload; a platform-specific connector or small transformation layer may still be needed.
+
 ## Shopify and Omniterra inbound webhooks
 
 ORDIUM exposes server-to-server intake endpoints:
