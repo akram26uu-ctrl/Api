@@ -264,6 +264,14 @@ async def receive_store_webhook(
     if not _verify_signature(raw_body, signature, secret):
         raise HTTPException(401, "Invalid store webhook signature")
 
+    # Shopify app webhooks use an app-level secret, shared across shops.
+    # Bind the signed delivery to the shop registered on this connection.
+    if platform == "shopify":
+        supplied_domain = (request.headers.get("X-Shopify-Shop-Domain") or "").strip().lower().rstrip(".")
+        registered_domain = integration.external_store_id.strip().lower().rstrip(".")
+        if not supplied_domain or not hmac.compare_digest(supplied_domain, registered_domain):
+            raise HTTPException(403, "Shopify webhook domain does not match this integration")
+
     try:
         payload = json.loads(raw_body)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
