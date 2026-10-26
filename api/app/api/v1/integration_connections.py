@@ -19,7 +19,7 @@ from app.models.store_integration import StoreIntegration
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/integrations", tags=["Store integrations"])
-SUPPORTED_PLATFORMS = {"omniterra", "shopify", "woocommerce", "youcan"}
+SUPPORTED_PLATFORMS = {"omniterra", "shopify", "woocommerce", "youcan", "custom"}
 
 
 def _cipher() -> Fernet:
@@ -117,7 +117,7 @@ def create_connection(
     current: ApiKey = Depends(require_api_scope("keys:manage")),
 ):
     if data.platform not in SUPPORTED_PLATFORMS:
-        raise HTTPException(422, "Unsupported platform. Supported platforms: omniterra, shopify, woocommerce, youcan")
+        raise HTTPException(422, "Unsupported platform. Supported platforms: omniterra, shopify, woocommerce, youcan, custom")
     store = db.query(Store).filter(
         Store.id == data.store_id,
         Store.merchant_id == current.merchant_id,
@@ -257,6 +257,8 @@ async def receive_store_webhook(
         "shopify": ("X-Shopify-Hmac-Sha256",),
         "woocommerce": ("X-WC-Webhook-Signature",),
         "youcan": ("X-YouCan-Hmac-Sha256", "X-YouCan-Signature"),
+        # Generic/custom stores use the raw-body HMAC contract documented in README.
+        "custom": ("X-ORDIUM-Signature",),
     }[platform]
     signature = next((request.headers.get(name) for name in signature_headers if request.headers.get(name)), None)
     if not _verify_signature(raw_body, signature, secret):
@@ -275,6 +277,7 @@ async def receive_store_webhook(
         or request.headers.get("X-NDC-Topic")
         or request.headers.get("X-Shopify-Topic")
         or request.headers.get("X-WC-Webhook-Topic")
+        or request.headers.get("X-ORDIUM-Topic")
         or ""
     ).strip().lower()
     allowed_topics = {
@@ -285,6 +288,7 @@ async def receive_store_webhook(
         # entry previously masked the missing "order_created" topic.
         "woocommerce": {"order.created", "order_created", "woocommerce_order_created"},
         "youcan": {"order.created", "orders/create", "order_created"},
+        "custom": {"order.created", "orders/create", "order_created"},
     }[platform]
     if topic not in allowed_topics:
         raise HTTPException(400, "Unsupported or missing order-created event topic")
@@ -302,6 +306,9 @@ async def receive_store_webhook(
         or request.headers.get("X-NDC-Webhook-Id")
         or request.headers.get("X-Shopify-Webhook-Id")
         or request.headers.get("X-WC-Webhook-ID")
+        or request.headers.get("X-ORDIUM-Event-ID")
+        or request.headers.get("X-ORDIUM-Event")
+        or payload.get("event_id")
         or payload.get("webhook_id")
         or f"{platform}:{external_order_id}"
     )
