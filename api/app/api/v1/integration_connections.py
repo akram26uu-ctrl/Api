@@ -52,6 +52,12 @@ def _verify_signature(body: bytes, supplied: str | None, secret: str) -> bool:
     return any(hmac.compare_digest(normalized, candidate) for candidate in candidates)
 
 
+def _shopify_domain_matches(registered_domain: str, supplied_domain: str | None) -> bool:
+    registered = registered_domain.strip().lower().rstrip(".")
+    supplied = (supplied_domain or "").strip().lower().rstrip(".")
+    return bool(registered and supplied) and hmac.compare_digest(registered, supplied)
+
+
 class IntegrationCreate(BaseModel):
     store_id: UUID
     platform: str = Field(min_length=2, max_length=40, pattern=r"^[a-z][a-z0-9_-]*$")
@@ -267,9 +273,10 @@ async def receive_store_webhook(
     # Shopify app webhooks use an app-level secret, shared across shops.
     # Bind the signed delivery to the shop registered on this connection.
     if platform == "shopify":
-        supplied_domain = (request.headers.get("X-Shopify-Shop-Domain") or "").strip().lower().rstrip(".")
-        registered_domain = integration.external_store_id.strip().lower().rstrip(".")
-        if not supplied_domain or not hmac.compare_digest(supplied_domain, registered_domain):
+        if not _shopify_domain_matches(
+            integration.external_store_id,
+            request.headers.get("X-Shopify-Shop-Domain"),
+        ):
             raise HTTPException(403, "Shopify webhook domain does not match this integration")
 
     try:
