@@ -299,8 +299,8 @@
     "badge": "تجربة المطورين أولاً",
     "title": "مصمم للمطورين.",
     "subtitle": "أرسل طلب REST واحصل على استجابة JSON تعرض درجة المخاطر والقرار ومؤشرات الفحص.",
-    "request_payload": "حمولة الطلب (Request Payload)",
-    "eval_response": "استجابة التقييم (HTTP 200 OK)",
+    "request_payload": "بيانات الطلب المرسلة (Request Payload)",
+    "eval_response": "نتيجة الفحص (HTTP 200 OK)",
     "copy_curl": "نسخ أمر cURL",
     "view_full_docs": "عرض المرجع الكامل للـ API"
   },
