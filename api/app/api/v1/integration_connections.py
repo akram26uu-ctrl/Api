@@ -316,15 +316,17 @@ async def receive_store_webhook(
         raise HTTPException(422, "Webhook payload is missing the external order ID")
 
     from app.api.v1.integrations import _ingest
+    # Prefer a delivery/event ID. WooCommerce's X-WC-Webhook-ID identifies
+    # the webhook configuration and may be reused for many different orders;
+    # never use that static configuration ID as the idempotency key.
     stable_event_id = (
         request.headers.get("X-Omniterra-Webhook-Id")
         or request.headers.get("X-NDC-Webhook-Id")
         or request.headers.get("X-Shopify-Webhook-Id")
-        or request.headers.get("X-WC-Webhook-ID")
+        or request.headers.get("X-WC-Webhook-Delivery-ID")
         or request.headers.get("X-ORDIUM-Event-ID")
-        or request.headers.get("X-ORDIUM-Event")
         or payload.get("event_id")
-        or payload.get("webhook_id")
+        or payload.get("delivery_id")
         or f"{platform}:{external_order_id}"
     )
     # _ingest owns a separate DB session for order creation; this session only tracks connection metadata.
