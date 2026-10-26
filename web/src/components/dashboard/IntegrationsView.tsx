@@ -66,11 +66,11 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ storeId }) =
       const items = await ordiumClient.getIntegrationConnections();
       setConnections(items.filter(item => item.store_id === storeId));
     } catch (error) {
-      setLoadError((error as Error)?.message || t('dashboard.integrations.load_error', 'تعذر تحميل روابط المتجر.'));
+      setLoadError((error as Error)?.message || 'Unable to load store connections.');
     } finally {
       setLoading(false);
     }
-  }, [storeId, t]);
+  }, [storeId]);
 
   useEffect(() => { void fetchConnections(); }, [fetchConnections]);
 
