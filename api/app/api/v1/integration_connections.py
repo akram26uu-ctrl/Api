@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import secrets
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -56,6 +57,27 @@ def _shopify_domain_matches(registered_domain: str, supplied_domain: str | None)
     registered = registered_domain.strip().lower().rstrip(".")
     supplied = (supplied_domain or "").strip().lower().rstrip(".")
     return bool(registered and supplied) and hmac.compare_digest(registered, supplied)
+
+
+def _stable_event_id(
+    platform: str,
+    headers: Mapping[str, str],
+    payload: dict,
+    external_order_id: str,
+) -> str:
+    # Prefer a delivery/event ID. WooCommerce's X-WC-Webhook-ID identifies
+    # the webhook configuration and may be reused for many different orders;
+    # never use that static configuration ID as the idempotency key.
+    return (
+        headers.get("X-Omniterra-Webhook-Id")
+        or headers.get("X-NDC-Webhook-Id")
+        or headers.get("X-Shopify-Webhook-Id")
+        or headers.get("X-WC-Webhook-Delivery-ID")
+        or headers.get("X-ORDIUM-Event-ID")
+        or payload.get("event_id")
+        or payload.get("delivery_id")
+        or f"{platform}:{external_order_id}"
+    )
 
 
 class IntegrationCreate(BaseModel):
@@ -316,19 +338,7 @@ async def receive_store_webhook(
         raise HTTPException(422, "Webhook payload is missing the external order ID")
 
     from app.api.v1.integrations import _ingest
-    # Prefer a delivery/event ID. WooCommerce's X-WC-Webhook-ID identifies
-    # the webhook configuration and may be reused for many different orders;
-    # never use that static configuration ID as the idempotency key.
-    stable_event_id = (
-        request.headers.get("X-Omniterra-Webhook-Id")
-        or request.headers.get("X-NDC-Webhook-Id")
-        or request.headers.get("X-Shopify-Webhook-Id")
-        or request.headers.get("X-WC-Webhook-Delivery-ID")
-        or request.headers.get("X-ORDIUM-Event-ID")
-        or payload.get("event_id")
-        or payload.get("delivery_id")
-        or f"{platform}:{external_order_id}"
-    )
+    stable_event_id = _stable_event_id(platform, request.headers, payload, str(external_order_id))
     # _ingest owns a separate DB session for order creation; this session only tracks connection metadata.
     result = _ingest(
         order,
