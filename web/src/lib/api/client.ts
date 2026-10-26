@@ -7,7 +7,7 @@ import { CONTROL_PLANE_CONFIG } from './controlPlane';
 import {
   ApiErrorResponse, ApiKey, CreateOrderRequest, Environment, IdentityGraphData,
   MetricsSummary, Order, OrderListQuery, OrderOutcome, RiskAssessment, RiskCategoryBreakdown, RiskSignal, DashboardNotification, NotificationPage,
-  UsageQuota, WebhookDeliveryLog, WebhookEndpoint, Store, OrderStatus, OrderConfirmationAttempt, OrderConfirmationHistory, OrderConfirmationMetrics,
+  UsageQuota, WebhookDeliveryLog, WebhookEndpoint, Store, IntegrationConnection, CreatedIntegrationConnection, OrderStatus, OrderConfirmationAttempt, OrderConfirmationHistory, OrderConfirmationMetrics,
 } from './types';
 import { MockDatabase } from './mockDatabase';
 
@@ -177,6 +177,34 @@ class OrdiumClientService {
 
   async updateStore(id: string, payload: { name: string; is_active: boolean }): Promise<Store> {
     return ordiumFetch<Store>(`/stores/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) });
+  }
+
+  async getIntegrationConnections(): Promise<IntegrationConnection[]> {
+    return ordiumFetch<IntegrationConnection[]>('/integrations/connections');
+  }
+
+  async createIntegrationConnection(payload: {
+    store_id: string;
+    platform: 'custom' | 'woocommerce';
+    external_store_id: string;
+    display_name: string;
+  }): Promise<CreatedIntegrationConnection> {
+    return ordiumFetch<CreatedIntegrationConnection>('/integrations/connections', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async setIntegrationConnectionActive(id: string, active: boolean): Promise<IntegrationConnection> {
+    return ordiumFetch<IntegrationConnection>(
+      `/integrations/connections/${encodeURIComponent(id)}?active=${String(active)}`,
+      { method: 'PATCH' },
+    );
+  }
+
+  async deleteIntegrationConnection(id: string): Promise<boolean> {
+    await ordiumFetch<void>(`/integrations/connections/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    return true;
   }
 
   async getOrders(query: OrderListQuery & { status?: string } = {}): Promise<Order[]> {
