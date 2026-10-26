@@ -26,3 +26,12 @@ def test_shared_receiver_signature_verification_accepts_base64_and_hex():
     assert _verify_signature(body, digest.hex(), secret)
     assert not _verify_signature(body, digest.hex(), "incorrect-secret")
     assert not _verify_signature(body + b" ", digest.hex(), secret)
+
+
+def test_shopify_webhook_is_bound_to_registered_shop_domain():
+    from app.api.v1.integration_connections import _shopify_domain_matches
+
+    assert _shopify_domain_matches("shop.example.myshopify.com", "shop.example.myshopify.com")
+    assert _shopify_domain_matches("SHOP.EXAMPLE.MYSHOPIFY.COM", "shop.example.myshopify.com")
+    assert not _shopify_domain_matches("shop-a.myshopify.com", "shop-b.myshopify.com")
+    assert not _shopify_domain_matches("shop.example.myshopify.com", None)
