@@ -1,0 +1,155 @@
+name: ordium
+
+x-log-settings: &log-settings
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-api-environment: &api-environment
+  APP_NAME: "ORDIUM API"
+  APP_VERSION: "1.5.2"
+  ENVIRONMENT: "production"
+  DEBUG: "false"
+  DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.ec2}
+  SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env.ec2}
+  NETWORK_INTELLIGENCE_PROVIDER: ${NETWORK_INTELLIGENCE_PROVIDER:-ipqs}
+  IPQS_API_KEY: ${IPQS_API_KEY:-}
+  IPQS_TIMEOUT_SECONDS: ${IPQS_TIMEOUT_SECONDS:-1.5}
+  IPQS_CACHE_TTL_SECONDS: ${IPQS_CACHE_TTL_SECONDS:-3600}
+  IPQS_CACHE_MAX_ENTRIES: ${IPQS_CACHE_MAX_ENTRIES:-10000}
+  IPQS_STRICTNESS: ${IPQS_STRICTNESS:-1}
+  IPQS_MAX_CONCURRENT_LOOKUPS: ${IPQS_MAX_CONCURRENT_LOOKUPS:-20}
+  TRUSTED_PROXY_NETWORKS: ${TRUSTED_PROXY_NETWORKS:-}
+  ALLOWED_HOSTS: ${API_ALLOWED_HOSTS:-api,api.ordium.dev,localhost,127.0.0.1}
+  ENABLE_DOCS: "false"
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS in .env.ec2}
+  ORDIUM_INTERNAL_SHARED_SECRET: ${ORDIUM_INTERNAL_SHARED_SECRET:?Set ORDIUM_INTERNAL_SHARED_SECRET in .env.ec2}
+  SHOPIFY_WEBHOOK_SECRET: ${SHOPIFY_WEBHOOK_SECRET:-}
+  SHOPIFY_STORE_MAP: ${SHOPIFY_STORE_MAP:-}
+  OMNITERRA_WEBHOOK_SECRET: ${OMNITERRA_WEBHOOK_SECRET:-}
+  OMNITERRA_SIGNATURE_HEADER: ${OMNITERRA_SIGNATURE_HEADER:-X-Omniterra-Hmac-Sha256}
+  OMNITERRA_EVENT_ID_HEADER: ${OMNITERRA_EVENT_ID_HEADER:-X-Omniterra-Webhook-Id}
+  OMNITERRA_STORE_MAP: ${OMNITERRA_STORE_MAP:-}
+  MAX_REQUEST_BODY_BYTES: ${MAX_REQUEST_BODY_BYTES:-1048576}
+  LIVE_REQUESTS_PER_MINUTE: ${LIVE_REQUESTS_PER_MINUTE:-120}
+  TEST_REQUESTS_PER_MINUTE: ${TEST_REQUESTS_PER_MINUTE:-300}
+  LIVE_REQUESTS_PER_MINUTE_PER_MERCHANT: ${LIVE_REQUESTS_PER_MINUTE_PER_MERCHANT:-600}
+  TEST_REQUESTS_PER_MINUTE_PER_MERCHANT: ${TEST_REQUESTS_PER_MINUTE_PER_MERCHANT:-1500}
+  IDEMPOTENCY_TTL_SECONDS: ${IDEMPOTENCY_TTL_SECONDS:-86400}
+  DB_POOL_SIZE: ${DB_POOL_SIZE:-3}
+  DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-2}
+  DB_POOL_TIMEOUT_SECONDS: ${DB_POOL_TIMEOUT_SECONDS:-10}
+  DB_POOL_RECYCLE_SECONDS: ${DB_POOL_RECYCLE_SECONDS:-1800}
+
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: ordium-api:ec2
+    restart: unless-stopped
+    init: true
+    environment: *api-environment
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+    mem_limit: 1200m
+    stop_grace_period: 30s
+    logging: *log-settings
+
+  control-plane:
+    build:
+      context: ./control-plane
+      dockerfile: Dockerfile
+    image: ordium-control-plane:ec2
+    restart: unless-stopped
+    init: true
+    environment:
+      APP_NAME: "ORDIUM Control Plane"
+      APP_VERSION: "0.1.0"
+      ENVIRONMENT: "production"
+      DEBUG: "false"
+      WEB_DATABASE_URL: ${WEB_DATABASE_URL:?Set WEB_DATABASE_URL in .env.ec2 (separate from DATABASE_URL)}
+      ORDIUM_API_URL: "http://api:8000"
+      ORDIUM_INTERNAL_SHARED_SECRET: ${ORDIUM_INTERNAL_SHARED_SECRET:?Set ORDIUM_INTERNAL_SHARED_SECRET in .env.ec2}
+      SESSION_ENCRYPTION_KEY: ${SESSION_ENCRYPTION_KEY:?Set SESSION_ENCRYPTION_KEY in .env.ec2}
+      WEB_ORIGINS: ${WEB_ORIGINS:?Set WEB_ORIGINS in .env.ec2}
+      SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-86400}
+      COOKIE_SECURE: "true"
+      REQUIRE_EMAIL_VERIFICATION: "true"
+      EXPOSE_VERIFICATION_TOKEN: "false"
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?Set PUBLIC_BASE_URL in .env.ec2}
+      SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST in .env.ec2}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:?Set SMTP_USERNAME in .env.ec2}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?Set SMTP_PASSWORD in .env.ec2}
+      EMAIL_FROM: ${EMAIL_FROM:?Set EMAIL_FROM in .env.ec2}
+    expose:
+      - "8010"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+    mem_limit: 640m
+    stop_grace_period: 30s
+    logging: *log-settings
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    image: ordium-web:ec2
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: "production"
+      PORT: "8080"
+      ORDIUM_CONTROL_PLANE_URL: "http://control-plane:8010"
+      MAX_PROXY_BODY_BYTES: "1048576"
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+      control-plane:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/readyz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    mem_limit: 256m
+    stop_grace_period: 15s
+    logging: *log-settings
+
+  webhook-worker:
+    profiles:
+      - webhook-worker
+    image: ordium-api:ec2
+    restart: unless-stopped
+    init: true
+    command:
+      - sh
+      - -c
+      - while true; do python -m scripts.dispatch_webhooks || echo "Webhook batch failed; retrying"; sleep 10; done
+    environment: *api-environment
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    mem_limit: 640m
+    stop_grace_period: 30s
+    logging: *log-settings

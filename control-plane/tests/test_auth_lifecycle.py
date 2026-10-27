@@ -1,34 +1,45 @@
 from uuid import UUID
 
 import pytest
-
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
 from app.main import app
 from app.services.ordium_api import OrdiumProvisioningClient
-from app.services.email import send_verification_email
 
 
 @pytest.mark.parametrize(("environment", "token_exposed"), [("test", True), ("staging", False)])
 def test_email_verification_activates_account_and_creates_dashboard_session(monkeypatch, environment, token_exposed):
     captured = {}
-    old = settings.require_email_verification
-    old_environment = settings.environment
-    settings.require_email_verification = True
-    settings.environment = environment
+    monkeypatch.setattr(settings, "require_email_verification", True)
+    monkeypatch.setattr(settings, "environment", environment)
 
-    monkeypatch.setattr(OrdiumProvisioningClient, "provision_merchant", lambda self, **kwargs: UUID("00000000-0000-0000-0000-000000000011"))
+    # Each parametrized case must use unique persisted identifiers because both
+    # cases intentionally share the same isolated test database.
+    id_offset = 0 if environment == "test" else 0x10
+    merchant_id = UUID(int=0x11 + id_offset)
+    store_id = UUID(int=0x15 + id_offset)
+    test_key_id = UUID(int=0x12 + id_offset)
+    email = f"verify-{environment}@example.com"
+
+    monkeypatch.setattr(OrdiumProvisioningClient, "provision_merchant", lambda self, **kwargs: merchant_id)
     monkeypatch.setattr(OrdiumProvisioningClient, "activate_merchant", lambda self, merchant_id: None)
-    monkeypatch.setattr(OrdiumProvisioningClient, "ensure_store", lambda self, merchant_id: (UUID("00000000-0000-0000-0000-000000000015"), "Verify Store"))
-    monkeypatch.setattr(OrdiumProvisioningClient, "create_initial_test_key", lambda self, merchant_id: (UUID("00000000-0000-0000-0000-000000000012"), "ordium_test_initial"))
-    monkeypatch.setattr(OrdiumProvisioningClient, "create_dashboard_key", lambda self, merchant_id, environment="test": (UUID("00000000-0000-0000-0000-000000000013" if environment == "test" else "00000000-0000-0000-0000-000000000014"), f"ordium_{environment}_dashboard"))
+    monkeypatch.setattr(OrdiumProvisioningClient, "ensure_store", lambda self, merchant_id: (store_id, "Verify Store"))
+    monkeypatch.setattr(OrdiumProvisioningClient, "create_initial_test_key", lambda self, merchant_id: (test_key_id, "ordium_test_initial"))
+    monkeypatch.setattr(
+        OrdiumProvisioningClient,
+        "create_dashboard_key",
+        lambda self, merchant_id, environment="test": (
+            UUID(int=(0x13 if environment == "test" else 0x14) + id_offset),
+            f"ordium_{environment}_dashboard",
+        ),
+    )
     monkeypatch.setattr(OrdiumProvisioningClient, "revoke_api_key", lambda self, merchant_id, api_key_id: None)
     monkeypatch.setattr("app.api.auth.send_verification_email", lambda **kwargs: captured.update(kwargs))
 
     client = TestClient(app)
     response = client.post("/api/v1/auth/register", json={
-        "email": "verify@example.com",
+        "email": email,
         "password": "StrongPassword123",
         "first_name": "Verify",
         "last_name": "User",
@@ -37,7 +48,7 @@ def test_email_verification_activates_account_and_creates_dashboard_session(monk
     assert response.status_code == 201
     body = response.json()
     assert body["verification_required"] is True
-    assert captured["recipient"] == "verify@example.com"
+    assert captured["recipient"] == email
     email_token = captured["token"]
     assert (body["verification_token"] == email_token) is token_exposed
     if not token_exposed:
@@ -49,8 +60,6 @@ def test_email_verification_activates_account_and_creates_dashboard_session(monk
     assert verified.json().get("dashboard_api_key") is None
     assert verified.json().get("dashboard_api_keys") is None
 
-    settings.require_email_verification = old
-    settings.environment = old_environment
 
 def test_logout_clears_cookie_and_revokes_session():
     import hashlib
@@ -101,9 +110,7 @@ def test_logout_clears_cookie_and_revokes_session():
         db.close()
 
 
-
 def test_registration_rejects_whitespace_only_required_fields():
-    import pytest
     from pydantic import ValidationError
     from app.schemas.auth import RegisterRequest
 
