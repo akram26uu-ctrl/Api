@@ -20,6 +20,7 @@ _ALLOWED = (
     re.compile(r"^/api-keys(?:/[0-9a-fA-F-]{36}/(?:revoke|rotate))?$"),
     re.compile(r"^/stores(?:/[0-9a-fA-F-]{36})?$") ,
     re.compile(r"^/webhooks(?:/[0-9a-fA-F-]{36}/(?:disable|test))?$"),
+    re.compile(r"^/integrations/connections(?:/[0-9a-fA-F-]{36})?$"),
     re.compile(r"^/risk-profile$"),
     re.compile(r"^/usage$"),
     re.compile(r"^/risk-features$"),

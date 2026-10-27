@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import secrets
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -19,7 +20,7 @@ from app.models.store_integration import StoreIntegration
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/integrations", tags=["Store integrations"])
-SUPPORTED_PLATFORMS = {"omniterra", "shopify", "woocommerce", "youcan"}
+SUPPORTED_PLATFORMS = {"omniterra", "shopify", "woocommerce", "youcan", "custom"}
 
 
 def _cipher() -> Fernet:
@@ -50,6 +51,33 @@ def _verify_signature(body: bytes, supplied: str | None, secret: str) -> bool:
     if normalized.lower().startswith("sha256="):
         normalized = normalized.split("=", 1)[1]
     return any(hmac.compare_digest(normalized, candidate) for candidate in candidates)
+
+
+def _shopify_domain_matches(registered_domain: str, supplied_domain: str | None) -> bool:
+    registered = registered_domain.strip().lower().rstrip(".")
+    supplied = (supplied_domain or "").strip().lower().rstrip(".")
+    return bool(registered and supplied) and hmac.compare_digest(registered, supplied)
+
+
+def _stable_event_id(
+    platform: str,
+    headers: Mapping[str, str],
+    payload: dict,
+    external_order_id: str,
+) -> str:
+    # Prefer a delivery/event ID. WooCommerce's X-WC-Webhook-ID identifies
+    # the webhook configuration and may be reused for many different orders;
+    # never use that static configuration ID as the idempotency key.
+    return (
+        headers.get("X-Omniterra-Webhook-Id")
+        or headers.get("X-NDC-Webhook-Id")
+        or headers.get("X-Shopify-Webhook-Id")
+        or headers.get("X-WC-Webhook-Delivery-ID")
+        or headers.get("X-ORDIUM-Event-ID")
+        or payload.get("event_id")
+        or payload.get("delivery_id")
+        or f"{platform}:{external_order_id}"
+    )
 
 
 class IntegrationCreate(BaseModel):
@@ -117,7 +145,7 @@ def create_connection(
     current: ApiKey = Depends(require_api_scope("keys:manage")),
 ):
     if data.platform not in SUPPORTED_PLATFORMS:
-        raise HTTPException(422, "Unsupported platform. Supported platforms: omniterra, shopify, woocommerce, youcan")
+        raise HTTPException(422, "Unsupported platform. Supported platforms: omniterra, shopify, woocommerce, youcan, custom")
     store = db.query(Store).filter(
         Store.id == data.store_id,
         Store.merchant_id == current.merchant_id,
@@ -257,10 +285,21 @@ async def receive_store_webhook(
         "shopify": ("X-Shopify-Hmac-Sha256",),
         "woocommerce": ("X-WC-Webhook-Signature",),
         "youcan": ("X-YouCan-Hmac-Sha256", "X-YouCan-Signature"),
+        # Generic/custom stores use the raw-body HMAC contract documented in README.
+        "custom": ("X-ORDIUM-Signature",),
     }[platform]
     signature = next((request.headers.get(name) for name in signature_headers if request.headers.get(name)), None)
     if not _verify_signature(raw_body, signature, secret):
         raise HTTPException(401, "Invalid store webhook signature")
+
+    # Shopify app webhooks use an app-level secret, shared across shops.
+    # Bind the signed delivery to the shop registered on this connection.
+    if platform == "shopify":
+        if not _shopify_domain_matches(
+            integration.external_store_id,
+            request.headers.get("X-Shopify-Shop-Domain"),
+        ):
+            raise HTTPException(403, "Shopify webhook domain does not match this integration")
 
     try:
         payload = json.loads(raw_body)
@@ -275,6 +314,7 @@ async def receive_store_webhook(
         or request.headers.get("X-NDC-Topic")
         or request.headers.get("X-Shopify-Topic")
         or request.headers.get("X-WC-Webhook-Topic")
+        or request.headers.get("X-ORDIUM-Topic")
         or ""
     ).strip().lower()
     allowed_topics = {
@@ -285,6 +325,7 @@ async def receive_store_webhook(
         # entry previously masked the missing "order_created" topic.
         "woocommerce": {"order.created", "order_created", "woocommerce_order_created"},
         "youcan": {"order.created", "orders/create", "order_created"},
+        "custom": {"order.created", "orders/create", "order_created"},
     }[platform]
     if topic not in allowed_topics:
         raise HTTPException(400, "Unsupported or missing order-created event topic")
@@ -297,14 +338,7 @@ async def receive_store_webhook(
         raise HTTPException(422, "Webhook payload is missing the external order ID")
 
     from app.api.v1.integrations import _ingest
-    stable_event_id = (
-        request.headers.get("X-Omniterra-Webhook-Id")
-        or request.headers.get("X-NDC-Webhook-Id")
-        or request.headers.get("X-Shopify-Webhook-Id")
-        or request.headers.get("X-WC-Webhook-ID")
-        or payload.get("webhook_id")
-        or f"{platform}:{external_order_id}"
-    )
+    stable_event_id = _stable_event_id(platform, request.headers, payload, str(external_order_id))
     # _ingest owns a separate DB session for order creation; this session only tracks connection metadata.
     result = _ingest(
         order,

@@ -15,6 +15,7 @@ const IdentityNetworkView = lazy(() => import('./IdentityNetworkView').then(m =>
 const SimulatorView = lazy(() => import('./SimulatorView').then(m => ({ default: m.SimulatorView })));
 const RulesEngineView = lazy(() => import('./RulesEngineView').then(m => ({ default: m.RulesEngineView })));
 const WebhooksView = lazy(() => import('./WebhooksView').then(m => ({ default: m.WebhooksView })));
+const IntegrationsView = lazy(() => import('./IntegrationsView').then(m => ({ default: m.IntegrationsView })));
 const ApiKeysView = lazy(() => import('./ApiKeysView').then(m => ({ default: m.ApiKeysView })));
 const UsageView = lazy(() => import('./UsageView').then(m => ({ default: m.UsageView })));
 
@@ -23,7 +24,7 @@ interface DashboardLayoutProps {
   onLogout: () => void;
 }
 
-const DASHBOARD_TABS: DashboardTab[] = ['overview', 'confirmation', 'orders', 'network', 'simulator', 'rules', 'webhooks', 'apikeys', 'usage'];
+const DASHBOARD_TABS: DashboardTab[] = ['overview', 'confirmation', 'orders', 'network', 'simulator', 'rules', 'integrations', 'webhooks', 'apikeys', 'usage'];
 const isDashboardTab = (value: string): value is DashboardTab => DASHBOARD_TABS.includes(value as DashboardTab);
 const tabFromHash = (): DashboardTab => {
   if (typeof window === 'undefined') return 'overview';
@@ -109,7 +110,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
       case 'network': return t('dashboard.titles.network', 'تحليل المخاطر');
       case 'simulator': return t('dashboard.titles.simulator', 'طلب تجريبي');
       case 'rules': return t('dashboard.titles.rules', 'قواعد المخاطر');
-      case 'webhooks': return t('dashboard.titles.webhooks', 'تكاملات المتجر');
+      case 'integrations': return t('dashboard.titles.integrations', 'ربط المتجر');
+      case 'webhooks': return t('dashboard.titles.webhooks', 'إشعارات الأنظمة');
       case 'apikeys': return t('dashboard.titles.apikeys', 'إعدادات الربط');
       case 'usage': return t('dashboard.titles.usage', 'الاستخدام');
       default: return t('nav.console', 'لوحة التحكم');
@@ -135,6 +137,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
                 {activeTab === 'network' && <IdentityNetworkView />}
                 {activeTab === 'simulator' && <SimulatorView storeId={selectedStoreId} onOrderCreated={() => navigateTab('orders')} />}
                 {activeTab === 'rules' && <RulesEngineView />}
+                {activeTab === 'integrations' && <IntegrationsView storeId={selectedStoreId} />}
                 {activeTab === 'webhooks' && <WebhooksView />}
                 {activeTab === 'apikeys' && <ApiKeysView environment={environment} />}
                 {activeTab === 'usage' && <UsageView />}

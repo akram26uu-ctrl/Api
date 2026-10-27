@@ -70,20 +70,35 @@ def _money(value, label: str) -> Decimal:
 
 
 def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
-    customer = payload.get("customer") or {}
-    address = payload.get("shipping_address") or payload.get("shippingAddress") or payload.get("shipping") or {}
-    if not address and isinstance(payload.get("shipping_lines"), dict):
-        address = payload["shipping_lines"]
+    # Accommodate common native Shopify/YouCan-style fields and WooCommerce's
+    # billing/shipping shape. Prefer a real shipping address, falling back to
+    # billing only when the store did not provide a usable shipping address.
+    billing = payload.get("billing") if isinstance(payload.get("billing"), dict) else {}
+    customer = payload.get("customer") if isinstance(payload.get("customer"), dict) else {}
+    customer = customer or billing
+    address = (
+        payload.get("shipping_address")
+        or payload.get("shippingAddress")
+        or payload.get("shipping")
+        or payload.get("shipping_lines")
+        or {}
+    )
     if not isinstance(address, dict):
         address = {}
+    if not any(address.get(key) for key in ("address1", "address_1", "address", "street", "address_line1", "city", "commune", "town")):
+        address = billing or address
     first_name = address.get("first_name") or address.get("firstName") or customer.get("first_name") or customer.get("firstName")
     last_name = address.get("last_name") or address.get("lastName") or customer.get("last_name") or customer.get("lastName")
-    phone = address.get("phone") or customer.get("phone") or payload.get("phone")
-    city = address.get("city") or address.get("commune") or address.get("town")
-    province = address.get("province") or address.get("province_code") or address.get("wilaya") or address.get("state")
-    street = address.get("address1") or address.get("address") or address.get("street") or address.get("address_line1")
-    if address.get("address2"):
-        street = f"{street}, {address['address2']}" if street else address["address2"]
+    phone = address.get("phone") or customer.get("phone") or billing.get("phone") or payload.get("phone")
+    city = address.get("city") or address.get("commune") or address.get("town") or customer.get("city")
+    province = address.get("province") or address.get("province_code") or address.get("wilaya") or address.get("state") or customer.get("state")
+    street = (
+        address.get("address1") or address.get("address_1") or address.get("address")
+        or address.get("street") or address.get("address_line1")
+    )
+    address2 = address.get("address2") or address.get("address_2")
+    if address2:
+        street = f"{street}, {address2}" if street else address2
 
     currency = str(payload.get("currency") or payload.get("currency_code") or "DZD").upper()
     if currency != "DZD":

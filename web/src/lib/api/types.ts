@@ -7,6 +7,23 @@ export type Environment = 'live' | 'test';
 
 export interface Store { id: string; name: string; slug: string; is_active: boolean; created_at: string; order_count?: number; }
 
+export interface IntegrationConnection {
+  id: string;
+  store_id: string;
+  platform: string;
+  external_store_id: string;
+  display_name: string;
+  is_active: boolean;
+  webhook_url: string;
+  created_at: string;
+  last_event_at: string | null;
+}
+
+export interface CreatedIntegrationConnection extends IntegrationConnection {
+  webhook_secret?: string | null;
+  webhook_secret_note?: string;
+}
+
 export type RiskDecision = 'ALLOW' | 'REVIEW' | 'REJECT';
 
 export type SignalSeverity = 'low' | 'medium' | 'high' | 'critical';
