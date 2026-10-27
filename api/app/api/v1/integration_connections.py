@@ -59,6 +59,12 @@ def _shopify_domain_matches(registered_domain: str, supplied_domain: str | None)
     return bool(registered and supplied) and hmac.compare_digest(registered, supplied)
 
 
+def _ensure_store_scope(current: ApiKey, requested_store_id: UUID) -> None:
+    """Reject attempts to manage a store outside a store-scoped API key."""
+    if current.store_id is not None and requested_store_id != current.store_id:
+        raise HTTPException(403, "API key is restricted to its store")
+
+
 def _stable_event_id(
     platform: str,
     headers: Mapping[str, str],
@@ -153,8 +159,7 @@ def create_connection(
 ):
     if data.platform not in SUPPORTED_PLATFORMS:
         raise HTTPException(422, "Unsupported platform. Supported platforms: omniterra, shopify, woocommerce, youcan, custom")
-    if current.store_id is not None and data.store_id != current.store_id:
-        raise HTTPException(403, "API key is restricted to its store")
+    _ensure_store_scope(current, data.store_id)
     store = db.query(Store).filter(
         Store.id == data.store_id,
         Store.merchant_id == current.merchant_id,
