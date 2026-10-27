@@ -1,7 +1,6 @@
 from uuid import UUID
 
 import pytest
-
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
@@ -12,15 +11,29 @@ from app.services.ordium_api import OrdiumProvisioningClient
 @pytest.mark.parametrize(("environment", "token_exposed"), [("test", True), ("staging", False)])
 def test_email_verification_activates_account_and_creates_dashboard_session(monkeypatch, environment, token_exposed):
     captured = {}
-    settings.require_email_verification = True
-    settings.environment = environment
+    monkeypatch.setattr(settings, "require_email_verification", True)
+    monkeypatch.setattr(settings, "environment", environment)
+
+    # Each parametrized case must use unique persisted identifiers because both
+    # cases intentionally share the same isolated test database.
+    id_offset = 0 if environment == "test" else 0x10
+    merchant_id = UUID(int=0x11 + id_offset)
+    store_id = UUID(int=0x15 + id_offset)
+    test_key_id = UUID(int=0x12 + id_offset)
     email = f"verify-{environment}@example.com"
 
-    monkeypatch.setattr(OrdiumProvisioningClient, "provision_merchant", lambda self, **kwargs: UUID("00000000-0000-0000-0000-000000000011"))
+    monkeypatch.setattr(OrdiumProvisioningClient, "provision_merchant", lambda self, **kwargs: merchant_id)
     monkeypatch.setattr(OrdiumProvisioningClient, "activate_merchant", lambda self, merchant_id: None)
-    monkeypatch.setattr(OrdiumProvisioningClient, "ensure_store", lambda self, merchant_id: (UUID("00000000-0000-0000-0000-000000000015"), "Verify Store"))
-    monkeypatch.setattr(OrdiumProvisioningClient, "create_initial_test_key", lambda self, merchant_id: (UUID("00000000-0000-0000-0000-000000000012"), "ordium_test_initial"))
-    monkeypatch.setattr(OrdiumProvisioningClient, "create_dashboard_key", lambda self, merchant_id, environment="test": (UUID("00000000-0000-0000-0000-000000000013" if environment == "test" else "00000000-0000-0000-0000-000000000014"), f"ordium_{environment}_dashboard"))
+    monkeypatch.setattr(OrdiumProvisioningClient, "ensure_store", lambda self, merchant_id: (store_id, "Verify Store"))
+    monkeypatch.setattr(OrdiumProvisioningClient, "create_initial_test_key", lambda self, merchant_id: (test_key_id, "ordium_test_initial"))
+    monkeypatch.setattr(
+        OrdiumProvisioningClient,
+        "create_dashboard_key",
+        lambda self, merchant_id, environment="test": (
+            UUID(int=(0x13 if environment == "test" else 0x14) + id_offset),
+            f"ordium_{environment}_dashboard",
+        ),
+    )
     monkeypatch.setattr(OrdiumProvisioningClient, "revoke_api_key", lambda self, merchant_id, api_key_id: None)
     monkeypatch.setattr("app.api.auth.send_verification_email", lambda **kwargs: captured.update(kwargs))
 
