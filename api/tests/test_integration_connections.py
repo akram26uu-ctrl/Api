@@ -35,3 +35,31 @@ def test_shopify_webhook_is_bound_to_registered_shop_domain():
     assert _shopify_domain_matches("SHOP.EXAMPLE.MYSHOPIFY.COM", "shop.example.myshopify.com")
     assert not _shopify_domain_matches("shop-a.myshopify.com", "shop-b.myshopify.com")
     assert not _shopify_domain_matches("shop.example.myshopify.com", None)
+
+
+def test_store_scoped_api_key_cannot_create_connection_for_another_store():
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    import pytest
+    from fastapi import HTTPException
+
+    from app.api.v1.integration_connections import _ensure_store_scope
+
+    allowed_store = uuid4()
+    other_store = uuid4()
+    scoped_key = SimpleNamespace(store_id=allowed_store)
+
+    _ensure_store_scope(scoped_key, allowed_store)
+    with pytest.raises(HTTPException) as exc_info:
+        _ensure_store_scope(scoped_key, other_store)
+    assert exc_info.value.status_code == 403
+
+
+def test_merchant_wide_api_key_can_manage_any_owned_store():
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from app.api.v1.integration_connections import _ensure_store_scope
+
+    _ensure_store_scope(SimpleNamespace(store_id=None), uuid4())
