@@ -1,7 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseProxyRequest } from "./proxy-utils.mjs";
+import { parseDirectAccountRequest, parseProxyRequest } from "./proxy-utils.mjs";
 
 const app = express();
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -55,7 +55,7 @@ function setProxyResponseHeaders(upstream, res, mode) {
   }
 }
 
-async function proxyRequest(req, res, mode) {
+async function proxyRequest(req, res, mode, directAccountRoute = false) {
   const allowedMethods = mode === "dashboard"
     ? new Set(["GET", "POST", "PUT", "PATCH", "DELETE"])
     : new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]);
@@ -68,7 +68,9 @@ async function proxyRequest(req, res, mode) {
 
   let parsed;
   try {
-    parsed = parseProxyRequest(mode, req.originalUrl);
+    parsed = directAccountRoute
+      ? parseDirectAccountRequest(req.originalUrl)
+      : parseProxyRequest(mode, req.originalUrl);
   } catch {
     res.status(404).json({ detail: mode === "dashboard" ? "Dashboard endpoint not found" : "Not found" });
     return;
@@ -138,6 +140,7 @@ app.get("/readyz", async (_req, res) => {
 });
 
 app.all("/api/account", (req, res) => proxyRequest(req, res, "account"));
+app.all("/api/account/*", (req, res) => proxyRequest(req, res, "account", true));
 app.all("/api/dashboard", (req, res) => proxyRequest(req, res, "dashboard"));
 app.use("/api", (_req, res) => res.status(404).json({ detail: "Not found" }));
 app.use(express.static(dist, { index: false, maxAge: "1h" }));

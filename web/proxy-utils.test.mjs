@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isSafeAccountPath, isSafeDashboardPath, parseProxyRequest } from "./proxy-utils.mjs";
+import { isSafeAccountPath, isSafeDashboardPath, parseDirectAccountRequest, parseProxyRequest } from "./proxy-utils.mjs";
 
 test("account proxy accepts only authentication paths", () => {
   assert.equal(isSafeAccountPath("api/v1/auth/login"), true);
@@ -32,4 +32,14 @@ test("dashboard proxy rejects traversal, duplicate separators and unexpected cha
 
 test("proxy rejects ambiguous duplicate path parameters", () => {
   assert.throws(() => parseProxyRequest("account", "/api/account?path=api%2Fv1%2Fauth%2Flogin&path=api%2Fv1%2Fauth%2Flogout"));
+});
+
+test("direct account catch-all route supports the existing account export call", () => {
+  const parsed = parseDirectAccountRequest("/api/account/api/v1/auth/export?download=true");
+  assert.equal(parsed.path, "/api/v1/auth/export");
+  assert.equal(new URLSearchParams(parsed.search).get("download"), "true");
+});
+
+test("direct account catch-all route rejects path traversal", () => {
+  assert.throws(() => parseDirectAccountRequest("/api/account/api/v1/auth/%2e%2e/internal"));
 });

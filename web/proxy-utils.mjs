@@ -22,7 +22,15 @@ export function isSafeDashboardPath(path) {
     && !path.endsWith("/");
 }
 
-/** Parse the same-origin query-parameter proxy contract used by Vercel. */
+function createQuery(incoming, embeddedQuery = "") {
+  const query = new URLSearchParams(embeddedQuery);
+  for (const [key, value] of incoming.searchParams) {
+    if (key !== "path") query.append(key, value);
+  }
+  return query.toString();
+}
+
+/** Parse the same-origin query-parameter proxy contract used by the Vercel functions. */
 export function parseProxyRequest(mode, rawUrl) {
   if (mode !== "account" && mode !== "dashboard") {
     throw new Error("Unsupported proxy mode");
@@ -48,10 +56,30 @@ export function parseProxyRequest(mode, rawUrl) {
   const isSafe = mode === "account" ? isSafeAccountPath(path) : isSafeDashboardPath(path);
   if (!isSafe) throw new Error("Proxy path is not allowed");
 
-  const query = new URLSearchParams(mode === "dashboard" ? embeddedQuery : "");
-  for (const [key, value] of incoming.searchParams) {
-    if (key !== "path") query.append(key, value);
+  return {
+    path: "/" + path,
+    search: createQuery(incoming, mode === "dashboard" ? embeddedQuery : ""),
+  };
+}
+
+/**
+ * Compatibility route for the Vercel catch-all account function, used by a
+ * small number of existing frontend calls such as account export.
+ */
+export function parseDirectAccountRequest(rawUrl) {
+  const incoming = new URL(rawUrl, "http://ordium-proxy.invalid");
+  const prefix = "/api/account/";
+  if (!incoming.pathname.startsWith(prefix)) {
+    throw new Error("Not an account catch-all path");
   }
 
-  return { path: "/" + path, search: query.toString() };
+  let path;
+  try {
+    path = decodeURIComponent(incoming.pathname.slice(prefix.length));
+  } catch {
+    throw new Error("Invalid encoded path");
+  }
+
+  if (!isSafeAccountPath(path)) throw new Error("Proxy path is not allowed");
+  return { path: "/" + path, search: incoming.searchParams.toString() };
 }
