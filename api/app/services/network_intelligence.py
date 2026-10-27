@@ -48,7 +48,7 @@ class MockNetworkIntelligenceProvider:
 
 
 class IPQualityScoreProvider:
-    # The IPQS key is a path segment, not a header: GET /api/json/ip/{KEY}/{IP}
+    # Keep the API key out of URLs and access logs by sending it in IPQS-KEY.
     BASE_URL = "https://www.ipqualityscore.com/api/json/ip"
 
     def __init__(
