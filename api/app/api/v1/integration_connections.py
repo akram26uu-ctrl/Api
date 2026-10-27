@@ -59,6 +59,12 @@ def _shopify_domain_matches(registered_domain: str, supplied_domain: str | None)
     return bool(registered and supplied) and hmac.compare_digest(registered, supplied)
 
 
+def _ensure_store_scope(current: ApiKey, requested_store_id: UUID) -> None:
+    """Reject attempts to manage a store outside a store-scoped API key."""
+    if current.store_id is not None and requested_store_id != current.store_id:
+        raise HTTPException(403, "API key is restricted to its store")
+
+
 def _stable_event_id(
     platform: str,
     headers: Mapping[str, str],
@@ -130,7 +136,14 @@ def list_connections(
 ):
     items = (
         db.query(StoreIntegration)
-        .filter(StoreIntegration.merchant_id == current.merchant_id)
+        .filter(
+            StoreIntegration.merchant_id == current.merchant_id,
+            *(
+                [StoreIntegration.store_id == current.store_id]
+                if current.store_id is not None
+                else []
+            ),
+        )
         .order_by(StoreIntegration.created_at.desc())
         .all()
     )
@@ -146,6 +159,7 @@ def create_connection(
 ):
     if data.platform not in SUPPORTED_PLATFORMS:
         raise HTTPException(422, "Unsupported platform. Supported platforms: omniterra, shopify, woocommerce, youcan, custom")
+    _ensure_store_scope(current, data.store_id)
     store = db.query(Store).filter(
         Store.id == data.store_id,
         Store.merchant_id == current.merchant_id,
@@ -206,6 +220,11 @@ def set_connection_active(
     item = db.query(StoreIntegration).filter(
         StoreIntegration.id == integration_id,
         StoreIntegration.merchant_id == current.merchant_id,
+        *(
+            [StoreIntegration.store_id == current.store_id]
+            if current.store_id is not None
+            else []
+        ),
     ).first()
     if item is None:
         raise HTTPException(404, "Integration not found")
@@ -234,6 +253,11 @@ def delete_connection(
     item = db.query(StoreIntegration).filter(
         StoreIntegration.id == integration_id,
         StoreIntegration.merchant_id == current.merchant_id,
+        *(
+            [StoreIntegration.store_id == current.store_id]
+            if current.store_id is not None
+            else []
+        ),
     ).first()
     if item is None:
         raise HTTPException(404, "Integration not found")
