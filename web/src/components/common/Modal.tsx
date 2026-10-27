@@ -45,11 +45,12 @@ export const Modal: React.FC<ModalProps> = ({
       }
 
       if (event.key !== 'Tab' || !dialogRef.current) return;
-      const focusable = Array.from(
+      const focusableElements = Array.from(
         dialogRef.current.querySelectorAll<HTMLElement>(
           'button, input, select, textarea, [href], [tabindex]:not([tabindex="-1"])',
         ),
-      ).filter(element => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true');
+      ) as HTMLElement[];
+      const focusable = focusableElements.filter(element => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true');
       if (!focusable.length) return;
 
       const first = focusable[0];
