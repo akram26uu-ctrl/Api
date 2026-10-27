@@ -28,7 +28,8 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ activeTab, o
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); onCloseRef.current?.(); return; }
       if (event.key !== 'Tab' || !mobileDialogRef.current) return;
-      const focusable = Array.from(mobileDialogRef.current.querySelectorAll<HTMLElement>('button, [href], select, [tabindex]:not([tabindex="-1"])')).filter(el => !el.hasAttribute('disabled'));
+      const focusableElements = Array.from(mobileDialogRef.current.querySelectorAll<HTMLElement>('button, [href], select, [tabindex]:not([tabindex="-1"])')) as HTMLElement[];
+      const focusable = focusableElements.filter(el => !el.hasAttribute('disabled'));
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
