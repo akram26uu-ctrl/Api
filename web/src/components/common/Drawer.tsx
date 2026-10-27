@@ -29,7 +29,8 @@ export const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, title, descript
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); onCloseRef.current(); return; }
       if (event.key !== 'Tab' || !panelRef.current) return;
-      const focusable = Array.from(panelRef.current.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(el => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
+      const focusableElements = Array.from(panelRef.current.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')) as HTMLElement[];
+      const focusable = focusableElements.filter(el => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
       if (!focusable.length) { event.preventDefault(); panelRef.current.focus(); return; }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
