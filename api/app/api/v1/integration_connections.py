@@ -130,7 +130,14 @@ def list_connections(
 ):
     items = (
         db.query(StoreIntegration)
-        .filter(StoreIntegration.merchant_id == current.merchant_id)
+        .filter(
+            StoreIntegration.merchant_id == current.merchant_id,
+            *(
+                [StoreIntegration.store_id == current.store_id]
+                if current.store_id is not None
+                else []
+            ),
+        )
         .order_by(StoreIntegration.created_at.desc())
         .all()
     )
@@ -146,6 +153,8 @@ def create_connection(
 ):
     if data.platform not in SUPPORTED_PLATFORMS:
         raise HTTPException(422, "Unsupported platform. Supported platforms: omniterra, shopify, woocommerce, youcan, custom")
+    if current.store_id is not None and data.store_id != current.store_id:
+        raise HTTPException(403, "API key is restricted to its store")
     store = db.query(Store).filter(
         Store.id == data.store_id,
         Store.merchant_id == current.merchant_id,
@@ -206,6 +215,11 @@ def set_connection_active(
     item = db.query(StoreIntegration).filter(
         StoreIntegration.id == integration_id,
         StoreIntegration.merchant_id == current.merchant_id,
+        *(
+            [StoreIntegration.store_id == current.store_id]
+            if current.store_id is not None
+            else []
+        ),
     ).first()
     if item is None:
         raise HTTPException(404, "Integration not found")
@@ -234,6 +248,11 @@ def delete_connection(
     item = db.query(StoreIntegration).filter(
         StoreIntegration.id == integration_id,
         StoreIntegration.merchant_id == current.merchant_id,
+        *(
+            [StoreIntegration.store_id == current.store_id]
+            if current.store_id is not None
+            else []
+        ),
     ).first()
     if item is None:
         raise HTTPException(404, "Integration not found")
