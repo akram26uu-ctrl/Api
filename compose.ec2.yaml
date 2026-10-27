@@ -135,6 +135,8 @@ services:
     logging: *log-settings
 
   webhook-worker:
+    profiles:
+      - webhook-worker
     image: ordium-api:ec2
     restart: unless-stopped
     init: true

@@ -7,7 +7,7 @@ This scaffold does not create AWS resources, migrate databases, change DNS, or r
 - `api`: FastAPI on container port 8000; published to EC2 loopback only at `127.0.0.1:8000` for host Nginx.
 - `control-plane`: FastAPI on port 8010, available only inside the Compose network; it is not published to the host.
 - `web`: Vite production assets plus a Node same-origin proxy; published to host loopback only at `127.0.0.1:8080`.
-- `webhook-worker`: polls the existing webhook dispatcher in batches, independently of API web traffic.
+- `webhook-worker`: polls the existing webhook dispatcher in batches, independently of API web traffic. It is behind the optional `webhook-worker` profile and does not start with the default stack.
 - Supabase remains external. `DATABASE_URL` and `WEB_DATABASE_URL` must stay separate.
 
 After EC2 approval, host Nginx must terminate HTTPS and proxy the public web domain to `127.0.0.1:8080`, and the public API domain (for example `api.ordium.dev`) to `127.0.0.1:8000`. Do not expose 8000, 8010, or 8080 to the internet. Only 80/443 should be publicly reachable. Never publish Control Plane port 8010.
@@ -39,6 +39,8 @@ docker compose --env-file .env.ec2 -f compose.ec2.yaml logs --tail=100
 ```
 
 Start the stack only against an approved test/staging environment first. The web proxy has path allowlists, bounded request bodies, selected forwarded headers, manual redirect handling, and preserves separate `Set-Cookie` headers. Automated tests cover its path validation.
+
+The webhook dispatcher is deliberately opt-in to prevent duplicate live deliveries while the existing Render-side worker may still be active. Do not start it until the old dispatcher is confirmed stopped and the worker handoff is approved. Only then run `docker compose --profile webhook-worker --env-file .env.ec2 -f compose.ec2.yaml up -d webhook-worker`.
 
 ## Migration safety
 
