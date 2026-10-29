@@ -32,10 +32,10 @@ MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/auto")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 ALLOWED_PREFIXES = ("api/", "control-plane/", "web/src/", "web/tests/", "web/", "tests/", "docs/")
 BLOCKED_PARTS = {".git", ".github", ".venv", "venv", "node_modules", "dist", "build", "__pycache__", ".pytest_cache"}
-BLOCKED_NAMES = {".env", ".env.example", ".env.ec2", "package-lock.json", "pnpm-lock.yaml", "yarn.lock"}
+BLOCKED_NAMES = {".env", ".env.example", ".env.ec2", "package.json", "pyproject.toml", "setup.py", "setup.cfg", "tox.ini", "Makefile", "package-lock.json", "pnpm-lock.yaml", "yarn.lock"}
 BLOCKED_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
 SENSITIVE = re.compile(r"(?i)(OPENROUTER_API_KEY|GITHUB_TOKEN|AWS_SECRET_ACCESS_KEY|SECRET_KEY|DATABASE_URL|BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY)")
-PATCH_PATH = re.compile(r"^diff --git a/([^ ]+) b/([^ ]+)$|^--- a/([^\\t]+)$|^\\+\\+\\+ b/([^\\t]+)$", re.MULTILINE)
+PATCH_PATH = re.compile(r"^diff --git a/([^ ]+) b/([^ ]+)$", re.MULTILINE)
 
 
 @dataclass
@@ -145,6 +145,9 @@ def recent_context() -> str:
             bits.append(f"\n--- {name} ---\n{path.read_text(encoding='utf-8', errors='replace')[:5000]}")
     changed = run(["git", "log", "-5", "--format=", "--name-only"], cwd=WORKSPACE, check=False).stdout
     candidates = []
+    for name in ("api/app/main.py", "control-plane/app/main.py", "web/server.mjs", "web/package.json"):
+        if (WORKSPACE / name).is_file():
+            candidates.append(name)
     for item in changed.splitlines():
         item = item.strip()
         if item and safe_path(item) and item not in candidates:
@@ -176,15 +179,12 @@ def safe_path(path: str) -> bool:
 def validate_patch(patch: str) -> None:
     if not patch.strip() or len(patch.encode()) > MAX_PATCH_BYTES:
         raise ValueError("Patch is empty or exceeds ORDIUM_MAX_PATCH_BYTES.")
-    matches = PATCH_PATH.findall(patch)
     paths: list[str] = []
-    for match in matches:
-        paths.extend(item for item in match if item)
+    for match in PATCH_PATH.finditer(patch):
+        paths.extend(match.groups())
     if not paths:
         raise ValueError("No file paths found in patch.")
     for path in paths:
-        if path == "/dev/null":
-            continue
         if not safe_path(path):
             raise ValueError(f"Patch targets a protected or unsupported path: {path}")
     if re.search(r"(?im)^\s*(?:rename from|rename to|copy from|copy to)\s", patch):
