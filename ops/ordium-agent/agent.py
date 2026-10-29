@@ -280,31 +280,22 @@ def push_direct_commit(summary: str, paths: list[str]) -> str:
     return sha
 
 
-def deploy_and_verify() -> None:
+def deploy_and_verify(commit_sha: str) -> None:
     if os.getenv("ORDIUM_AUTO_DEPLOY", "false").lower() != "true":
-        LOG.info("Automatic deployment disabled; direct commit was pushed, deployment is handled by existing hosting workflow.")
+        LOG.info("Automatic deployment disabled; direct commit is on GitHub but production containers were not changed.")
         return
-    deploy_dir = Path(os.getenv("ORDIUM_DEPLOY_DIR", ""))
-    compose = os.getenv("ORDIUM_COMPOSE_FILE", "compose.ec2.yaml")
-    env_file = Path(os.getenv("ORDIUM_DEPLOY_ENV_FILE", str(deploy_dir / ".env.ec2")))
-    if not deploy_dir.is_dir() or not (deploy_dir / compose).is_file() or not env_file.is_file():
-        raise RuntimeError("Auto-deploy requested but ORDIUM_DEPLOY_DIR, compose file, or env file is missing.")
-    previous = run(["git", "rev-parse", "HEAD"], cwd=deploy_dir).stdout.strip()
-    try:
-        run(["git", "pull", "--ff-only", "origin", BASE_BRANCH], cwd=deploy_dir, timeout=180)
-        run(["docker", "compose", "--env-file", str(env_file), "-f", compose, "build"], cwd=deploy_dir, timeout=1200)
-        run(["docker", "compose", "--env-file", str(env_file), "-f", compose, "up", "-d"], cwd=deploy_dir, timeout=300)
-        time.sleep(20)
-        failures = [p for p in collect_probes() if not p.healthy]
-        if failures:
-            raise RuntimeError("Post-deploy health check failed: " + ", ".join(p.name for p in failures))
-    except Exception:
-        LOG.exception("Deployment failed; attempting code rollback to %s", previous)
-        run(["git", "reset", "--hard", previous], cwd=deploy_dir, check=False)
-        run(["docker", "compose", "--env-file", str(env_file), "-f", compose, "build"], cwd=deploy_dir, timeout=1200, check=False)
-        run(["docker", "compose", "--env-file", str(env_file), "-f", compose, "up", "-d"], cwd=deploy_dir, timeout=300, check=False)
-        raise
-
+    helper = os.getenv("ORDIUM_DEPLOY_HELPER", "/usr/local/sbin/ordium-agent-deploy")
+    probes_before = collect_probes()
+    if not probes_before:
+        raise RuntimeError("Auto-deploy requires at least one configured health URL.")
+    run(["sudo", "-n", helper, "deploy", commit_sha], cwd=WORKSPACE, timeout=1800)
+    time.sleep(25)
+    failures = [p for p in collect_probes() if not p.healthy]
+    if failures:
+        LOG.error("Post-deploy health check failed; requesting image rollback.")
+        run(["sudo", "-n", helper, "rollback"], cwd=WORKSPACE, timeout=300, check=False)
+        raise RuntimeError("Post-deploy health check failed: " + ", ".join(p.name for p in failures))
+    LOG.info("Post-deploy health checks passed for commit %s", commit_sha)
 
 def main() -> None:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"),
@@ -351,7 +342,7 @@ def main() -> None:
                     sha = push_direct_commit(summary, paths)
                     fixes_today += 1
                     LOG.warning("Validated direct commit pushed: %s (%s)", sha, summary)
-                    deploy_and_verify()
+                    deploy_and_verify(sha)
         except Exception as exc:
             LOG.exception("Agent cycle failed safely: %s", type(exc).__name__)
         elapsed = time.monotonic() - started
