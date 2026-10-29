@@ -1,0 +1,4 @@
+# Root-owned configuration. Replace the env-file path with the actual production path.
+ORDIUM_WORKSPACE=/opt/ordium-agent/workspace
+ORDIUM_COMPOSE_FILE=compose.ec2.yaml
+ORDIUM_DEPLOY_ENV_FILE=/opt/ordium/.env.ec2
