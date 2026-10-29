@@ -1,5 +1,7 @@
 import sys
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -42,6 +44,20 @@ class AgentSafetyTests(unittest.TestCase):
         self.assertNotIn("+213551234567", redacted)
         self.assertIn("[REDACTED_EMAIL]", redacted)
         self.assertIn("[REDACTED_PHONE]", redacted)
+
+    def test_changed_paths_includes_new_files(self):
+        with patch.object(
+            agent,
+            "run",
+            side_effect=[
+                SimpleNamespace(stdout="api/app/changed.py\\n"),
+                SimpleNamespace(stdout="api/tests/test_new.py\\n"),
+            ],
+        ):
+            self.assertEqual(
+                agent.changed_paths(),
+                ["api/app/changed.py", "api/tests/test_new.py"],
+            )
 
     def test_daily_model_budget_persists_and_resets_by_day(self):
         import tempfile
