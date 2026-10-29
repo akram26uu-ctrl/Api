@@ -28,6 +28,7 @@ BASE_BRANCH = os.getenv("ORDIUM_BASE_BRANCH", "main")
 WORKSPACE = Path(os.getenv("ORDIUM_AGENT_WORKSPACE", "/opt/ordium-agent/workspace"))
 INTERVAL = max(60, int(os.getenv("ORDIUM_AGENT_INTERVAL_SECONDS", "300")))
 MAX_FIXES_PER_DAY = max(0, int(os.getenv("ORDIUM_MAX_FIXES_PER_DAY", "3")))
+MAX_MODEL_CALLS_PER_DAY = max(0, int(os.getenv("ORDIUM_MAX_MODEL_CALLS_PER_DAY", "12")))
 MAX_PATCH_BYTES = max(1000, int(os.getenv("ORDIUM_MAX_PATCH_BYTES", "30000")))
 MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/auto")
 FALLBACK_MODELS = [m.strip() for m in os.getenv("OPENROUTER_FALLBACK_MODELS", "").split(",") if m.strip() and m.strip() != MODEL]
@@ -380,18 +381,39 @@ def deploy_and_verify(commit_sha: str) -> None:
         raise RuntimeError("Post-deploy health check failed: " + ", ".join(p.name for p in failures))
     LOG.info("Post-deploy health checks passed for commit %s", commit_sha)
 
+def load_model_budget(day: str) -> int:
+    state_file = WORKSPACE.parent / "model-budget.json"
+    try:
+        state = json.loads(state_file.read_text(encoding="utf-8"))
+        if state.get("day") == day:
+            return max(0, int(state.get("calls", 0)))
+    except (OSError, ValueError, TypeError):
+        pass
+    return 0
+
+
+def save_model_budget(day: str, calls: int) -> None:
+    state_file = WORKSPACE.parent / "model-budget.json"
+    temporary = state_file.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps({"day": day, "calls": calls}), encoding="utf-8")
+    temporary.replace(state_file)
+
+
 def main() -> None:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"),
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     LOG.info("Starting ORDIUM autonomous worker; repo=%s branch=%s interval=%ss", REPO, BASE_BRANCH, INTERVAL)
     fixes_today = 0
     current_day = time.strftime("%Y-%m-%d", time.gmtime())
+    model_calls_today = load_model_budget(current_day)
     while True:
         started = time.monotonic()
         try:
             day = time.strftime("%Y-%m-%d", time.gmtime())
             if day != current_day:
                 current_day, fixes_today = day, 0
+                model_calls_today = 0
+                save_model_budget(day, 0)
             ensure_workspace()
             probes = collect_probes()
             logs = collect_cloudwatch_logs()
@@ -399,9 +421,13 @@ def main() -> None:
             log_has_error = bool(re.search(r"(?i)\b(error|exception|traceback|critical|fatal)\b", logs)) and "No recent log events" not in logs
             if not unhealthy and not log_has_error:
                 LOG.info("Health checks passed; no actionable log signals.")
-            elif fixes_today >= MAX_FIXES_PER_DAY:
+            elif fixes_today >= MAX_FIXES_PER_DAY and os.getenv("ORDIUM_ALLOW_DIRECT_PUSH", "false").lower() == "true":
                 LOG.error("Daily automatic-fix budget reached; incident recorded but no patch attempted.")
+            elif model_calls_today >= MAX_MODEL_CALLS_PER_DAY:
+                LOG.error("Daily OpenRouter model-call budget reached; no further model calls today.")
             else:
+                model_calls_today += 1
+                save_model_budget(day, model_calls_today)
                 proposal = call_model(probes, logs, recent_context())
                 summary = str(proposal.get("summary", "Automated reliability fix"))[:500]
                 if not proposal.get("should_fix"):
