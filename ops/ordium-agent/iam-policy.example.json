@@ -2,18 +2,21 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "OrdiumContainerLogs",
+      "Sid": "CreateOrdiumContainerLogGroup",
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogGroup"],
+      "Resource": "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/containers"
+    },
+    {
+      "Sid": "ManageAndReadOrdiumContainerLogStreams",
       "Effect": "Allow",
       "Action": [
         "logs:FilterLogEvents",
         "logs:DescribeLogStreams",
-        "logs:CreateLogGroup",
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
-      "Resource": [
-        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/containers:*"
-      ]
+      "Resource": "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/containers:*"
     }
   ]
 }
