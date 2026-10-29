@@ -37,7 +37,11 @@ ALLOWED_PREFIXES = ("api/", "control-plane/", "web/src/", "web/tests/", "web/", 
 BLOCKED_PARTS = {".git", ".github", ".venv", "venv", "node_modules", "dist", "build", "__pycache__", ".pytest_cache"}
 BLOCKED_NAMES = {".env", ".env.example", ".env.ec2", "package.json", "pyproject.toml", "setup.py", "setup.cfg", "tox.ini", "Makefile", "package-lock.json", "pnpm-lock.yaml", "yarn.lock"}
 BLOCKED_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
-SENSITIVE = re.compile(r"(?i)(OPENROUTER_API_KEY|GITHUB_TOKEN|AWS_SECRET_ACCESS_KEY|SECRET_KEY|DATABASE_URL|BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY)")
+SENSITIVE_ASSIGNMENT = re.compile(
+    r"(?i)\b(OPENROUTER_API_KEY|GITHUB_TOKEN|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|SECRET_KEY|"
+    r"DATABASE_URL|WEB_DATABASE_URL|ORDIUM_INTERNAL_SHARED_SECRET|SESSION_ENCRYPTION_KEY|"
+    r"SHOPIFY_WEBHOOK_SECRET|OMNITERRA_WEBHOOK_SECRET)\s*[=:]\s*[^\s,;]+"
+)
 PATCH_PATH = re.compile(r"^diff --git a/([^ ]+) b/([^ ]+)$", re.MULTILINE)
 
 
@@ -118,6 +122,17 @@ def collect_probes() -> list[Probe]:
     return probes
 
 
+def redact_log_message(message: str) -> str:
+    """Remove common credentials before any log text is sent to an external model."""
+    message = SENSITIVE_ASSIGNMENT.sub(r"\1=[REDACTED]", message)
+    message = re.sub(r"(?i)(postgres(?:ql)?://[^:\s/]+:)[^@\s]+@", r"\1[REDACTED]@", message)
+    message = re.sub(r"(?i)(authorization:\s*bearer\s+)\S+", r"\1[REDACTED]", message)
+    message = re.sub(r"(?i)\b(password|token|secret|api[_-]?key)\s*[=:]\s*\S+", r"\1=[REDACTED]", message)
+    message = re.sub(r"-----BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY-----.*?-----END (?:RSA|OPENSSH|EC) PRIVATE KEY-----",
+                     "[REDACTED_PRIVATE_KEY]", message, flags=re.DOTALL)
+    return message[:1200]
+
+
 def collect_cloudwatch_logs() -> str:
     groups = [g.strip() for g in os.getenv("ORDIUM_CLOUDWATCH_LOG_GROUPS", "").split(",") if g.strip()]
     if not groups:
@@ -133,11 +148,7 @@ def collect_cloudwatch_logs() -> str:
                 response = client.filter_log_events(logGroupName=group, startTime=start_ms, limit=80,
                                                     interleaved=True)
                 for event in response.get("events", []):
-                    message = str(event.get("message", ""))[:1200]
-                    # Never send likely credentials or connection strings to the model.
-                    message = SENSITIVE.sub("[REDACTED_SECRET_FIELD]", message)
-                    message = re.sub(r"(?i)(password|token|secret|api[_-]?key)\s*[=:]\s*\S+",
-                                     r"\1=[REDACTED]", message)
+                    message = redact_log_message(str(event.get("message", "")))
                     chunks.append(f"[{group}] {message}")
             except Exception as exc:
                 chunks.append(f"[{group}] log read failed: {type(exc).__name__}")
