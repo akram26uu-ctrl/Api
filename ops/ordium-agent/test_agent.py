@@ -22,6 +22,17 @@ class AgentSafetyTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertFalse(agent.safe_path(path))
 
+    def test_redacts_database_urls_and_bearer_tokens(self):
+        message = (
+            "DATABASE_URL=postgresql://merchant:supersecret@db.example:5432/prod "
+            "Authorization: Bearer ghp_exampletoken password=hunter2"
+        )
+        redacted = agent.redact_log_message(message)
+        self.assertNotIn("supersecret", redacted)
+        self.assertNotIn("ghp_exampletoken", redacted)
+        self.assertNotIn("hunter2", redacted)
+        self.assertIn("[REDACTED]", redacted)
+
     def test_validates_normal_unified_diff(self):
         patch = (
             "diff --git a/api/app/example.py b/api/app/example.py\n"
