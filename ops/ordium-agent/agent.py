@@ -20,7 +20,6 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 LOG = logging.getLogger("ordium-agent")
 REPO = os.getenv("ORDIUM_GITHUB_REPO", "akram26uu-ctrl/Api")
@@ -36,7 +35,7 @@ BLOCKED_PARTS = {".git", ".github", ".venv", "venv", "node_modules", "dist", "bu
 BLOCKED_NAMES = {".env", ".env.example", ".env.ec2", "package-lock.json", "pnpm-lock.yaml", "yarn.lock"}
 BLOCKED_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
 SENSITIVE = re.compile(r"(?i)(OPENROUTER_API_KEY|GITHUB_TOKEN|AWS_SECRET_ACCESS_KEY|SECRET_KEY|DATABASE_URL|BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY)")
-PATCH_PATH = re.compile(r"^(?:diff --git a/|--- a/|\+\+\+ b/)(.+)$", re.MULTILINE)
+PATCH_PATH = re.compile(r"^diff --git a/([^ ]+) b/([^ ]+)$|^--- a/([^\\t]+)$|^\\+\\+\\+ b/([^\\t]+)$", re.MULTILINE)
 
 
 @dataclass
@@ -177,11 +176,13 @@ def safe_path(path: str) -> bool:
 def validate_patch(patch: str) -> None:
     if not patch.strip() or len(patch.encode()) > MAX_PATCH_BYTES:
         raise ValueError("Patch is empty or exceeds ORDIUM_MAX_PATCH_BYTES.")
-    paths = PATCH_PATH.findall(patch)
-    normalized = [p[2:] if p.startswith("a/") or p.startswith("b/") else p for p in paths]
-    if not normalized:
+    matches = PATCH_PATH.findall(patch)
+    paths: list[str] = []
+    for match in matches:
+        paths.extend(item for item in match if item)
+    if not paths:
         raise ValueError("No file paths found in patch.")
-    for path in normalized:
+    for path in paths:
         if path == "/dev/null":
             continue
         if not safe_path(path):
@@ -229,15 +230,25 @@ def call_model(probes: list[Probe], logs: str, context: str) -> dict[str, Any]:
 
 
 def run_validation(paths: list[str]) -> None:
-    """Run only repository-owned validation commands; never execute model-provided commands."""
+    """Install project-owned test dependencies and run fixed, repository-owned commands."""
     commands: list[tuple[list[str], Path, int]] = []
     if any(p.startswith("api/") or p.startswith("tests/") for p in paths):
-        commands.append((["python", "-m", "pytest", "-q"], WORKSPACE / "api", 600))
+        api = WORKSPACE / "api"
+        run(["python", "-m", "pip", "install", "-e", ".[test]"], cwd=api, timeout=900)
+        commands.append((["python", "-m", "pytest", "-q"], api, 600))
     if any(p.startswith("control-plane/") for p in paths):
-        commands.append((["python", "-m", "pytest", "-q"], WORKSPACE / "control-plane", 600))
+        control = WORKSPACE / "control-plane"
+        run(["python", "-m", "pip", "install", "-e", ".[test]"], cwd=control, timeout=900)
+        commands.append((["python", "-m", "pytest", "-q"], control, 600))
     if any(p.startswith("web/") for p in paths):
-        commands.append((["npm", "run", "lint"], WORKSPACE / "web", 300))
-        commands.append((["npm", "run", "build"], WORKSPACE / "web", 600))
+        web = WORKSPACE / "web"
+        if not (web / "node_modules").is_dir():
+            if (web / "package-lock.json").is_file():
+                run(["npm", "ci"], cwd=web, timeout=900)
+            else:
+                run(["npm", "install"], cwd=web, timeout=900)
+        commands.append((["npm", "run", "lint"], web, 300))
+        commands.append((["npm", "run", "build"], web, 600))
     if not commands:
         raise RuntimeError("No safe validation suite matched the changed files.")
     for command, cwd, timeout in commands:
