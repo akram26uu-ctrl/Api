@@ -344,8 +344,9 @@ def run_validation(paths: list[str]) -> None:
 
 
 def changed_paths() -> list[str]:
-    result = run(["git", "diff", "--name-only"], cwd=WORKSPACE, check=False)
-    return [p for p in result.stdout.splitlines() if p.strip()]
+    tracked = run(["git", "diff", "--name-only"], cwd=WORKSPACE, check=False)
+    untracked = run(["git", "ls-files", "--others", "--exclude-standard"], cwd=WORKSPACE, check=False)
+    return sorted({p.strip() for p in (tracked.stdout + "\\n" + untracked.stdout).splitlines() if p.strip()})
 
 
 def push_direct_commit(summary: str, paths: list[str]) -> str:
