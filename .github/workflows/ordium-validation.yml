@@ -92,3 +92,16 @@ jobs:
         run: docker buildx build --platform linux/amd64,linux/arm64 --output=type=oci,dest=/tmp/ordium-control-plane.tar -f control-plane/Dockerfile control-plane
       - name: Build Web image for AMD64 and ARM64
         run: docker buildx build --platform linux/amd64,linux/arm64 --output=type=oci,dest=/tmp/ordium-web.tar -f web/Dockerfile web
+
+  autonomous-agent-safety:
+    name: Autonomous agent safety tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Run agent safety tests
+        run: python -m unittest discover -s ops/ordium-agent -p 'test_*.py'
