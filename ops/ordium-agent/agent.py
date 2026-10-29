@@ -146,7 +146,7 @@ def collect_probes() -> list[Probe]:
     web_url = os.getenv("ORDIUM_WEB_URL", "").strip()
     if web_url:
         probes.append(http_probe("web-page", web_url, expect_html=True))
-        if os.getenv("ORDIUM_BROWSER_CHECK", "true").lower() == "true":
+        if os.getenv("ORDIUM_BROWSER_CHECK", "false").lower() == "true":
             probes.append(browser_smoke_probe(web_url))
     for key, label in (("ORDIUM_WEB_HEALTH_URL", "web-health"), ("ORDIUM_API_HEALTH_URL", "api"),
                        ("ORDIUM_CONTROL_HEALTH_URL", "control-plane")):
