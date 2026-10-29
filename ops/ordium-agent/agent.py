@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -234,12 +235,12 @@ def run_validation(paths: list[str]) -> None:
     commands: list[tuple[list[str], Path, int]] = []
     if any(p.startswith("api/") or p.startswith("tests/") for p in paths):
         api = WORKSPACE / "api"
-        run(["python", "-m", "pip", "install", "-e", ".[test]"], cwd=api, timeout=900)
-        commands.append((["python", "-m", "pytest", "-q"], api, 600))
+        run([sys.executable, "-m", "pip", "install", "-e", ".[test]"], cwd=api, timeout=900)
+        commands.append(([sys.executable, "-m", "pytest", "-q"], api, 600))
     if any(p.startswith("control-plane/") for p in paths):
         control = WORKSPACE / "control-plane"
-        run(["python", "-m", "pip", "install", "-e", ".[test]"], cwd=control, timeout=900)
-        commands.append((["python", "-m", "pytest", "-q"], control, 600))
+        run([sys.executable, "-m", "pip", "install", "-e", ".[test]"], cwd=control, timeout=900)
+        commands.append(([sys.executable, "-m", "pytest", "-q"], control, 600))
     if any(p.startswith("web/") for p in paths):
         web = WORKSPACE / "web"
         if not (web / "node_modules").is_dir():
