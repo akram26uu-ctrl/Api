@@ -63,6 +63,53 @@ sudo systemctl status ordium-agent
 sudo journalctl -u ordium-agent -f
 ```
 
+
+## Supabase account and database inspection (read-only)
+
+The optional `supabase_manager.py` utility can list projects visible to your Supabase Management API token, show a project's non-secret status/region metadata, and inspect table/column names in a configured Postgres database. It never reads application rows and has no SQL execution, write, migration, delete, or project-creation command.
+
+### 1. Create a scoped Supabase token
+
+In the Supabase Dashboard, create a **scoped Personal Access Token** limited to the organizations/projects this agent needs and grant only read permissions for project/database metadata. Do not use a legacy full-access token. Add it to `/etc/ordium-agent/agent.env` as `SUPABASE_ACCESS_TOKEN=...`. Keep that file owned by root and readable only by root/the agent service group.
+
+### 2. Optional database schema inspection
+
+For each database you want to inspect, copy its Postgres connection string from the project's **Connect** dialog. Prefer a restricted database role that can read schema metadata only; use TLS. Store the project-ref-to-connection-string mapping in a separate JSON file, not Git:
+
+```json
+{
+  "your-project-ref": "postgresql://READ_ONLY_USER:URL_ENCODED_PASSWORD@YOUR_SUPABASE_HOST:5432/postgres?sslmode=require"
+}
+```
+
+Save it as `/etc/ordium-agent/database-urls.json` and restrict it:
+
+```bash
+sudo chown root:ordium-agent /etc/ordium-agent/database-urls.json
+sudo chmod 640 /etc/ordium-agent/database-urls.json
+```
+
+Ensure `SUPABASE_DB_URLS_FILE=/etc/ordium-agent/database-urls.json` is set in the agent environment. The service user must be able to read the file. Use the actual hostname and username shown by Supabase; do not guess pooler hostnames. If the instance is IPv4-only, use the Supabase shared pooler endpoint shown in Connect when appropriate.
+
+### 3. Run commands
+
+From the installed agent directory:
+
+```bash
+sudo -u ordium-agent /opt/ordium-agent/venv/bin/python /opt/ordium-agent/app/supabase_manager.py projects
+sudo -u ordium-agent /opt/ordium-agent/venv/bin/python /opt/ordium-agent/app/supabase_manager.py project YOUR_PROJECT_REF
+sudo -u ordium-agent /opt/ordium-agent/venv/bin/python /opt/ordium-agent/app/supabase_manager.py inspect-db YOUR_PROJECT_REF
+```
+
+The first two commands use the Management API token. The third uses the separately configured database connection and returns only the `public` schema's table and column metadata. It starts a read-only transaction and executes fixed catalog queries; it cannot run arbitrary SQL or change database contents.
+
+### Supabase security boundaries
+
+- Project discovery only covers organizations/projects allowed by the scoped Management API token.
+- Database inspection requires an explicit connection mapping for each project; project listing does not automatically grant database access.
+- Never put Supabase PATs, Postgres URLs/passwords, secret keys, or `service_role` keys in Git, model prompts, issue reports, or frontend environment variables.
+- This initial integration is intentionally read-only. Schema changes, migrations, destructive operations, backups/restores, and project lifecycle actions require a separate reviewed workflow and are not performed by this agent.
+
 ## Required AWS IAM permissions
 
 The example policy grants CloudWatch log reads plus the minimal stream-write actions needed by the Docker awslogs driver on the single Ordium container log group. The agent runs diagnostics locally on EC2; it does not require SSM or remote shell access for this mode. If your logs are not in CloudWatch, configure log forwarding first.
