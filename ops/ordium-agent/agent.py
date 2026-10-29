@@ -128,6 +128,8 @@ def redact_log_message(message: str) -> str:
     message = re.sub(r"(?i)(postgres(?:ql)?://[^:\s/]+:)[^@\s]+@", r"\1[REDACTED]@", message)
     message = re.sub(r"(?i)(authorization:\s*bearer\s+)\S+", r"\1[REDACTED]", message)
     message = re.sub(r"(?i)\b(password|token|secret|api[_-]?key)\s*[=:]\s*\S+", r"\1=[REDACTED]", message)
+    message = re.sub(r"(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b", "[REDACTED_EMAIL]", message)
+    message = re.sub(r"(?<!\\w)(?:\\+?213|0)[567]\\d{8}(?!\\d)", "[REDACTED_PHONE]", message)
     message = re.sub(r"-----BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY-----.*?-----END (?:RSA|OPENSSH|EC) PRIVATE KEY-----",
                      "[REDACTED_PRIVATE_KEY]", message, flags=re.DOTALL)
     return message[:1200]
