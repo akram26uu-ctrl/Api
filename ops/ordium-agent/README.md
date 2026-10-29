@@ -110,6 +110,25 @@ The first two commands use the Management API token. The third uses the separate
 - Never put Supabase PATs, Postgres URLs/passwords, secret keys, or `service_role` keys in Git, model prompts, issue reports, or frontend environment variables.
 - This initial integration is intentionally read-only. Schema changes, migrations, destructive operations, backups/restores, and project lifecycle actions require a separate reviewed workflow and are not performed by this agent.
 
+
+## User-defined tasks for the next 24 hours
+
+The primary model can receive additional tasks from a host-local JSON file, independent of production incidents. Configure `ORDIUM_TASKS_FILE=/etc/ordium-agent/next-24-hours-tasks.json`. The file is not committed to Git, and only its bounded task descriptions are sent to the model.
+
+Create the file from `next-24-hours-tasks.example.json` and edit it on EC2. Set `enabled` to `true`, provide an ISO-8601 `expires_at` timestamp with a timezone (UTC `Z` recommended), and list up to 10 tasks with unique IDs and clear expected outcomes. Expired, disabled, malformed, or oversized files are ignored. A particular file revision is sent to the model once, avoiding repeat work on every five-minute monitoring cycle; edit the file to change the task set or request another attempt. The existing daily model-call limit still applies.
+
+Example installation:
+
+```bash
+sudo install -o root -g ordium-agent -m 640 ops/ordium-agent/next-24-hours-tasks.example.json /etc/ordium-agent/next-24-hours-tasks.json
+sudo nano /etc/ordium-agent/next-24-hours-tasks.json
+sudo chown root:ordium-agent /etc/ordium-agent/next-24-hours-tasks.json
+sudo chmod 640 /etc/ordium-agent/next-24-hours-tasks.json
+sudo systemctl restart ordium-agent
+```
+
+Task descriptions are treated as untrusted input and cannot override the agent's fixed safety rules. The model can only propose patches for the existing allowlisted application/test/docs paths. With `ORDIUM_ALLOW_DIRECT_PUSH=false`, changes remain a validated patch for human review; no task can authorize shell commands, production database writes, migrations, deployment changes, or secret access.
+
 ## Required AWS IAM permissions
 
 The example policy grants CloudWatch log reads plus the minimal stream-write actions needed by the Docker awslogs driver on the single Ordium container log group. The agent runs diagnostics locally on EC2; it does not require SSM or remote shell access for this mode. If your logs are not in CloudWatch, configure log forwarding first.
