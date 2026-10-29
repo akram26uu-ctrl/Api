@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadOnlyOrdiumApplicationLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:FilterLogEvents",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": [
+        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/api:*",
+        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/control-plane:*",
+        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/web:*"
+      ]
+    }
+  ]
+}
