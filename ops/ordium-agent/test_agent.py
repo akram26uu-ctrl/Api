@@ -33,6 +33,16 @@ class AgentSafetyTests(unittest.TestCase):
         self.assertNotIn("hunter2", redacted)
         self.assertIn("[REDACTED]", redacted)
 
+    def test_redacts_email_and_algerian_mobile_numbers(self):
+        redacted = agent.redact_log_message(
+            "customer akram@example.com called 0551234567 and +213551234567"
+        )
+        self.assertNotIn("akram@example.com", redacted)
+        self.assertNotIn("0551234567", redacted)
+        self.assertNotIn("+213551234567", redacted)
+        self.assertIn("[REDACTED_EMAIL]", redacted)
+        self.assertIn("[REDACTED_PHONE]", redacted)
+
     def test_validates_normal_unified_diff(self):
         patch = (
             "diff --git a/api/app/example.py b/api/app/example.py\n"
