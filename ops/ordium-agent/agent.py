@@ -123,17 +123,16 @@ def collect_probes() -> list[Probe]:
 
 
 def redact_log_message(message: str) -> str:
-    """Remove common credentials before any log text is sent to an external model."""
+    """Redact credentials and customer contact details before sending logs to an external model."""
     message = SENSITIVE_ASSIGNMENT.sub(r"\1=[REDACTED]", message)
     message = re.sub(r"(?i)(postgres(?:ql)?://[^:\s/]+:)[^@\s]+@", r"\1[REDACTED]@", message)
     message = re.sub(r"(?i)(authorization:\s*bearer\s+)\S+", r"\1[REDACTED]", message)
     message = re.sub(r"(?i)\b(password|token|secret|api[_-]?key)\s*[=:]\s*\S+", r"\1=[REDACTED]", message)
-    message = re.sub(r"(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b", "[REDACTED_EMAIL]", message)
-    message = re.sub(r"(?<!\\w)(?:\\+?213|0)[567]\\d{8}(?!\\d)", "[REDACTED_PHONE]", message)
+    message = re.sub(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", "[REDACTED_EMAIL]", message)
+    message = re.sub(r"(?<!\w)(?:\+?213|0)[567]\d{8}(?!\d)", "[REDACTED_PHONE]", message)
     message = re.sub(r"-----BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY-----.*?-----END (?:RSA|OPENSSH|EC) PRIVATE KEY-----",
                      "[REDACTED_PRIVATE_KEY]", message, flags=re.DOTALL)
     return message[:1200]
-
 
 def collect_cloudwatch_logs() -> str:
     groups = [g.strip() for g in os.getenv("ORDIUM_CLOUDWATCH_LOG_GROUPS", "").split(",") if g.strip()]
@@ -168,7 +167,17 @@ def recent_context() -> str:
             bits.append(f"\n--- {name} ---\n{path.read_text(encoding='utf-8', errors='replace')[:5000]}")
     changed = run(["git", "log", "-5", "--format=", "--name-only"], cwd=WORKSPACE, check=False).stdout
     candidates = []
-    for name in ("api/app/main.py", "control-plane/app/main.py", "web/server.mjs", "web/package.json"):
+    for name in (
+        "api/app/main.py",
+        "api/app/api/v1/orders.py",
+        "api/app/services/risk_service.py",
+        "api/app/services/risk_engine.py",
+        "api/app/api/dependencies.py",
+        "control-plane/app/main.py",
+        "control-plane/app/api/auth.py",
+        "web/server.mjs",
+        "web/package.json",
+    ):
         if (WORKSPACE / name).is_file():
             candidates.append(name)
     for item in changed.splitlines():
