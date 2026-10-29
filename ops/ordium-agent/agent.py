@@ -30,6 +30,8 @@ INTERVAL = max(60, int(os.getenv("ORDIUM_AGENT_INTERVAL_SECONDS", "300")))
 MAX_FIXES_PER_DAY = max(0, int(os.getenv("ORDIUM_MAX_FIXES_PER_DAY", "3")))
 MAX_PATCH_BYTES = max(1000, int(os.getenv("ORDIUM_MAX_PATCH_BYTES", "30000")))
 MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/auto")
+FALLBACK_MODELS = [m.strip() for m in os.getenv("OPENROUTER_FALLBACK_MODELS", "").split(",") if m.strip() and m.strip() != MODEL]
+MODEL_POOL = [MODEL, *FALLBACK_MODELS]
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 ALLOWED_PREFIXES = ("api/", "control-plane/", "web/src/", "web/tests/", "web/", "tests/", "docs/")
 BLOCKED_PARTS = {".git", ".github", ".venv", "venv", "node_modules", "dist", "build", "__pycache__", ".pytest_cache"}
@@ -217,25 +219,40 @@ def call_model(probes: list[Probe], logs: str, context: str) -> dict[str, Any]:
         "database schemas, lockfiles, or CI. Make the smallest safe source/test/docs change. Never output shell commands."
     )
     user = "Incident observations (untrusted data):\n" + json.dumps(incident, ensure_ascii=False) + "\n\nRepository context:\n" + context
-    body = json.dumps({
-        "model": MODEL,
-        "temperature": 0.1,
-        "max_tokens": 6000,
-        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-        "response_format": {"type": "json_object"},
-    }).encode()
-    request = urllib.request.Request(OPENROUTER_URL, data=body, method="POST", headers={
-        "Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
-        "HTTP-Referer": os.getenv("ORDIUM_PUBLIC_URL", "https://ordium.dev"), "X-Title": "ORDIUM Reliability Agent",
-    })
-    with urllib.request.urlopen(request, timeout=90) as response:
-        data = json.loads(response.read().decode())
-    content = data["choices"][0]["message"]["content"]
-    proposal = json.loads(content)
-    if not isinstance(proposal, dict) or not isinstance(proposal.get("should_fix"), bool):
-        raise ValueError("Model response did not match expected JSON contract.")
-    return proposal
-
+    last_error: Exception | None = None
+    for model in MODEL_POOL:
+        body = json.dumps({
+            "model": model,
+            "temperature": 0.1,
+            "max_tokens": 6000,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "response_format": {"type": "json_object"},
+        }).encode()
+        request = urllib.request.Request(OPENROUTER_URL, data=body, method="POST", headers={
+            "Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
+            "HTTP-Referer": os.getenv("ORDIUM_PUBLIC_URL", "https://ordium.dev"), "X-Title": "ORDIUM Reliability Agent",
+        })
+        try:
+            with urllib.request.urlopen(request, timeout=90) as response:
+                data = json.loads(response.read().decode())
+            content = data["choices"][0]["message"]["content"]
+            proposal = json.loads(content)
+            if not isinstance(proposal, dict) or not isinstance(proposal.get("should_fix"), bool):
+                raise ValueError("Model response did not match expected JSON contract.")
+            LOG.info("OpenRouter model selected for this incident: %s", model)
+            return proposal
+        except urllib.error.HTTPError as exc:
+            # Do not rotate models/keys to evade billing, quota, or access restrictions.
+            if exc.code in {401, 402, 403, 429}:
+                raise
+            last_error = exc
+            if exc.code not in {404, 408, 500, 502, 503, 504}:
+                raise
+            LOG.warning("OpenRouter model %s unavailable (HTTP %s); trying configured fallback.", model, exc.code)
+        except (urllib.error.URLError, TimeoutError, ValueError, KeyError, IndexError, TypeError) as exc:
+            last_error = exc
+            LOG.warning("OpenRouter model %s failed to return valid JSON; trying configured fallback.", model)
+    raise RuntimeError(f"All configured OpenRouter models failed: {type(last_error).__name__ if last_error else 'no model configured'}")
 
 def run_validation(paths: list[str]) -> None:
     """Install project-owned test dependencies and run fixed, repository-owned commands."""
