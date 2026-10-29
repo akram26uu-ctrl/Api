@@ -41,15 +41,25 @@ sudo chmod 640 /etc/ordium-agent/agent.env
 \`\`\`
 
 5. Copy \`ordium-agent.service\` to \`/etc/systemd/system/ordium-agent.service\`. Review the service user and filesystem paths. Ensure the agent user can write its workspace but cannot read production \`.env.ec2\` files.
-6. Configure the EC2 instance role with the least-privilege policy in \`iam-policy.example.json\`; replace the placeholder log-group ARNs. Do not attach broad AdministratorAccess.
-7. Start and inspect the service:
+6. Configure the EC2 instance role with the least-privilege policy in iam-policy.example.json; replace the placeholder log-group ARNs. Do not attach broad AdministratorAccess.
+7. If automatic deployment is intended, verify the actual production .env.ec2 path. Install the root-owned helper and its root-owned configuration:
 
-\`\`\`bash
+```bash
+sudo install -o root -g root -m 750 ops/ordium-agent/ordium-agent-deploy.sh /usr/local/sbin/ordium-agent-deploy
+sudo install -o root -g root -m 600 ops/ordium-agent/deploy.conf.example /etc/ordium-agent/deploy.conf
+sudo install -o root -g root -m 440 ops/ordium-agent/sudoers.example /etc/sudoers.d/ordium-agent-deploy
+sudo visudo -cf /etc/sudoers.d/ordium-agent-deploy
+```
+
+Edit /etc/ordium-agent/deploy.conf as root and set the real deployment env-file path. The helper only accepts a commit SHA matching the clean workspace HEAD or a rollback request; it never accepts a model-supplied command. The agent service requires the scoped sudo rule, which is why NoNewPrivileges is disabled; do not grant any other sudo commands.
+8. Start and inspect the service:
+
+```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now ordium-agent
 sudo systemctl status ordium-agent
 sudo journalctl -u ordium-agent -f
-\`\`\`
+```
 
 ## Required AWS IAM permissions
 
