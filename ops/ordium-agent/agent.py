@@ -339,10 +339,15 @@ def main() -> None:
                     if not paths or any(not safe_path(p) for p in paths):
                         raise RuntimeError("Proposed changes include no changes or protected paths.")
                     run_validation(paths)
-                    sha = push_direct_commit(summary, paths)
-                    fixes_today += 1
-                    LOG.warning("Validated direct commit pushed: %s (%s)", sha, summary)
-                    deploy_and_verify(sha)
+                    if os.getenv("ORDIUM_ALLOW_DIRECT_PUSH", "false").lower() != "true":
+                        saved = WORKSPACE.parent / "last-validated-proposal.patch"
+                        saved.write_text(patch, encoding="utf-8")
+                        LOG.warning("Validated proposal saved to %s; direct push is disabled.", saved)
+                    else:
+                        sha = push_direct_commit(summary, paths)
+                        fixes_today += 1
+                        LOG.warning("Validated direct commit pushed: %s (%s)", sha, summary)
+                        deploy_and_verify(sha)
         except Exception as exc:
             LOG.exception("Agent cycle failed safely: %s", type(exc).__name__)
         elapsed = time.monotonic() - started
