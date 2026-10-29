@@ -12,6 +12,10 @@ This scaffold does not create AWS resources, migrate databases, change DNS, or r
 
 After EC2 approval, host Nginx must terminate HTTPS and proxy the public web domain to `127.0.0.1:8080`, and the public API domain (for example `api.ordium.dev`) to `127.0.0.1:8000`. Do not expose 8000, 8010, or 8080 to the internet. Only 80/443 should be publicly reachable. Never publish Control Plane port 8010.
 
+## CloudWatch logs
+
+The Compose stack sends container stdout/stderr to the CloudWatch Logs group `/ordium/containers` using the EC2 instance role. Set `AWS_REGION` in `.env.ec2` to the instance's actual region. The instance role needs `logs:CreateLogStream` and `logs:PutLogEvents` on that log group; the autonomous agent also needs `logs:FilterLogEvents`. The awslogs driver uses non-blocking mode so a temporary logging outage does not block application writes. Confirm the group and streams appear before enabling automatic repairs.
+
 ## Prepare configuration
 
 1. Copy `deploy/ec2/env.example` to `.env.ec2` at the repository root.
