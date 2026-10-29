@@ -5,7 +5,7 @@ This worker continuously probes configured Ordium endpoints, reads recent CloudW
 ## Important behavior and limitations
 
 - A worker process is not installed on your EC2 merely because these files are in GitHub. Follow the installation steps below on the actual instance.
-- The agent only sees endpoints and CloudWatch log groups configured in `agent.env`. It does not discover your AWS resources automatically.
+- The agent only sees endpoints and CloudWatch log groups configured in `agent.env`. It does not discover your AWS resources automatically. Optional Playwright checks open the public homepage in headless Chromium and report page errors; they do not log in, submit forms, or create customer data. Set `ORDIUM_BROWSER_CHECK=true` only after Chromium is installed successfully.
 - The model cannot provide shell commands. The worker runs only hard-coded test/build/deploy commands and validates patch paths before applying a diff.
 - Protected areas include `.github/`, `deploy/`, `ops/`, migrations, environment files, lockfiles, and private-key files. Production database migrations are never run automatically.
 - Direct commits require a GitHub token with repository Contents read/write access and a repository policy that permits pushing to `main`. Branch protection/rulesets can reject the push.
@@ -31,6 +31,8 @@ sudo install -d -o root -g ordium-agent -m 750 /etc/ordium-agent
 ```bash
 sudo -u ordium-agent python3 -m venv /opt/ordium-agent/venv
 sudo -u ordium-agent /opt/ordium-agent/venv/bin/pip install -r /opt/ordium-agent/app/requirements.txt
+sudo /opt/ordium-agent/venv/bin/python -m playwright install-deps chromium
+sudo -u ordium-agent /opt/ordium-agent/venv/bin/python -m playwright install chromium
 ```
 
 4. Copy `.env.example` to `/etc/ordium-agent/agent.env`, fill in the real endpoints, CloudWatch log groups, OpenRouter key and GitHub token, then set permissions:
