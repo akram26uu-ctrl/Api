@@ -1,0 +1,28 @@
+[Unit]
+Description=ORDIUM autonomous reliability and coding agent
+Wants=network-online.target
+After=network-online.target docker.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=ordium-agent
+Group=ordium-agent
+WorkingDirectory=/opt/ordium-agent
+EnvironmentFile=/etc/ordium-agent/agent.env
+ExecStart=/opt/ordium-agent/venv/bin/python /opt/ordium-agent/app/agent.py
+Restart=always
+RestartSec=15
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/ordium-agent
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
