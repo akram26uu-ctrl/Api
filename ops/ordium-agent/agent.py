@@ -87,12 +87,16 @@ def ensure_workspace() -> None:
         run(["git", "clean", "-ffd"], cwd=WORKSPACE, env=env)
 
 
-def http_probe(name: str, url: str, timeout: int = 8) -> Probe:
+def http_probe(name: str, url: str, timeout: int = 8, expect_html: bool = False) -> Probe:
     start = time.monotonic()
     try:
         request = urllib.request.Request(url, headers={"User-Agent": "ORDIUM-Autonomous-Monitor/1.0"})
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            return Probe(name, url, response.status, int((time.monotonic() - start) * 1000))
+            body = response.read(8192).lower() if expect_html else b""
+            error = None
+            if expect_html and b"<html" not in body and b"<!doctype html" not in body:
+                error = "Response did not look like an HTML page"
+            return Probe(name, url, response.status, int((time.monotonic() - start) * 1000), error)
     except urllib.error.HTTPError as exc:
         return Probe(name, url, exc.code, int((time.monotonic() - start) * 1000), f"HTTP {exc.code}")
     except Exception as exc:
@@ -101,7 +105,10 @@ def http_probe(name: str, url: str, timeout: int = 8) -> Probe:
 
 def collect_probes() -> list[Probe]:
     probes: list[Probe] = []
-    for key, label in (("ORDIUM_WEB_HEALTH_URL", "web"), ("ORDIUM_API_HEALTH_URL", "api"),
+    web_url = os.getenv("ORDIUM_WEB_URL", "").strip()
+    if web_url:
+        probes.append(http_probe("web-page", web_url, expect_html=True))
+    for key, label in (("ORDIUM_WEB_HEALTH_URL", "web-health"), ("ORDIUM_API_HEALTH_URL", "api"),
                        ("ORDIUM_CONTROL_HEALTH_URL", "control-plane")):
         value = os.getenv(key, "").strip()
         if value:
