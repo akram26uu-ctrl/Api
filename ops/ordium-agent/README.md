@@ -6,10 +6,10 @@ This worker continuously probes configured Ordium endpoints, reads recent CloudW
 
 - A worker process is not installed on your EC2 merely because these files are in GitHub. Follow the installation steps below on the actual instance.
 - The agent only sees endpoints and CloudWatch log groups configured in `agent.env`. It does not discover your AWS resources automatically. Optional Playwright checks open the public homepage in headless Chromium and report page errors; they do not log in, submit forms, or create customer data. Set `ORDIUM_BROWSER_CHECK=true` only after Chromium is installed successfully.
-- The model cannot provide shell commands. The worker runs only hard-coded test/build/deploy commands and validates patch paths before applying a diff.
+- The model cannot provide shell commands. The worker runs only hard-coded test/build/deploy commands and validates patch paths before applying a diff. Newly created files are included in path validation and commits.
 - Protected areas include `.github/`, `deploy/`, `ops/`, migrations, environment files, lockfiles, and private-key files. Production database migrations are never run automatically.
 - Direct commits require a GitHub token with repository Contents read/write access and a repository policy that permits pushing to `main`. Branch protection/rulesets can reject the push.
-- This is a supervised-by-policy automation loop, not a guarantee that every production incident can be repaired. Daily fix limits and service logs bound repeated attempts.
+- This is a supervised-by-policy automation loop, not a guarantee that every production incident can be repaired. A persistent daily OpenRouter-call budget (default 12) survives service restarts; the daily fix limit separately bounds direct commits.
 - Automatic deploy is disabled until the production checkout path is confirmed. The deployment routine rebuilds Compose services, checks health, and attempts a code rollback on failure; it does not roll back database state or external side effects.
 - Install the agent as a dedicated user. Docker socket access is effectively root-level and is deliberately not granted by the service unit. If you enable automatic deployment, give the agent only the specific deployment mechanism needed; do not casually add it to the `docker` group.
 
