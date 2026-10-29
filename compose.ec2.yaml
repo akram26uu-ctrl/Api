@@ -1,10 +1,14 @@
 name: ordium
 
 x-log-settings: &log-settings
-  driver: local
+  driver: awslogs
   options:
-    max-size: "10m"
-    max-file: "3"
+    awslogs-region: ${AWS_REGION:?Set AWS_REGION in .env.ec2}
+    awslogs-group: /ordium/containers
+    awslogs-create-group: "true"
+    awslogs-stream-prefix: ordium
+    mode: non-blocking
+    max-buffer-size: 4m
 
 x-api-environment: &api-environment
   APP_NAME: "ORDIUM API"
