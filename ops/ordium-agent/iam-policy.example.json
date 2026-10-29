@@ -6,12 +6,15 @@
       "Effect": "Allow",
       "Action": [
         "logs:FilterLogEvents",
-        "logs:DescribeLogStreams"
+        "logs:DescribeLogStreams",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
       ],
       "Resource": [
         "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/api:*",
         "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/control-plane:*",
-        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/web:*"
+        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/web:*",
+        "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ordium/containers:*"
       ]
     }
   ]
