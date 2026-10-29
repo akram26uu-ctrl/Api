@@ -50,8 +50,8 @@ class AgentSafetyTests(unittest.TestCase):
             agent,
             "run",
             side_effect=[
-                SimpleNamespace(stdout="api/app/changed.py\\n"),
-                SimpleNamespace(stdout="api/tests/test_new.py\\n"),
+                SimpleNamespace(stdout="api/app/changed.py\n"),
+                SimpleNamespace(stdout="api/tests/test_new.py\n"),
             ],
         ):
             self.assertEqual(
