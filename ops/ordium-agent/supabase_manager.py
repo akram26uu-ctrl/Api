@@ -112,23 +112,28 @@ def inspect_database(project_ref: str) -> dict[str, Any]:
             with conn.transaction():
                 conn.execute("SET TRANSACTION READ ONLY")
                 table_rows = conn.execute(
-                    "SELECT table_name FROM information_schema.tables "
-                    "WHERE table_schema = %s AND table_type = %s ORDER BY table_name",
-                    ("public", "BASE TABLE"),
+                    "SELECT c.relname FROM pg_catalog.pg_class AS c "
+                    "JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace "
+                    "WHERE n.nspname = %s AND c.relkind IN ('r', 'p') ORDER BY c.relname",
+                    ("public",),
                 ).fetchall()
                 tables = []
                 for (table_name,) in table_rows:
                     column_rows = conn.execute(
-                        "SELECT column_name, data_type, is_nullable "
-                        "FROM information_schema.columns "
-                        "WHERE table_schema = %s AND table_name = %s "
-                        "ORDER BY ordinal_position",
+                        "SELECT a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod), "
+                        "NOT a.attnotnull "
+                        "FROM pg_catalog.pg_attribute AS a "
+                        "JOIN pg_catalog.pg_class AS c ON c.oid = a.attrelid "
+                        "JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace "
+                        "WHERE n.nspname = %s AND c.relname = %s "
+                        "AND a.attnum > 0 AND NOT a.attisdropped "
+                        "ORDER BY a.attnum",
                         ("public", table_name),
                     ).fetchall()
                     tables.append({
                         "table": table_name,
                         "columns": [
-                            {"name": name, "type": data_type, "nullable": nullable == "YES"}
+                            {"name": name, "type": data_type, "nullable": nullable}
                             for name, data_type, nullable in column_rows
                         ],
                     })
