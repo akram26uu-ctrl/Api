@@ -26,7 +26,7 @@ sudo install -d -o ordium-agent -g ordium-agent -m 700 /opt/ordium-agent/app
 sudo install -d -o root -g ordium-agent -m 750 /etc/ordium-agent
 ```
 
-3. Copy `agent.py` and `requirements.txt` from this directory to `/opt/ordium-agent/app/`, then install dependencies:
+3. Copy `agent.py`, `supabase_manager.py`, and `requirements.txt` from this directory to `/opt/ordium-agent/app/`, then install dependencies:
 
 ```bash
 sudo -u ordium-agent python3 -m venv /opt/ordium-agent/venv
