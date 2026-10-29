@@ -43,6 +43,21 @@ class AgentSafetyTests(unittest.TestCase):
         self.assertIn("[REDACTED_EMAIL]", redacted)
         self.assertIn("[REDACTED_PHONE]", redacted)
 
+    def test_daily_model_budget_persists_and_resets_by_day(self):
+        import tempfile
+
+        original_workspace = agent.WORKSPACE
+        with tempfile.TemporaryDirectory() as directory:
+            agent.WORKSPACE = Path(directory) / "workspace"
+            agent.WORKSPACE.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                self.assertEqual(agent.load_model_budget("2026-10-29"), 0)
+                agent.save_model_budget("2026-10-29", 4)
+                self.assertEqual(agent.load_model_budget("2026-10-29"), 4)
+                self.assertEqual(agent.load_model_budget("2026-10-30"), 0)
+            finally:
+                agent.WORKSPACE = original_workspace
+
     def test_validates_normal_unified_diff(self):
         patch = (
             "diff --git a/api/app/example.py b/api/app/example.py\n"
