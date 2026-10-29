@@ -50,14 +50,64 @@ class AgentSafetyTests(unittest.TestCase):
             agent,
             "run",
             side_effect=[
-                SimpleNamespace(stdout="api/app/changed.py\\n"),
-                SimpleNamespace(stdout="api/tests/test_new.py\\n"),
+                SimpleNamespace(stdout="api/app/changed.py\n"),
+                SimpleNamespace(stdout="api/tests/test_new.py\n"),
             ],
         ):
             self.assertEqual(
                 agent.changed_paths(),
                 ["api/app/changed.py", "api/tests/test_new.py"],
             )
+
+    def test_extra_tasks_are_loaded_only_when_enabled_and_unexpired(self):
+        import json
+        import tempfile
+        from datetime import datetime, timedelta, timezone
+
+        original_file = agent.TASKS_FILE
+        with tempfile.TemporaryDirectory() as directory:
+            task_file = Path(directory) / "tasks.json"
+            expires = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+            task_file.write_text(json.dumps({
+                "enabled": True,
+                "expires_at": expires,
+                "tasks": [{"id": "review-health", "task": "Review health-check failures"}],
+            }), encoding="utf-8")
+            agent.TASKS_FILE = task_file
+            try:
+                prompt, digest = agent.load_active_tasks()
+                self.assertIn("review-health", prompt)
+                self.assertTrue(digest)
+                task_file.write_text(json.dumps({
+                    "enabled": True,
+                    "expires_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
+                    "tasks": [{"id": "expired", "task": "Should not be sent"}],
+                }), encoding="utf-8")
+                self.assertEqual(agent.load_active_tasks(), ("", ""))
+            finally:
+                agent.TASKS_FILE = original_file
+
+    def test_extra_tasks_require_timezone_and_enabled_flag(self):
+        import json
+        import tempfile
+
+        original_file = agent.TASKS_FILE
+        with tempfile.TemporaryDirectory() as directory:
+            task_file = Path(directory) / "tasks.json"
+            agent.TASKS_FILE = task_file
+            try:
+                task_file.write_text(json.dumps({
+                    "enabled": True, "expires_at": "2099-01-01T00:00:00",
+                    "tasks": [{"id": "task1", "task": "Do something"}],
+                }), encoding="utf-8")
+                self.assertEqual(agent.load_active_tasks(), ("", ""))
+                task_file.write_text(json.dumps({
+                    "enabled": False, "expires_at": "2099-01-01T00:00:00Z",
+                    "tasks": [{"id": "task1", "task": "Do something"}],
+                }), encoding="utf-8")
+                self.assertEqual(agent.load_active_tasks(), ("", ""))
+            finally:
+                agent.TASKS_FILE = original_file
 
     def test_daily_model_budget_persists_and_resets_by_day(self):
         import tempfile

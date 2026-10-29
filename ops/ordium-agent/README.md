@@ -26,7 +26,7 @@ sudo install -d -o ordium-agent -g ordium-agent -m 700 /opt/ordium-agent/app
 sudo install -d -o root -g ordium-agent -m 750 /etc/ordium-agent
 ```
 
-3. Copy `agent.py` and `requirements.txt` from this directory to `/opt/ordium-agent/app/`, then install dependencies:
+3. Copy `agent.py`, `supabase_manager.py`, and `requirements.txt` from this directory to `/opt/ordium-agent/app/`, then install dependencies:
 
 ```bash
 sudo -u ordium-agent python3 -m venv /opt/ordium-agent/venv
@@ -62,6 +62,72 @@ sudo systemctl enable --now ordium-agent
 sudo systemctl status ordium-agent
 sudo journalctl -u ordium-agent -f
 ```
+
+
+## Supabase account and database inspection (read-only)
+
+The optional `supabase_manager.py` utility can list projects visible to your Supabase Management API token, show a project's non-secret status/region metadata, and inspect table/column names in a configured Postgres database. It never reads application rows and has no SQL execution, write, migration, delete, or project-creation command.
+
+### 1. Create a scoped Supabase token
+
+In the Supabase Dashboard, create a **scoped Personal Access Token** limited to the organizations/projects this agent needs and grant only read permissions for project/database metadata. Do not use a legacy full-access token. Add it to `/etc/ordium-agent/agent.env` as `SUPABASE_ACCESS_TOKEN=...`. Keep that file owned by root and readable only by root/the agent service group.
+
+### 2. Optional database schema inspection
+
+For each database you want to inspect, copy its Postgres connection string from the project's **Connect** dialog. Prefer a restricted database role that can read schema metadata only; use TLS. Store the project-ref-to-connection-string mapping in a separate JSON file, not Git:
+
+```json
+{
+  "your-project-ref": "postgresql://READ_ONLY_USER:URL_ENCODED_PASSWORD@YOUR_SUPABASE_HOST:5432/postgres?sslmode=require"
+}
+```
+
+Save it as `/etc/ordium-agent/database-urls.json` and restrict it:
+
+```bash
+sudo chown root:ordium-agent /etc/ordium-agent/database-urls.json
+sudo chmod 640 /etc/ordium-agent/database-urls.json
+```
+
+Ensure `SUPABASE_DB_URLS_FILE=/etc/ordium-agent/database-urls.json` is set in the agent environment. The service user must be able to read the file. Use the actual hostname and username shown by Supabase; do not guess pooler hostnames. If the instance is IPv4-only, use the Supabase shared pooler endpoint shown in Connect when appropriate.
+
+### 3. Run commands
+
+From the installed agent directory:
+
+```bash
+sudo -u ordium-agent /opt/ordium-agent/venv/bin/python /opt/ordium-agent/app/supabase_manager.py projects
+sudo -u ordium-agent /opt/ordium-agent/venv/bin/python /opt/ordium-agent/app/supabase_manager.py project YOUR_PROJECT_REF
+sudo -u ordium-agent /opt/ordium-agent/venv/bin/python /opt/ordium-agent/app/supabase_manager.py inspect-db YOUR_PROJECT_REF
+```
+
+The first two commands use the Management API token. The third uses the separately configured database connection and returns only the `public` schema's table and column metadata. It starts a read-only transaction and executes fixed catalog queries; it cannot run arbitrary SQL or change database contents.
+
+### Supabase security boundaries
+
+- Project discovery only covers organizations/projects allowed by the scoped Management API token.
+- Database inspection requires an explicit connection mapping for each project; project listing does not automatically grant database access.
+- Never put Supabase PATs, Postgres URLs/passwords, secret keys, or `service_role` keys in Git, model prompts, issue reports, or frontend environment variables.
+- This initial integration is intentionally read-only. Schema changes, migrations, destructive operations, backups/restores, and project lifecycle actions require a separate reviewed workflow and are not performed by this agent.
+
+
+## User-defined tasks for the next 24 hours
+
+The primary model can receive additional tasks from a host-local JSON file, independent of production incidents. Configure `ORDIUM_TASKS_FILE=/etc/ordium-agent/next-24-hours-tasks.json`. The file is not committed to Git, and only its bounded task descriptions are sent to the model.
+
+Create the file from `next-24-hours-tasks.example.json` and edit it on EC2. Set `enabled` to `true`, provide an ISO-8601 `expires_at` timestamp with a timezone (UTC `Z` recommended), and list up to 10 tasks with unique IDs and clear expected outcomes. Expired, disabled, malformed, or oversized files are ignored. A particular file revision is sent to the model once, avoiding repeat work on every five-minute monitoring cycle; edit the file to change the task set or request another attempt. The existing daily model-call limit still applies.
+
+Example installation:
+
+```bash
+sudo install -o root -g ordium-agent -m 640 ops/ordium-agent/next-24-hours-tasks.example.json /etc/ordium-agent/next-24-hours-tasks.json
+sudo nano /etc/ordium-agent/next-24-hours-tasks.json
+sudo chown root:ordium-agent /etc/ordium-agent/next-24-hours-tasks.json
+sudo chmod 640 /etc/ordium-agent/next-24-hours-tasks.json
+sudo systemctl restart ordium-agent
+```
+
+Task descriptions are treated as untrusted input and cannot override the agent's fixed safety rules. The model can only propose patches for the existing allowlisted application/test/docs paths. With `ORDIUM_ALLOW_DIRECT_PUSH=false`, changes remain a validated patch for human review; no task can authorize shell commands, production database writes, migrations, deployment changes, or secret access.
 
 ## Required AWS IAM permissions
 
