@@ -117,29 +117,31 @@ def browser_smoke_probe(url: str) -> Probe:
         failures: list[str] = []
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True, args=["--no-sandbox"])
-            page = browser.new_page()
-            page.on("pageerror", lambda exc: failures.append("pageerror: " + str(exc)[:180]))
-            page.on("console", lambda msg: failures.append("console: " + msg.text[:180]) if msg.type == "error" else None)
-            response = page.goto(url, wait_until="domcontentloaded", timeout=20000)
-            page.wait_for_timeout(1500)
-            title = page.title()
-            body_text = page.locator("body").inner_text(timeout=3000)[:500]
-            status = response.status if response else None
-            browser.close()
-        if status is None or status >= 400:
-            return Probe("browser-smoke", url, status, int((time.monotonic() - started) * 1000),
-                         "Navigation returned no response or HTTP error")
-        if not title.strip() or not body_text.strip():
-            return Probe("browser-smoke", url, status, int((time.monotonic() - started) * 1000),
-                         "Page title or visible body text is empty")
-        if failures:
-            return Probe("browser-smoke", url, status, int((time.monotonic() - started) * 1000),
-                         "; ".join(failures[:5])[:600])
-        return Probe("browser-smoke", url, status, int((time.monotonic() - started) * 1000))
+            try:
+                page = browser.new_page()
+                page.on("pageerror", lambda exc: failures.append(redact_log_message("pageerror: " + str(exc))[:180]))
+                page.on("console", lambda msg: failures.append(redact_log_message("console: " + msg.text)[:180])
+                        if msg.type == "error" else None)
+                response = page.goto(url, wait_until="domcontentloaded", timeout=20000)
+                page.wait_for_timeout(1500)
+                title = page.title()
+                body_text = page.locator("body").inner_text(timeout=3000)[:500]
+                status = response.status if response else None
+                if status is None or status >= 400:
+                    return Probe("browser-smoke", url, status, int((time.monotonic() - started) * 1000),
+                                 "Navigation returned no response or HTTP error")
+                if not title.strip() or not body_text.strip():
+                    return Probe("browser-smoke", url, status, int((time.monotonic() - started) * 1000),
+                                 "Page title or visible body text is empty")
+                if failures:
+                    return Probe("browser-smoke", url, status, int((time.monotonic() - started) * 1000),
+                                 "; ".join(failures[:5])[:600])
+                return Probe("browser-smoke", url, status, int((time.monotonic() - started) * 1000))
+            finally:
+                browser.close()
     except Exception as exc:
         return Probe("browser-smoke", url, None, int((time.monotonic() - started) * 1000),
-                     type(exc).__name__ + ": " + str(exc)[:300])
-
+                     redact_log_message(type(exc).__name__ + ": " + str(exc))[:300])
 
 def collect_probes() -> list[Probe]:
     probes: list[Probe] = []
