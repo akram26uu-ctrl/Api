@@ -403,8 +403,13 @@
   "dashboard": {
     "sidebar": {
       "risk_platform": "Gestion de la boutique",
+      "group_main": "Principal",
+      "group_orders": "Commandes",
+      "group_risk": "Risques",
+      "group_store": "Boutique & intégrations",
+      "group_usage": "Utilisation",
       "overview": "Résumé de la boutique",
-      "orders": "Commandes et confirmation",
+      "orders": "Commandes",
       "network": "Analyse des risques",
       "simulator": "Commande test",
       "rules": "Règles de risque",
@@ -416,7 +421,7 @@
       "core_version": "Cœur v2.4",
       "stores": "Boutiques",
       "store_workspace": "Espace de la boutique",
-      "store_workspace_hint": "Consultez les commandes et enregistrez les résultats de contact depuis la page des commandes."
+      "store_workspace_hint": "Envoyez des confirmations WhatsApp et enregistrez les résultats depuis la page des commandes — WhatsApp est un service géré par Ordium."
     },
     "header": {
       "sandbox_btn": "BAC À SABLE",
@@ -474,7 +479,7 @@
     },
     "titles": {
       "overview": "Résumé de la boutique",
-      "orders": "Commandes et confirmation",
+      "orders": "Commandes",
       "network": "Analyse des risques",
       "simulator": "Commande test",
       "rules": "Règles de risque",
@@ -770,6 +775,26 @@
       "manual_call": "Appel manuel",
       "product_unavailable": "Nom du produit indisponible",
       "more_products": "autres produits",
+      "channel": "Canal de confirmation",
+      "channel_whatsapp": "WhatsApp",
+      "channel_call": "Appel manuel",
+      "whatsapp_service": "WhatsApp est un service géré par Ordium — disponible sans connecter de compte.",
+      "template_label": "Modèle de message",
+      "template_default": "Par défaut",
+      "template_set_default": "Définir par défaut",
+      "template_name": {
+        "standard": "Confirmation standard",
+        "arabic_short": "Arabe court",
+        "french": "Confirmation française",
+        "bilingual": "Arabe + Français"
+      },
+      "preview_reply_confirm": "Confirmer la commande",
+      "preview_reply_cancel": "Annuler",
+      "preview_hint": "Aperçu — les boutons de réponse apparaissent chez le client dans WhatsApp.",
+      "send_whatsapp": "Envoyer la confirmation via WhatsApp",
+      "sent": "Tentative enregistrée et WhatsApp ouvert",
+      "send_error": "Impossible d’envoyer la confirmation",
+      "default_store_name": "votre boutique",
       "status": {
         "pending": "En attente de confirmation",
         "confirmed": "Confirmée",

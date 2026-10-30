@@ -43,17 +43,42 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ activeTab, o
     };
   }, [mobileOpen]);
 
-  const menuItems = [
-    { id: 'overview' as DashboardTab, label: t('dashboard.sidebar.overview', 'ملخص المتجر'), icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'confirmation' as DashboardTab, label: t('dashboard.confirmation_metrics.title', 'مؤشرات تأكيد الطلبات'), icon: <ClipboardCheck className="w-4 h-4" /> },
-    { id: 'orders' as DashboardTab, label: t('dashboard.sidebar.orders', 'الطلبات والتأكيد'), icon: <ShoppingCart className="w-4 h-4" /> },
-    { id: 'network' as DashboardTab, label: t('dashboard.sidebar.network', 'تحليل المخاطر'), icon: <Network className="w-4 h-4" /> },
-    { id: 'simulator' as DashboardTab, label: t('dashboard.sidebar.simulator', 'طلب تجريبي'), icon: <Zap className="w-4 h-4" /> },
-    { id: 'rules' as DashboardTab, label: t('dashboard.sidebar.rules', 'قواعد المخاطر'), icon: <Sliders className="w-4 h-4" /> },
-    { id: 'integrations' as DashboardTab, label: t('dashboard.sidebar.integrations', 'ربط المتجر'), icon: <Link2 className="w-4 h-4" /> },
-    { id: 'webhooks' as DashboardTab, label: t('dashboard.sidebar.webhooks', 'إشعارات الأنظمة'), icon: <Webhook className="w-4 h-4" /> },
-    { id: 'apikeys' as DashboardTab, label: t('dashboard.sidebar.apikeys', 'إعدادات الربط'), icon: <Key className="w-4 h-4" /> },
-    { id: 'usage' as DashboardTab, label: t('dashboard.sidebar.usage', 'الاستخدام'), icon: <BarChart3 className="w-4 h-4" /> }
+  const menuGroups: { label: string; items: { id: DashboardTab; label: string; icon: React.ReactNode }[] }[] = [
+    {
+      label: t('dashboard.sidebar.group_main', 'الرئيسية'),
+      items: [
+        { id: 'overview', label: t('dashboard.sidebar.overview', 'ملخص المتجر'), icon: <LayoutDashboard className="w-4 h-4" /> }
+      ]
+    },
+    {
+      label: t('dashboard.sidebar.group_orders', 'الطلبات'),
+      items: [
+        { id: 'orders', label: t('dashboard.sidebar.orders', 'الطلبات'), icon: <ShoppingCart className="w-4 h-4" /> },
+        { id: 'confirmation', label: t('dashboard.confirmation_metrics.title', 'مؤشرات التأكيد'), icon: <ClipboardCheck className="w-4 h-4" /> },
+        { id: 'simulator', label: t('dashboard.sidebar.simulator', 'تجربة طلب'), icon: <Zap className="w-4 h-4" /> }
+      ]
+    },
+    {
+      label: t('dashboard.sidebar.group_risk', 'المخاطر'),
+      items: [
+        { id: 'network', label: t('dashboard.sidebar.network', 'تحليل المخاطر'), icon: <Network className="w-4 h-4" /> },
+        { id: 'rules', label: t('dashboard.sidebar.rules', 'قواعد المخاطر'), icon: <Sliders className="w-4 h-4" /> }
+      ]
+    },
+    {
+      label: t('dashboard.sidebar.group_store', 'المتجر والربط'),
+      items: [
+        { id: 'integrations', label: t('dashboard.sidebar.integrations', 'ربط المتجر'), icon: <Link2 className="w-4 h-4" /> },
+        { id: 'webhooks', label: t('dashboard.sidebar.webhooks', 'الربط مع المتجر'), icon: <Webhook className="w-4 h-4" /> },
+        { id: 'apikeys', label: t('dashboard.sidebar.apikeys', 'مفاتيح الربط'), icon: <Key className="w-4 h-4" /> }
+      ]
+    },
+    {
+      label: t('dashboard.sidebar.group_usage', 'الاستخدام'),
+      items: [
+        { id: 'usage', label: t('dashboard.sidebar.usage', 'الاستخدام'), icon: <BarChart3 className="w-4 h-4" /> }
+      ]
+    }
   ];
 
   const sidebarContent = (
@@ -66,12 +91,16 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ activeTab, o
           </div>
           {onCloseMobile && <button ref={closeButtonRef} type="button" onClick={onCloseMobile} className="lg:hidden inline-flex items-center justify-center min-w-11 min-h-11 rounded-lg text-[#A1AEC1] hover:text-white hover:bg-white/5" aria-label={t('common.close', 'إغلاق')}><X className="w-4 h-4" /></button>}
         </div>
-        <nav className="p-4 space-y-1.5" aria-label={t('nav.console', 'Console')}>
-          <div className="px-3 py-2 text-[10px] font-mono uppercase text-[#A1AEC1] font-bold tracking-wider text-start">{t('dashboard.sidebar.risk_platform', 'إدارة المتجر')}</div>
-          {menuItems.map(item => {
-            const isActive = activeTab === item.id;
-            return <button key={item.id} type="button" onClick={() => { onSelectTab(item.id); onCloseMobile?.(); }} aria-current={isActive ? 'page' : undefined} className={`ordium-nav-item w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium text-start ${isActive ? 'bg-gradient-to-r from-[#6C63F5]/15 to-[#43D9E8]/[0.06] text-white border border-[#6C63F5]/30 shadow-sm font-semibold' : 'text-[#A1AEC1] hover:text-white hover:bg-white/[0.045] active:bg-white/[0.08]'}`}><span className={isActive ? 'text-[#22D3EE]' : 'text-[#A1AEC1]'}>{item.icon}</span><span>{item.label}</span></button>;
-          })}
+        <nav className="p-4 space-y-4" aria-label={t('nav.console', 'Console')}>
+          {menuGroups.map(group => (
+            <div key={group.label} className="space-y-1.5">
+              <div className="px-3 py-1.5 text-[10px] font-mono uppercase text-[#A1AEC1] font-bold tracking-wider text-start">{group.label}</div>
+              {group.items.map(item => {
+                const isActive = activeTab === item.id;
+                return <button key={item.id} type="button" onClick={() => { onSelectTab(item.id); onCloseMobile?.(); }} aria-current={isActive ? 'page' : undefined} className={`ordium-nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-start ${isActive ? 'bg-gradient-to-r from-[#6C63F5]/15 to-[#43D9E8]/[0.06] text-white border border-[#6C63F5]/30 shadow-sm font-semibold' : 'text-[#A1AEC1] hover:text-white hover:bg-white/[0.045] active:bg-white/[0.08]'}`}><span className={isActive ? 'text-[#22D3EE]' : 'text-[#A1AEC1]'}>{item.icon}</span><span>{item.label}</span></button>;
+              })}
+            </div>
+          ))}
         </nav>
       </div>
       <div className="p-4 border-t border-white/[0.08] space-y-3 shrink-0">

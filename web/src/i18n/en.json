@@ -403,8 +403,13 @@
   "dashboard": {
     "sidebar": {
       "risk_platform": "Store management",
+      "group_main": "Main",
+      "group_orders": "Orders",
+      "group_risk": "Risk",
+      "group_store": "Store & integrations",
+      "group_usage": "Usage",
       "overview": "Store summary",
-      "orders": "Orders & confirmation",
+      "orders": "Orders",
       "network": "Risk analysis",
       "simulator": "Test order",
       "rules": "Risk rules",
@@ -416,7 +421,7 @@
       "core_version": "Core v2.4",
       "stores": "Stores",
       "store_workspace": "Store workspace",
-      "store_workspace_hint": "Review orders and record contact outcomes from the orders page.",
+      "store_workspace_hint": "Send WhatsApp confirmations and record outcomes from the orders page — WhatsApp is an Ordium-managed service.",
       "integrations": "Connect a store"
     },
     "header": {
@@ -475,7 +480,7 @@
     },
     "titles": {
       "overview": "Store summary",
-      "orders": "Orders & confirmation",
+      "orders": "Orders",
       "network": "Risk analysis",
       "simulator": "Test order",
       "rules": "Risk rules",
@@ -772,6 +777,26 @@
       "manual_call": "Manual call",
       "product_unavailable": "Product name unavailable",
       "more_products": "more products",
+      "channel": "Confirmation channel",
+      "channel_whatsapp": "WhatsApp",
+      "channel_call": "Manual call",
+      "whatsapp_service": "WhatsApp is an Ordium-managed service — available without connecting any account.",
+      "template_label": "Message template",
+      "template_default": "Default",
+      "template_set_default": "Set as default",
+      "template_name": {
+        "standard": "Standard confirmation",
+        "arabic_short": "Short Arabic",
+        "french": "French confirmation",
+        "bilingual": "Arabic + French"
+      },
+      "preview_reply_confirm": "Confirm order",
+      "preview_reply_cancel": "Cancel",
+      "preview_hint": "Preview — reply buttons appear to the customer inside WhatsApp.",
+      "send_whatsapp": "Send confirmation via WhatsApp",
+      "sent": "Attempt logged and WhatsApp opened",
+      "send_error": "Could not send the confirmation",
+      "default_store_name": "your store",
       "status": {
         "pending": "Awaiting confirmation",
         "confirmed": "Confirmed",

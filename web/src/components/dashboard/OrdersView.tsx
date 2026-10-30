@@ -10,9 +10,9 @@ import { OrderConfirmationMetrics } from './OrderConfirmationMetrics';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { Search, RefreshCw, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 
-interface OrdersViewProps { onOpenSimulator: () => void; }
+interface OrdersViewProps { onOpenSimulator: () => void; storeName?: string; }
 
-export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenSimulator }) => {
+export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenSimulator, storeName }) => {
   const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +80,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenSimulator }) => {
           <div className="flex items-center justify-between px-4 py-3 border-t border-white/5"><Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} leftIcon={<ChevronLeft className="w-3.5 h-3.5" />}>{t('dashboard.orders.previous_page', 'السابق')}</Button><span className="text-[11px] font-mono text-[#64748B]">{page} / {totalPages}</span><Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} rightIcon={<ChevronRight className="w-3.5 h-3.5" />}>{t('dashboard.orders.next_page', 'التالي')}</Button></div>
         </div>
       )}
-      <OrderDetailDrawer order={selectedOrder} isOpen={Boolean(selectedOrder)} onClose={() => setSelectedOrder(null)} onUpdateOutcome={handleOutcomeUpdated} />
+      <OrderDetailDrawer order={selectedOrder} isOpen={Boolean(selectedOrder)} onClose={() => setSelectedOrder(null)} storeName={storeName} onUpdateOutcome={handleOutcomeUpdated} />
     </div>
   );
 };

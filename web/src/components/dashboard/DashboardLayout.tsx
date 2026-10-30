@@ -133,7 +133,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
               <div className="dashboard-page-enter" key={activeTab}>
                 {activeTab === 'overview' && <>{showOnboarding && <MerchantOnboarding onNavigateTab={navigateTab} onDismiss={dismissOnboarding} onManageStores={() => setStoreManagementOpen(true)} />}<OverviewView onNavigateTab={navigateTab} /></>}
                 {activeTab === 'confirmation' && <ConfirmationView onOpenOrders={() => navigateTab('orders')} />}
-                {activeTab === 'orders' && <OrdersView onOpenSimulator={() => navigateTab('simulator')} />}
+                {activeTab === 'orders' && <OrdersView storeName={stores.find(store => store.id === selectedStoreId)?.name} onOpenSimulator={() => navigateTab('simulator')} />}
                 {activeTab === 'network' && <IdentityNetworkView />}
                 {activeTab === 'simulator' && <SimulatorView storeId={selectedStoreId} onOrderCreated={() => navigateTab('orders')} />}
                 {activeTab === 'rules' && <RulesEngineView />}

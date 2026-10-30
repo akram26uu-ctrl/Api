@@ -434,8 +434,13 @@
   "dashboard": {
     "sidebar": {
       "risk_platform": "إدارة المتجر",
+      "group_main": "الرئيسية",
+      "group_orders": "الطلبات",
+      "group_risk": "المخاطر",
+      "group_store": "المتجر والربط",
+      "group_usage": "الاستخدام",
       "overview": "ملخص المتجر",
-      "orders": "الطلبات والتأكيد",
+      "orders": "الطلبات",
       "network": "تحليل الروابط والمخاطر",
       "simulator": "طلب تجريبي",
       "rules": "قواعد المخاطر",
@@ -447,7 +452,7 @@
       "core_version": "النواة v2.4",
       "stores": "المتاجر",
       "store_workspace": "مساحة عمل المتجر",
-      "store_workspace_hint": "تابع الطلبات وسجّل نتائج التواصل من صفحة الطلبات.",
+      "store_workspace_hint": "أرسل تأكيدات واتساب وسجّل النتائج من صفحة الطلبات — واتساب خدمة مُدارة من ORDIUM.",
       "integrations": "ربط المتجر"
     },
     "header": {
@@ -508,7 +513,7 @@
     },
     "titles": {
       "overview": "ملخص المتجر",
-      "orders": "الطلبات والتأكيد",
+      "orders": "الطلبات",
       "network": "تحليل المخاطر",
       "simulator": "طلب تجريبي",
       "rules": "قواعد المخاطر",
@@ -884,6 +889,26 @@
       "manual_call": "اتصال يدوي",
       "product_unavailable": "اسم المنتج غير متوفر",
       "more_products": "منتجات أخرى",
+      "channel": "قناة التأكيد",
+      "channel_whatsapp": "واتساب",
+      "channel_call": "اتصال يدوي",
+      "whatsapp_service": "واتساب خدمة مُدارة من ORDIUM — متاحة دون ربط أي حساب.",
+      "template_label": "نموذج الرسالة",
+      "template_default": "افتراضي",
+      "template_set_default": "تعيين كافتراضي",
+      "template_name": {
+        "standard": "تأكيد قياسي",
+        "arabic_short": "عربي مختصر",
+        "french": "تأكيد فرنسي",
+        "bilingual": "عربي + فرنسي"
+      },
+      "preview_reply_confirm": "تأكيد الطلب",
+      "preview_reply_cancel": "إلغاء",
+      "preview_hint": "معاينة — أزرار الرد تظهر لدى العميل داخل واتساب.",
+      "send_whatsapp": "إرسال التأكيد عبر واتساب",
+      "sent": "تم تسجيل المحاولة وفتح واتساب",
+      "send_error": "تعذر إرسال التأكيد",
+      "default_store_name": "متجرك",
       "status": {
         "pending": "بانتظار التأكيد",
         "confirmed": "تم التأكيد",
