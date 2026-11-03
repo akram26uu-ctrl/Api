@@ -6,7 +6,7 @@ x-log-settings: &log-settings
     awslogs-region: ${AWS_REGION:?Set AWS_REGION in .env.ec2}
     awslogs-group: /ordium/containers
     awslogs-create-group: "true"
-    awslogs-stream-prefix: ordium
+    tag: "ordium/{{.Name}}/{{.ID}}"
     mode: non-blocking
     max-buffer-size: 4m
 
