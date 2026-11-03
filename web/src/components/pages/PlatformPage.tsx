@@ -3,75 +3,58 @@
  */
 
 import React from 'react';
-import { Cpu, Zap, Activity, ShieldAlert, GitBranch, Layers, MessageCircle, CheckCircle2 } from 'lucide-react';
-import { RiskCore3D } from '../3d/RiskCore3D';
+import { MessageCircle, CheckCircle2, Timer, Gauge, ScanSearch } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { LazyRiskCore3D as RiskCore3D } from '../3d/lazy';
 import { PipelineSection } from '../marketing/PipelineSection';
 
 export const PlatformPage: React.FC = () => {
+  const { t } = useLanguage();
+  const facts = [
+    { icon: <Timer className="w-5 h-5" />, value: t('pages.platform.f1_value', 'Measured'), label: t('pages.platform.f1_label', 'Evaluation time'), desc: t('pages.platform.f1_desc', 'The dashboard reports measured evaluation time when persisted telemetry is available.'), tone: 'text-[#52D9E8]' },
+    { icon: <Gauge className="w-5 h-5" />, value: t('pages.platform.f2_value', 'Merchant-scoped'), label: t('pages.platform.f2_label', 'Rate limits'), desc: t('pages.platform.f2_desc', 'Request limits are controlled by the active API environment and merchant configuration.'), tone: 'text-[#48D6A0]' },
+    { icon: <ScanSearch className="w-5 h-5" />, value: t('pages.platform.f3_value', 'Inspectable'), label: t('pages.platform.f3_label', 'Decision traceability'), desc: t('pages.platform.f3_desc', 'Persisted assessments expose the risk events, rule version, profile version, and identity context available for review.'), tone: 'text-[#958AFF]' },
+  ];
   return (
-    <div className="py-20 bg-[#080B12] min-h-screen">
+    <div className="py-16 sm:py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D1320] border border-white/10 text-xs font-mono text-[#6C5CE7]">
-            <span>ENGINEERING SPECIFICATION</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
-            The ORDIUM Risk Engine
-          </h1>
-          <p className="text-base text-[#94A3B8] leading-relaxed">
-            Designed for merchant-scoped checkout risk evaluation. The platform persists risk signals, rule versions, identity relationships, and measured evaluation telemetry.
-          </p>
-        </div>
+        <header className="text-center max-w-3xl mx-auto mb-14 space-y-5">
+          <span className="ordium-eyebrow !text-[#958AFF]">{t('pages.platform.eyebrow', 'ENGINEERING SPECIFICATION')}</span>
+          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight text-balance">{t('pages.platform.title', 'The ORDIUM Risk Engine')}</h1>
+          <p className="text-base text-[#A5B1C3] leading-relaxed">{t('pages.platform.subtitle', 'Designed for merchant-scoped checkout risk evaluation. The platform persists risk signals, rule versions, identity relationships, and measured evaluation telemetry.')}</p>
+        </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          <div className="rounded-2xl border border-white/10 bg-[#0D1320] p-6 space-y-3">
-            <div className="flex items-center gap-2 text-[#22D3EE]"><MessageCircle className="w-5 h-5" /><h2 className="text-sm font-bold text-white">Manual order confirmation</h2></div>
-            <p className="text-sm text-[#94A3B8] leading-relaxed">Open a pre-filled WhatsApp conversation or initiate a phone call yourself, then record the result against the order. ORDIUM does not send messages or place calls automatically.</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-[#0D1320] p-6 space-y-3">
-            <div className="flex items-center gap-2 text-[#10B981]"><CheckCircle2 className="w-5 h-5" /><h2 className="text-sm font-bold text-white">Confirmation metrics and audit history</h2></div>
-            <p className="text-sm text-[#94A3B8] leading-relaxed">Track confirmed orders, orders awaiting first contact, work in progress, cancellations and contact attempts. The confirmation rate uses orders with recorded confirmation activity as its denominator; untouched new orders are reported separately.</p>
-          </div>
+          <article className="ordium-card p-6 space-y-3">
+            <div className="flex items-center gap-2 text-[#52D9E8]"><MessageCircle aria-hidden="true" className="w-5 h-5" /><h2 className="text-base font-semibold text-white">{t('pages.platform.manual_title', 'Manual order confirmation')}</h2></div>
+            <p className="text-sm text-[#A5B1C3] leading-relaxed">{t('pages.platform.manual_desc', 'Open a pre-filled WhatsApp conversation or start a phone call yourself, then record the result against the order. ORDIUM does not send messages or place calls automatically.')}</p>
+          </article>
+          <article className="ordium-card p-6 space-y-3">
+            <div className="flex items-center gap-2 text-[#48D6A0]"><CheckCircle2 aria-hidden="true" className="w-5 h-5" /><h2 className="text-base font-semibold text-white">{t('pages.platform.metrics_title', 'Confirmation metrics and audit history')}</h2></div>
+            <p className="text-sm text-[#A5B1C3] leading-relaxed">{t('pages.platform.metrics_desc', 'Track confirmed orders, orders awaiting first contact, work in progress, cancellations and contact attempts. The confirmation rate uses orders with recorded confirmation activity as its denominator; untouched new orders are reported separately.')}</p>
+          </article>
         </div>
 
-        {/* 3D Visualizer */}
-        <div className="bg-[#0D1320] border border-white/10 rounded-2xl p-4 shadow-2xl mb-16">
-          <div className="h-[460px] w-full rounded-xl overflow-hidden bg-[#080B12]">
+        <figure className="ordium-card p-3 sm:p-4 mb-14">
+          <div className="h-[320px] sm:h-[460px] w-full rounded-xl overflow-hidden bg-[#080B12]">
             <RiskCore3D />
           </div>
-          <div className="p-4 flex items-center justify-between text-xs font-mono text-[#94A3B8] border-t border-white/5">
-            <span>CORE ARCHITECTURE: DISTRIBUTED DECISION GRAPH</span>
-            <span className="text-[#22D3EE]">LATENCY: measured per evaluation</span>
-          </div>
-        </div>
+          <figcaption className="px-2 pt-4 pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-[#A5B1C3] border-t border-white/[0.06] mt-3">
+            <span>{t('pages.platform.caption_arch', 'Core architecture: distributed decision graph')}</span>
+            <span className="text-[#52D9E8]">{t('pages.platform.caption_latency', 'Latency: measured per evaluation')}</span>
+          </figcaption>
+        </figure>
 
-        {/* Latency & Ingestion Benchmarks */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
-          <div className="p-6 rounded-2xl bg-[#0D1320] border border-white/10 text-center space-y-2">
-            <div className="text-3xl font-mono font-extrabold text-white">Measured</div>
-            <div className="text-xs font-bold text-[#22D3EE] font-mono">MEASURED EVALUATION TIME</div>
-            <p className="text-xs text-[#94A3B8] leading-relaxed">
-              The dashboard reports measured evaluation time when persisted telemetry is available.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-[#0D1320] border border-white/10 text-center space-y-2">
-            <div className="text-3xl font-mono font-extrabold text-white">Merchant-scoped</div>
-            <div className="text-xs font-bold text-[#10B981] font-mono">RATE LIMIT</div>
-            <p className="text-xs text-[#94A3B8] leading-relaxed">
-              Request limits are controlled by the active API environment and merchant configuration.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-[#0D1320] border border-white/10 text-center space-y-2">
-            <div className="text-3xl font-mono font-extrabold text-white">Inspectable</div>
-            <div className="text-xs font-bold text-[#6C5CE7] font-mono">DECISION TRACEABILITY</div>
-            <p className="text-xs text-[#94A3B8] leading-relaxed">
-              Persisted assessments expose the risk events, rule version, profile version, and identity context available for review.
-            </p>
-          </div>
+          {facts.map(fact => (
+            <article key={fact.label} className="ordium-card p-6 space-y-2">
+              <span aria-hidden="true" className={`inline-flex ${fact.tone}`}>{fact.icon}</span>
+              <p className="text-2xl font-extrabold text-white">{fact.value}</p>
+              <h3 className={`text-sm font-semibold ${fact.tone}`}>{fact.label}</h3>
+              <p className="text-sm text-[#A5B1C3] leading-relaxed">{fact.desc}</p>
+            </article>
+          ))}
         </div>
 
         {/* Include Pipeline Detail */}

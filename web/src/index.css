@@ -36,7 +36,7 @@
 
   /* In Arabic, keep monospace for numbers and hashes while keeping legible script */
   [dir="rtl"] .font-mono {
-    font-family: 'JetBrains Mono', 'IBM Plex Sans Arabic', monospace;
+    font-family: 'JetBrains Mono', 'Cairo', monospace;
   }
 }
 
@@ -690,4 +690,215 @@ html, body, #root {
       flex-shrink: 0;
     }
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* ORDIUM shared form, feedback and motion primitives (auth + public)  */
+/* ------------------------------------------------------------------ */
+
+/* Labels sit above fields, readable at 13px, never placeholder-only. */
+.ordium-label {
+  display: block;
+  margin-bottom: .375rem;
+  font-size: .8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #c7d0dd;
+  text-align: start;
+}
+
+.ordium-label .ordium-required {
+  margin-inline-start: .25rem;
+  color: var(--ordium-signal);
+}
+
+.ordium-hint {
+  margin-top: .375rem;
+  font-size: .75rem;
+  line-height: 1.55;
+  color: var(--ordium-muted);
+  text-align: start;
+}
+
+/* 16px on phones prevents iOS zoom-on-focus; 14px from the sm breakpoint. */
+.ordium-input {
+  width: 100%;
+  min-height: 2.875rem;
+  padding: .625rem .875rem;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: .75rem;
+  background: #080b12;
+  color: var(--ordium-text);
+  font-size: 1rem;
+  line-height: 1.5;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+@media (min-width: 640px) {
+  .ordium-input { font-size: .875rem; }
+}
+
+.ordium-input::placeholder { color: #5b687c; }
+.ordium-input:hover:not(:disabled) { border-color: rgba(148, 163, 184, .34); }
+.ordium-input:focus {
+  outline: none;
+  border-color: var(--ordium-signal);
+  box-shadow: 0 0 0 3px rgba(82, 217, 232, .16);
+}
+.ordium-input:disabled { opacity: .6; cursor: not-allowed; }
+.ordium-input[aria-invalid="true"] {
+  border-color: rgba(251, 113, 133, .7);
+  box-shadow: 0 0 0 3px rgba(251, 113, 133, .12);
+}
+.ordium-input.has-leading-icon { padding-inline-start: 2.5rem; }
+.ordium-input.has-trailing-action { padding-inline-end: 2.75rem; }
+
+select.ordium-input { cursor: pointer; }
+
+.ordium-input-icon {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  display: flex;
+  align-items: center;
+  padding-inline-start: .875rem;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.ordium-input-action {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  border-radius: .75rem;
+  color: #8a97ab;
+}
+.ordium-input-action:hover { color: #fff; }
+
+.ordium-field-error {
+  margin-top: .375rem;
+  font-size: .75rem;
+  line-height: 1.5;
+  color: #fda4af;
+  text-align: start;
+}
+
+/* Auth / standalone surfaces */
+.ordium-auth-card {
+  position: relative;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 1.25rem;
+  background: linear-gradient(160deg, rgba(19, 29, 44, .96), rgba(13, 19, 32, .98));
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .03);
+}
+
+.ordium-auth-card::before {
+  content: "";
+  position: absolute;
+  inset-inline: 1.5rem;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(82, 217, 232, .55), rgba(120, 107, 255, .55), transparent);
+}
+
+.ordium-section-title {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  padding-bottom: .625rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .12);
+  font-size: .9375rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ordium-step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: rgba(82, 217, 232, .12);
+  border: 1px solid rgba(82, 217, 232, .3);
+  color: var(--ordium-signal);
+  font-size: .75rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Public pages: consistent readable cards */
+.ordium-card {
+  border: 1px solid var(--ordium-border);
+  border-radius: var(--ordium-radius-md);
+  background: linear-gradient(160deg, rgba(19, 29, 44, .85), rgba(13, 19, 32, .92));
+  box-shadow: var(--ordium-shadow-card);
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+.ordium-card:hover { border-color: var(--ordium-border-strong); }
+
+.ordium-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .3rem .8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, .16);
+  background: rgba(13, 19, 32, .9);
+  color: var(--ordium-signal);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+/* Lightweight replacements for the animate-in utilities referenced in markup
+   (tailwindcss-animate is not installed, so these classes were previously no-ops). */
+@keyframes ordium-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ordium-zoom-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
+@keyframes ordium-slide-down { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ordium-slide-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ordium-drawer-ltr { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes ordium-drawer-rtl { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+.animate-in { animation: ordium-fade-in 180ms ease-out both; }
+.animate-in.zoom-in-95 { animation-name: ordium-zoom-in; }
+.animate-in:is(.slide-in-from-top-1, .slide-in-from-top-2) { animation-name: ordium-slide-down; }
+.animate-in.slide-in-from-bottom-2 { animation-name: ordium-slide-up; }
+.ordium-drawer-from-left { animation: ordium-drawer-ltr 220ms cubic-bezier(.2, .8, .2, 1) both; }
+.ordium-drawer-from-right { animation: ordium-drawer-rtl 220ms cubic-bezier(.2, .8, .2, 1) both; }
+
+/* Skip link for keyboard users */
+.ordium-skip-link {
+  position: fixed;
+  inset-inline-start: 1rem;
+  top: -4rem;
+  z-index: 100;
+  padding: .625rem 1rem;
+  border-radius: .75rem;
+  background: var(--ordium-signal);
+  color: #061018;
+  font-weight: 700;
+  font-size: .875rem;
+  transition: top 160ms ease;
+}
+.ordium-skip-link:focus { top: 1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in, .ordium-drawer-from-left, .ordium-drawer-from-right { animation: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* Arabic script must never be letter-spaced: tracking utilities break the joining of
+   letters (e.g. "ا ل ع ر ب ي ة"). Applies to every tracking-* / font-mono element in RTL. */
+[dir="rtl"] :is([class*="tracking-"], .font-mono, .uppercase):not([dir="ltr"]) {
+  letter-spacing: 0 !important;
+}
+
+/* Unlayered on purpose: Tailwind's .font-mono utility outranks @layer base, which made
+   Arabic fall back to a system monospace font with spaced-out glyphs. */
+[dir="rtl"] .font-mono:not([dir="ltr"]) {
+  font-family: 'JetBrains Mono', 'Cairo', 'Segoe UI', sans-serif;
 }

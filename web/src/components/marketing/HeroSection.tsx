@@ -32,7 +32,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onStart, onExploreApi 
             {/* Tagline Pill */}
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0D1320] border border-white/10 text-xs font-mono text-[#22D3EE] shadow-lg">
               <span className="w-2 h-2 rounded-full bg-[#22D3EE] animate-pulse" />
-              <span>{t('hero.badge', 'ORDIUM INFRASTRUCTURE ENGINE v2.4')}</span>
+              <span>{t('hero.badge', 'ORDIUM ORDER RISK ENGINE')}</span>
             </div>
 
             {/* Headline */}
@@ -97,20 +97,21 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onStart, onExploreApi 
 
               {/* Holographic Decision Pulse Markers */}
               <div className="absolute top-4 right-4 rtl:right-auto rtl:left-4 z-20 flex flex-col gap-2 pointer-events-none">
+                <span className="self-end text-[10px] text-[#A5B1C3] bg-[#080B12]/80 px-2 py-0.5 rounded">{t('hero.legend_default', 'Default thresholds · configurable per store')}</span>
                 <div className="flex items-center gap-2 bg-[#080B12]/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-xs font-mono">
                   <span className="w-2 h-2 rounded-full bg-[#10B981]" />
                   <span className="text-white">{t('dashboard.orders.allow', 'ALLOW')}</span>
-                  <span className="text-[#94A3B8]">Score &lt; 50</span>
+                  <span className="text-[#A5B1C3]" dir="ltr">&lt; 50</span>
                 </div>
                 <div className="flex items-center gap-2 bg-[#080B12]/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-xs font-mono">
                   <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
                   <span className="text-white">{t('dashboard.orders.review', 'REVIEW')}</span>
-                  <span className="text-[#94A3B8]">Score 50–79</span>
+                  <span className="text-[#A5B1C3]" dir="ltr">50–79</span>
                 </div>
                 <div className="flex items-center gap-2 bg-[#080B12]/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-xs font-mono">
                   <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
                   <span className="text-white">{t('dashboard.orders.reject', 'REJECT')}</span>
-                  <span className="text-[#94A3B8]">Score &ge; 80</span>
+                  <span className="text-[#A5B1C3]" dir="ltr">&ge; 80</span>
                 </div>
               </div>
 
@@ -118,9 +119,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onStart, onExploreApi 
               <div className="absolute bottom-3 left-3 right-3 z-20 flex justify-between items-center text-[10px] font-mono text-[#94A3B8] bg-[#080B12]/85 backdrop-blur-sm border border-white/5 px-3 py-2 rounded-md">
                 <span className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#22D3EE] animate-ping" />
-                  ORD-CORE: ACTIVE EVALUATION
+                  {t('hero.hud_left', 'Risk core · illustrative visualization')}
                 </span>
-                <span>SIGNALS: RESOLVING RELATIONSHIPS</span>
+                <span className="hidden sm:inline">{t('hero.hud_right', 'Signals: resolving relationships')}</span>
               </div>
             </div>
           </div>

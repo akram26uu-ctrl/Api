@@ -22,7 +22,7 @@ export class OrdiumApiError extends Error {
     super(message); this.name = 'OrdiumApiError'; this.statusCode = statusCode; this.code = code; this.requestId = requestId; this.field = field;
   }
   static fromStatus(status: number, customMessage?: string, field?: string, requestId?: string) {
-    const reqId = requestId || `req_${Date.now()}`;
+    const reqId = requestId || '';
     const messages: Record<number, [string, string]> = {
       401: ['UNAUTHORIZED', 'Invalid or missing API credential.'],
       403: ['FORBIDDEN', 'Your API credential does not have permission for this resource.'],

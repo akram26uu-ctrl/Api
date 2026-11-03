@@ -11,7 +11,7 @@ import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { CodeBlock } from '../common/CodeBlock';
 import { useLanguage } from '../../i18n/LanguageContext';
-import { Zap, Send, RefreshCw, CheckCircle2, AlertTriangle, ShieldAlert, Sliders } from 'lucide-react';
+import { Zap, Send, RefreshCw, CheckCircle2, AlertTriangle, ShieldAlert, Sliders, Gauge, Network } from 'lucide-react';
 
 interface SimulatorViewProps {
   storeId: string | null;
@@ -284,32 +284,25 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
           </div>
 
           {/* Attack Presets */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-mono text-[#94A3B8]">{t('dashboard.simulator.preset_clean', 'Load Scenario:')}:</span>
-          <button
-            onClick={() => applyPreset('clean')}
-            className="px-2.5 py-1 rounded-md text-xs font-mono bg-white/5 text-[#10B981] hover:bg-[#10B981]/15 border border-[#10B981]/30 transition-colors"
-          >
-            ✓ {t('dashboard.simulator.preset_clean', 'Clean Customer ($185)')}
-          </button>
-          <button
-            onClick={() => applyPreset('tor_device')}
-            className="px-2.5 py-1 rounded-md text-xs font-mono bg-white/5 text-[#EF4444] hover:bg-[#EF4444]/15 border border-[#EF4444]/30 transition-colors"
-          >
-            ⚠ {t('dashboard.simulator.preset_tor', 'Tor Egress & Reused Device')}
-          </button>
-          <button
-            onClick={() => applyPreset('velocity_vpn')}
-            className="px-2.5 py-1 rounded-md text-xs font-mono bg-white/5 text-[#F59E0B] hover:bg-[#F59E0B]/15 border border-[#F59E0B]/30 transition-colors"
-          >
-            ⚡ {t('dashboard.simulator.preset_velocity', 'Velocity Spike & VPN')}
-          </button>
-          <button
-            onClick={() => applyPreset('synthetic_cluster')}
-            className="px-2.5 py-1 rounded-md text-xs font-mono bg-white/5 text-[#EF4444] hover:bg-[#EF4444]/15 border border-[#EF4444]/30 transition-colors"
-          >
-            ☣ {t('dashboard.simulator.preset_cluster', 'Synthetic Cluster #CL-441')}
-          </button>
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-labelledby="simulator-presets-label">
+          {/* Previously this label reused the "clean" preset key and rendered as the first preset's name. */}
+          <span id="simulator-presets-label" className="text-xs text-[#A5B1C3]">{t('dashboard.simulator.load_scenario', 'Load scenario')}:</span>
+          {([
+            { id: 'clean', key: 'preset_clean', fallback: 'Clean Customer', icon: CheckCircle2, tone: 'text-[#48D6A0] border-[#48D6A0]/30 hover:bg-[#48D6A0]/10' },
+            { id: 'tor_device', key: 'preset_tor', fallback: 'Tor Egress & Reused Device', icon: ShieldAlert, tone: 'text-[#FB7185] border-[#FB7185]/30 hover:bg-[#FB7185]/10' },
+            { id: 'velocity_vpn', key: 'preset_velocity', fallback: 'Velocity Spike & VPN', icon: Gauge, tone: 'text-[#F5C465] border-[#F5C465]/30 hover:bg-[#F5C465]/10' },
+            { id: 'synthetic_cluster', key: 'preset_cluster', fallback: 'Synthetic Cluster', icon: Network, tone: 'text-[#FB7185] border-[#FB7185]/30 hover:bg-[#FB7185]/10' },
+          ] as const).map(preset => (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => applyPreset(preset.id)}
+              className={`inline-flex min-h-9 items-center gap-1.5 px-3 rounded-lg text-xs font-medium bg-white/[0.03] border transition-colors ${preset.tone}`}
+            >
+              <preset.icon aria-hidden="true" className="w-3.5 h-3.5" />
+              {t(`dashboard.simulator.${preset.key}`, preset.fallback)}
+            </button>
+          ))}
         </div>
       </div>
       </div>
@@ -323,7 +316,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
             <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
               {mode === 'form' ? t('dashboard.simulator.order_details', 'تفاصيل الطلب التجريبي') : t('dashboard.simulator.payload_editor', 'بيانات متقدمة (JSON)')}
             </span>
-            <span className="text-[11px] font-mono text-[#94A3B8]">الوجهة: POST /api/v1/dashboard/orders → TEST API</span>
+            <span className="text-[11px] font-mono text-[#94A3B8]">{t('dashboard.simulator.destination', 'Destination')}: <span dir="ltr">POST /api/v1/dashboard/orders → TEST</span></span>
           </div>
 
           {mode === 'form' ? (
@@ -527,14 +520,15 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="text-white font-bold">{t('dashboard.simulator.signals_detected', 'إشارات المخاطر المكتشفة')}</span>
                   <span className="text-[#94A3B8]">
-                    {evaluatedOrder.risk?.signals?.length || 0} إشارات فعالة
+                    {evaluatedOrder.risk?.signals?.length || 0} {t('dashboard.simulator.active_signals', 'active signals')}
                   </span>
                 </div>
 
                 <div className="space-y-2 max-h-[220px] overflow-y-auto pe-1">
                   {(!evaluatedOrder.risk?.signals || evaluatedOrder.risk.signals.length === 0) ? (
-                    <div className="text-xs font-mono text-[#10B981] p-3 rounded bg-white/5">
-                      ✓ No anomalies flagged. لا توجد مؤشرات خطر فعالة على هذا الطلب.
+                    <div className="flex items-center gap-2 text-sm text-[#48D6A0] p-3 rounded-lg bg-white/5">
+                      <CheckCircle2 aria-hidden="true" className="w-4 h-4 shrink-0" />
+                      {t('dashboard.simulator.no_signals', 'No active risk signals on this order.')}
                     </div>
                   ) : (
                     evaluatedOrder.risk.signals.map((sig, idx) => (
@@ -547,7 +541,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
                           <div className="text-[10px] text-[#94A3B8] truncate">{sig.description}</div>
                         </div>
                         <span className="font-bold text-[#EF4444] shrink-0 font-mono">
-                          +{sig.weight} pts
+                          +{sig.weight} {t('dashboard.simulator.points', 'pts')}
                         </span>
                       </div>
                     ))
@@ -557,8 +551,8 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ storeId, onOrderCr
 
               {/* Quick API Snippet */}
               <div className="text-[11px] font-mono p-3 bg-white/5 rounded-lg text-[#94A3B8] text-start">
-                ✓ تم حفظ نتيجة الاختبار للطلب{' '}
-                <span className="text-white font-bold">{evaluatedOrder.order_number}</span>. يمكنك مراجعتها من صفحة الطلبات.
+                {t('dashboard.simulator.saved_prefix', 'Test result saved for order')}{' '}
+                <span dir="ltr" className="text-white font-bold">{evaluatedOrder.order_number}</span>. {t('dashboard.simulator.saved_suffix', 'You can review it on the Orders page.')}
               </div>
             </div>
           )}

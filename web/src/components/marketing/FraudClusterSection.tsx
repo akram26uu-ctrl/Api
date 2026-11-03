@@ -6,8 +6,7 @@
  */
 
 import React from 'react';
-import { SecurityShield3D } from '../3d/SecurityShield3D';
-import { FraudNetwork3D } from '../3d/FraudNetwork3D';
+import { LazySecurityShield3D as SecurityShield3D, LazyFraudNetwork3D as FraudNetwork3D } from '../3d/lazy';
 import { ShieldCheck, Share2, Layers, AlertCircle, TrendingDown } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 

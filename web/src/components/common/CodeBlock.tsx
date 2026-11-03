@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Check, Copy, Terminal } from 'lucide-react';
 
 interface TabItem {
@@ -28,6 +29,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
   className = ''
 }) => {
   const [activeTab, setActiveTab] = useState(0);
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
   const activeCode = tabs ? tabs[activeTab]?.code || '' : singleCode;
@@ -83,17 +85,18 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
         <button
           onClick={handleCopy}
           className="flex items-center gap-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors px-2 py-1 rounded hover:bg-white/5"
-          title="Copy code"
+          title={t('ui.copy_code', 'Copy code')}
+          aria-label={copied ? t('ui.copied', 'Copied') : t('ui.copy_code', 'Copy code')}
         >
           {copied ? (
             <>
               <Check className="w-3.5 h-3.5 text-[#10B981]" />
-              <span className="text-[#10B981]">Copied</span>
+              <span className="text-[#10B981]" role="status">{t('ui.copied', 'Copied')}</span>
             </>
           ) : (
             <>
               <Copy className="w-3.5 h-3.5" />
-              <span>Copy</span>
+              <span>{t('ui.copy', 'Copy')}</span>
             </>
           )}
         </button>

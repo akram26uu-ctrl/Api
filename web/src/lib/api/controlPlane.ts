@@ -54,7 +54,7 @@ export async function controlPlaneFetch<T>(endpoint: string, options: RequestIni
   if (!endpoint.startsWith('/api/v1/auth/')) {
     throw new ControlPlaneError(403, 'CREDENTIAL_ISOLATION',
       'Non-auth requests must use the dashboard proxy, not the control-plane client directly.',
-      'req_' + Date.now());
+      '');
   }
 
   const headers = new Headers(options.headers || {});
@@ -71,10 +71,11 @@ export async function controlPlaneFetch<T>(endpoint: string, options: RequestIni
     const reason = error instanceof Error ? error.message : '';
     throw new ControlPlaneError(0, 'CONTROL_PLANE_UNREACHABLE',
       'Unable to reach the ORDIUM account service.' + (reason ? ' (' + reason + ')' : ''),
-      'req_' + Date.now());
+      '');
   }
 
-  const requestId = response.headers.get('X-Request-ID') || 'req_' + Date.now();
+  // Only surface a reference ID the server actually issued; a locally invented one cannot be traced.
+  const requestId = response.headers.get('X-Request-ID') || '';
   if (!response.ok) {
     const payload = await readErrorPayload(response);
     const detail =

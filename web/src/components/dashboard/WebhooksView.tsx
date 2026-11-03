@@ -179,11 +179,13 @@ export const WebhooksView: React.FC = () => {
           <div className="p-3 bg-[#080B12] border border-white/10 rounded-xl text-[#22D3EE] break-all select-all flex items-center justify-between gap-2" dir="ltr">
             <span>{createdSecret}</span>
             <button
-              onClick={() => navigator.clipboard.writeText(createdSecret || '')}
-              className="p-1 hover:text-white"
-              title="Copy"
+              type="button"
+              onClick={() => { void navigator.clipboard?.writeText(createdSecret || '').catch(() => undefined); }}
+              className="inline-flex min-w-10 min-h-10 items-center justify-center rounded-lg hover:text-white hover:bg-white/5"
+              title={t('ui.copy', 'Copy')}
+              aria-label={t('dashboard.webhooks.copy_secret', 'Copy signing secret')}
             >
-              <Copy className="w-4 h-4 shrink-0" />
+              <Copy aria-hidden="true" className="w-4 h-4 shrink-0" />
             </button>
           </div>
           <Button
@@ -197,7 +199,7 @@ export const WebhooksView: React.FC = () => {
         </div>
       </Modal>
 
-      {loadError && <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs text-red-300 flex items-center justify-between gap-3"><span>{loadError}</span><Button variant="outline" size="sm" onClick={() => void fetchWebhooks()}>Retry</Button></div>}
+      {loadError && <div role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs text-red-300 flex items-center justify-between gap-3"><span>{loadError}</span><Button variant="outline" size="sm" onClick={() => void fetchWebhooks()}>{t('common.retry', 'Retry')}</Button></div>}
 
       {/* Endpoints List */}
       {loading ? (

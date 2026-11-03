@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { FraudNetwork3D } from '../3d/FraudNetwork3D';
+import { LazyFraudNetwork3D as FraudNetwork3D } from '../3d/lazy';
 import { Network, UserCheck, Smartphone, MapPin, Globe, Cpu } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 

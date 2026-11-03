@@ -229,7 +229,7 @@ export interface IdentityGraphData {
 export interface ApiKey {
   id: string;
   name: string;
-  key_prefix: string; // e.g. "ord_test_8f29..."
+  key_prefix: string; // e.g. "ordium_test_8f29..."
   environment: Environment;
   scopes: string[];
   created_at: string;

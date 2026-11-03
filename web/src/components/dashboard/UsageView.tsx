@@ -45,7 +45,7 @@ export const UsageView: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-lg font-bold text-white">{t('dashboard.usage.title', 'الاستهلاك والحصة')}</h2>
                 <span className="rounded-full border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">{usage.plan_name}</span>
-                {usage.beta_access && <span className="rounded-full border border-violet-400/20 bg-violet-400/5 px-2.5 py-1 text-[10px] font-semibold text-violet-300">Beta</span>}
+                {usage.beta_access && <span className="rounded-full border border-violet-400/20 bg-violet-400/5 px-2.5 py-1 text-[10px] font-semibold text-violet-300">{t('dashboard.usage.beta', 'Beta')}</span>}
               </div>
               <p className="mt-1.5 text-xs text-[#94A3B8] max-w-2xl leading-relaxed">{t('dashboard.usage.subtitle', 'الاستهلاك الحقيقي للطلبات الحية المرتبطة بحسابك. المحاكي يعمل في TEST ولا يخصم من حصة Live.')}</p>
             </div>
@@ -69,7 +69,7 @@ export const UsageView: React.FC = () => {
           <div className="mt-4 space-y-3 text-xs">
             <div className="flex justify-between"><span className="text-[#64748B]">{t('dashboard.usage.plan', 'الخطة')}</span><span className="text-white font-medium">{usage.plan_name}</span></div>
             <div className="flex justify-between"><span className="text-[#64748B]">{t('dashboard.usage.order_limit', 'الطلبات')}</span><span className="text-white font-medium">{usage.evaluations_limit.toLocaleString()} / {t('dashboard.usage.month', 'شهر')}</span></div>
-            <div className="flex justify-between"><span className="text-[#64748B]">Rate limit</span><span dir="ltr" className="text-white font-medium">{usage.rate_limit_per_min.toLocaleString()} req/min</span></div>
+            <div className="flex justify-between"><span className="text-[#8A97AB]">{t('dashboard.usage.rate_limit', 'Rate limit')}</span><span dir="ltr" className="text-white font-medium">{usage.rate_limit_per_min.toLocaleString()} {t('dashboard.usage.req_per_min', 'req/min')}</span></div>
           </div>
         </div>
       </section>

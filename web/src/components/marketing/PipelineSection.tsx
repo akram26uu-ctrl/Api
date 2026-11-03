@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { RiskScanner3D } from '../3d/RiskScanner3D';
+import { LazyRiskScanner3D as RiskScanner3D } from '../3d/lazy';
 import { ArrowDown, Cpu, Network, ShieldCheck, Activity, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -20,7 +20,7 @@ export const PipelineSection: React.FC = () => {
     { title: t('pipeline.step_4_title', 'Network Intelligence'), desc: t('pipeline.step_4_desc', 'Inspects IP egress, VPN/Tor, ASN reputation, and geo-distance variance.'), badge: 'Geo/IP ASN' },
     { title: t('pipeline.step_5_title', 'Risk Engine Evaluation'), desc: t('pipeline.step_5_desc', 'Weights verified signals against merchant policy rules & thresholds.'), badge: 'Engine v2.4' },
     { title: t('pipeline.step_6_title', 'Risk Score Computation'), desc: t('pipeline.step_6_desc', 'Calculates unified 0-100 risk score with dimensional sub-scores.'), badge: '0-100 Score' },
-    { title: t('pipeline.step_7_title', 'Actionable Decision'), desc: t('pipeline.step_7_desc', 'Finalizes decision: ALLOW (<35), REVIEW (35-75), or REJECT (>75).'), badge: 'Instant Outcome' }
+    { title: t('pipeline.step_7_title', 'Actionable Decision'), desc: t('pipeline.step_7_desc', 'Finalizes the decision: ALLOW, REVIEW or REJECT, using the store risk-profile thresholds (defaults: review at 50, reject at 80).'), badge: 'Instant Outcome' }
   ];
 
   return (

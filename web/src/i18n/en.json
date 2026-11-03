@@ -142,7 +142,16 @@
       "first_name_required": "First name is required.",
       "last_name_required": "Last name is required.",
       "organization_required": "Store or company name is required.",
-      "terms_required": "You must accept the Terms of Service and Privacy Policy to continue."
+      "terms_required": "You must accept the Terms of Service and Privacy Policy to continue.",
+      "account_inactive": "Your account is not active yet. Verify your email address first.",
+      "session_forbidden": "The account service rejected this session (HTTP 403). Check the account status and session authorization.",
+      "network": "Unable to reach ORDIUM. Check your connection and try again.",
+      "session_endpoint_missing": "Sign-in succeeded, but the deployed account service does not provide the session verification endpoint (HTTP 404).",
+      "password_policy": "Password must be at least 12 characters and include uppercase, lowercase, and numeric characters.",
+      "session_not_persisted": "Sign-in was accepted, but the browser session could not be verified.",
+      "session_cookie_missing": "The account service did not receive a valid session cookie after sign-in (HTTP 401). The session cookie may not have been stored or sent by the browser.",
+      "session_server_error": "Sign-in succeeded, but the account service failed while verifying the session.",
+      "session_network": "Sign-in succeeded, but the session check could not reach the account service. This can indicate a network or CORS failure."
     },
     "verify_button": "Verify Email",
     "verify_ready": "Click the button below to confirm your email and activate your ORDIUM workspace.",
@@ -160,10 +169,25 @@
     "registration_verification_desc": "Your account has been created securely. Check your email and follow the activation link before signing in.",
     "forgot_password_title": "Password Reset",
     "forgot_password_desc": "Account recovery is managed by your organization's ORDIUM administrator or via security key verification.",
-    "back_login": "Back to Login"
+    "back_login": "Back to Login",
+    "workspace_status_label": "Status",
+    "workspace_status_ready": "Workspace ready",
+    "summary_merchant": "Merchant",
+    "rule_lower": "One lowercase letter",
+    "summary_email": "Email",
+    "rule_digit": "One number",
+    "rule_length": "At least 12 characters",
+    "resend_desc": "You can resend the verification link to the email address you used to create the account:",
+    "resend_error": "The message could not be sent right now. Please try again later.",
+    "resend_sending": "Sending the link…",
+    "resend_generic": "If the account still needs verification, a new message will be sent.",
+    "rule_upper": "One uppercase letter",
+    "resend_title": "Didn't receive the verification link?",
+    "resend_button": "Resend verification link",
+    "verify_request_new": "Request a new link"
   },
   "hero": {
-    "badge": "ORDIUM INFRASTRUCTURE ENGINE v2.4",
+    "badge": "ORDIUM ORDER RISK ENGINE",
     "title_p1": "Stop Fraud Before",
     "title_p2": "It Hits Settlement.",
     "description": "Assess order risk, follow up manually through WhatsApp or phone, and record confirmation outcomes in one merchant workflow.",
@@ -177,7 +201,10 @@
     "stat_disruption": "Outcome-based",
     "stat_disruption_label": "feedback",
     "stat_uptime": "Telemetry reported by the service",
-    "stat_uptime_label": "Availability"
+    "stat_uptime_label": "Availability",
+    "hud_right": "Signals: resolving relationships",
+    "legend_default": "Default thresholds · configurable per store",
+    "hud_left": "Risk core · illustrative visualization"
   },
   "identity": {
     "badge": "MULTI-ENTITY GRAPH INTELLIGENCE",
@@ -188,7 +215,21 @@
     "device_fingerprint": "Hardware Canvas Fingerprint",
     "ip_cluster": "Autonomous System & Proxy Vector",
     "address_canonical": "Standardized Address Node",
-    "phone_reputation": "Carrier & Telephony Trust Score"
+    "phone_reputation": "Carrier & Telephony Trust Score",
+    "cluster_alert": "RED = DETECTED SUSPICIOUS CLUSTER",
+    "network_ip_desc": "Residential proxy check, Tor node registry, and ASN reputation.",
+    "order_history": "Order History",
+    "phone_carrier": "Phone & SMS Carrier",
+    "customer_identity": "Customer Identity",
+    "graph_hint": "INTERACTIVE GRAPH: HOVER NODES TO INSPECT",
+    "hardware_fp_desc": "Canvas hash, WebGL hardware profile, and emulator detection.",
+    "hardware_fp": "Hardware Fingerprint",
+    "order_history_desc": "Cart item velocity, repeat card trials, and baseline behavioral cadence.",
+    "address_clustering": "Address Clustering",
+    "network_ip": "Network & IP Egress",
+    "phone_carrier_desc": "VOIP detection, prepaid line classification, and SIM-swap indicators.",
+    "customer_identity_desc": "Cross-merchant velocity and synthetic identity anomaly scoring.",
+    "address_clustering_desc": "Drop address detection, commercial freight forwarders, and geo-variance."
   },
   "pipeline": {
     "badge": "MEASURED EVALUATION PIPELINE",
@@ -203,7 +244,21 @@
     "stage_4": "4. Explainable Score",
     "stage_4_desc": "Calculate 0–100 risk score and emit immediate ALLOW, REVIEW, or REJECT decision.",
     "stage_5": "5. Outcome Calibration",
-    "stage_5_desc": "Ingest chargeback and legitimate fulfillment feedback to continuously refine heuristics."
+    "stage_5_desc": "Ingest chargeback and legitimate fulfillment feedback to continuously refine heuristics.",
+    "step_7_desc": "Finalizes the decision: ALLOW, REVIEW or REJECT, using the store risk-profile thresholds (defaults: review at 50, reject at 80).",
+    "step_3_desc": "Examines checkout duration, velocity spikes, and interaction cadence.",
+    "step_6_title": "Risk Score Computation",
+    "step_6_desc": "Calculates unified 0-100 risk score with dimensional sub-scores.",
+    "step_1_desc": "Normalized checkout payload arrives via API, webhook, or SDK.",
+    "step_5_desc": "Weights verified signals against merchant policy rules & thresholds.",
+    "step_2_title": "Identity Resolution",
+    "step_4_title": "Network Intelligence",
+    "step_4_desc": "Inspects IP egress, VPN/Tor, ASN reputation, and geo-distance variance.",
+    "step_2_desc": "Resolves customer, phone, device, and email into graph entities.",
+    "step_3_title": "Behavior Analysis",
+    "step_5_title": "Risk Engine Evaluation",
+    "step_7_title": "Actionable Decision",
+    "step_1_title": "Order Ingestion"
   },
   "explainable": {
     "badge": "INSPECTABLE RISK REASONING",
@@ -269,9 +324,11 @@
     "title": "Built for developers.",
     "subtitle": "One clean REST request. Instant JSON response with transparent risk scores, actionable decisions, and categorized event signals.",
     "request_payload": "REQUEST PAYLOAD",
-    "eval_response": "EVALUATION RESPONSE (HTTP 200 OK)",
+    "eval_response": "EVALUATION RESPONSE (HTTP 201 CREATED)",
     "copy_curl": "Copy cURL",
-    "view_full_docs": "View Full API Reference"
+    "view_full_docs": "View Full API Reference",
+    "response_title": "Response body",
+    "request_title": "HTTP request"
   },
   "roadmap": {
     "badge": "ENGINEERING TRANSPARENCY",
@@ -361,7 +418,8 @@
     "api_status": "API Status",
     "all_rights": "All rights reserved.",
     "encrypted": "Encrypted transport and protected credentials",
-    "tenant_isolated": "Tenant-Isolated Ingestion"
+    "tenant_isolated": "Tenant-Isolated Ingestion",
+    "status_note": "Service health and evaluation latency are reported inside the dashboard."
   },
   "docs": {
     "badge": "DEVELOPER DOCUMENTATION",
@@ -431,7 +489,9 @@
       "simulate_order": "Simulate Order",
       "return_website": "Return to website",
       "store_label": "Store",
-      "toggle_menu": "Open navigation"
+      "toggle_menu": "Open navigation",
+      "manage_stores": "Manage stores",
+      "no_store": "No store"
     },
     "overview": {
       "total_orders": "Total Orders Analyzed",
@@ -476,7 +536,11 @@
       "load_error_desc": "We could not load your store data right now. Refresh the page; if the problem persists, contact support.",
       "load_error_title": "We could not load your workspace data",
       "no_orders_title": "No orders yet",
-      "retry": "Retry"
+      "retry": "Retry",
+      "eyebrow": "ORDIUM · Risk intelligence",
+      "page_description": "Follow orders, risk indicators and evaluation decisions from one workspace.",
+      "page_heading": "Store overview",
+      "view_orders_cta": "View orders"
     },
     "titles": {
       "overview": "Store summary",
@@ -595,11 +659,27 @@
       "deterministic_decision": "Deterministic Decision",
       "store_ready": "Ready to test an order",
       "input_mode": "Data entry method",
-      "input_mode_hint": "Choose how to enter the data"
+      "input_mode_hint": "Choose how to enter the data",
+      "conflict": "The simulation could not complete because of a conflicting order.",
+      "invalid_json": "Invalid JSON. Fix it before returning to the structured form.",
+      "quota_context": "Quota usage",
+      "quota_free": "Does not count against the Live quota",
+      "rate_limited": "The test request limit was reached temporarily. Wait a moment and try again.",
+      "store_context": "Selected store",
+      "store_missing": "Select a store",
+      "store_required": "There is no active store. Create at least one store, then run the simulation again.",
+      "unknown_error": "The simulation could not be run.",
+      "active_signals": "active signals",
+      "saved_prefix": "Test result saved for order",
+      "load_scenario": "Load scenario",
+      "saved_suffix": "You can review it on the Orders page.",
+      "points": "pts",
+      "destination": "Destination",
+      "no_signals": "No active risk signals on this order."
     },
     "rules": {
       "title": "Heuristic Rules & Thresholds",
-      "subtitle": "Configure real-time score weighting, anomaly penalties, and automated risk decisions.",
+      "subtitle": "Configure score weighting, anomaly penalties and risk decision thresholds.",
       "threshold_config": "Decision Threshold Boundaries",
       "allow_threshold": "ALLOW Threshold (Score ≤ X)",
       "reject_threshold": "REJECT Threshold (Score ≥ X)",
@@ -609,7 +689,24 @@
       "active_rules": "Configured Heuristic Rules",
       "weight": "Weight",
       "category": "Category",
-      "status": "Status"
+      "status": "Status",
+      "active_signals": "Active signals",
+      "decision_model": "Decision logic",
+      "load_error": "Unable to load the risk profile.",
+      "loading": "Loading the rules engine…",
+      "max_score": "Maximum score",
+      "max_score_note": "The final score is capped at this value.",
+      "reset": "Reset",
+      "save": "Save changes",
+      "save_error": "Unable to save the settings.",
+      "saved": "Saved",
+      "signal_weights": "Risk signal weights",
+      "signal_weights_desc": "Each value is how much the signal adds to the risk score when it fires.",
+      "signals": "signals",
+      "threshold_invalid": "REVIEW must be lower than REJECT.",
+      "unavailable": "Risk profile unavailable.",
+      "unsaved": "Unsaved changes",
+      "zero_note": "A value of 0 disables the signal's contribution."
     },
     "network": {
       "title": "3D Identity Resolution & Entity Relationship Graph",
@@ -650,7 +747,19 @@
       "send_test": "Send Test Ping",
       "subscribe_events": "Subscribe to Events",
       "subscribed_events": "Subscribed Events:",
-      "url_label": "Destination URL (HTTPS Required)"
+      "url_label": "Destination URL (HTTPS Required)",
+      "event_required": "Select at least one event.",
+      "events_selected": "events selected",
+      "eyebrow": "Event delivery",
+      "https_hint": "Use a public HTTPS endpoint that ORDIUM servers can reach.",
+      "https_required": "The webhook must use a secure HTTPS URL.",
+      "invalid_url": "Enter a valid URL that starts with https://.",
+      "signed_delivery": "HMAC · Signed delivery",
+      "signing_hint": "The signing secret is shown once after creation. Store it on your server and use it to verify the HMAC-SHA256 signature.",
+      "summary_active": "active",
+      "summary_signature": "HMAC-SHA256 signature",
+      "summary_total": "endpoints",
+      "copy_secret": "Copy signing secret"
     },
     "apikeys": {
       "title": "API Credentials & Tokens",
@@ -662,7 +771,35 @@
       "last_used": "Last Used",
       "revoke": "Revoke",
       "copy": "Copy key",
-      "empty_title": "No API keys"
+      "empty_title": "No API keys",
+      "active": "Active",
+      "create_modal_title": "Create a new API key",
+      "eyebrow": "Access management",
+      "generate_btn": "Create key",
+      "least_privilege_desc": "Only grant key-management or webhook permissions when the integration genuinely needs them.",
+      "least_privilege_title": "Choose the least privilege needed",
+      "live_badge": "LIVE · Production",
+      "modal_desc": "Name the key and select only the scopes the integration needs. You can revoke it later.",
+      "name_hint": "Use a name that explains where this key is used.",
+      "name_placeholder": "e.g. Shopify store integration",
+      "revoked": "Revoked",
+      "scope_required": "Select at least one scope.",
+      "scopes": "Scopes",
+      "selected_scopes": "selected",
+      "summary_active": "active",
+      "summary_scoped": "Configurable scopes",
+      "summary_total": "keys in total",
+      "test_badge": "TEST · Testing",
+      "empty_desc": "Generate an API key to begin authenticating checkout endpoints.",
+      "revoke_confirm": "Are you sure you want to revoke this API key? Any applications relying on it will immediately fail.",
+      "revoke_action": "Revoke key",
+      "never": "Never",
+      "loading": "Fetching API credentials...",
+      "warning": "Do not commit this key into public client-side JavaScript or version control repositories.",
+      "secret_modal_desc": "Please copy your secret key right now. For security purposes, you will never see it again.",
+      "col_status": "Status",
+      "col_actions": "Actions",
+      "saved_key_btn": "I Have Saved My Secret Key"
     },
     "usage": {
       "title": "Telemetry Usage & Quota Limits",
@@ -671,7 +808,28 @@
       "monthly_limit": "Monthly Limit",
       "quota_utilization": "Quota Utilization",
       "rate_limit": "Rate Limit",
-      "tier": "Current Plan"
+      "tier": "Current Plan",
+      "beta_note": "You are in the Beta programme: all accounts are currently on the free plan with 1,000 live orders per month. Future plan limits will appear here automatically when paid subscriptions launch.",
+      "evaluated": "Evaluations analysed",
+      "evaluated_desc": "Stored risk assessments",
+      "execution": "Average evaluation time",
+      "execution_desc": "From stored assessments",
+      "health": "API health",
+      "health_desc": "Operational information when available",
+      "load_error": "Unable to load usage data.",
+      "loading": "Loading usage…",
+      "month": "month",
+      "monthly_quota": "Monthly quota",
+      "order_limit": "Orders",
+      "plan": "Plan",
+      "plan_limits": "Plan limits",
+      "refresh": "Refresh",
+      "remaining": "Remaining",
+      "reset": "Resets",
+      "unavailable": "Usage data unavailable.",
+      "used": "used",
+      "req_per_min": "req/min",
+      "beta": "Beta"
     },
     "drawer": {
       "order_inspector": "Order Inspector",
@@ -733,7 +891,14 @@
       "revoke": "Revoke",
       "loading_sessions": "Loading sessions…",
       "created": "Created ",
-      "expires": "Expires "
+      "expires": "Expires ",
+      "active_sessions": "Active sessions",
+      "action_done": "Done.",
+      "sessions_hint": "Revoke sessions you no longer recognize.",
+      "revoke_others": "Sign out other sessions",
+      "workspace_info": "Workspace information",
+      "export_data": "Export data",
+      "sessions_loading": "Loading sessions…"
     },
     "notifications": {
       "title": "Notifications",
@@ -743,7 +908,8 @@
       "empty": "You are all caught up.",
       "empty_desc": "Actionable risk alerts will appear here.",
       "load_error": "Unable to load notifications.",
-      "read_error": "Unable to update notifications."
+      "read_error": "Unable to update notifications.",
+      "subtitle": "Merchant workspace"
     },
     "stores": {
       "title": "Stores",
@@ -756,7 +922,17 @@
       "inactive": "Inactive",
       "orders": "Orders",
       "disable": "Disable",
-      "enable": "Enable"
+      "enable": "Enable",
+      "count_suffix": "stores",
+      "create_error": "Unable to create the store.",
+      "empty": "No stores yet.",
+      "eyebrow": "Store management",
+      "keep_one_active": "At least one store must stay active.",
+      "load_error": "Unable to load stores.",
+      "name_required": "Enter a store name.",
+      "required_desc": "To start receiving orders, create at least one store.",
+      "required_title": "Create your store first",
+      "update_error": "Unable to update the store."
     },
     "confirmation": {
       "title": "Order confirmation",
@@ -898,6 +1074,27 @@
       "update_error": "Unable to update connection status.",
       "delete_error": "Unable to delete the connection.",
       "copy_error": "Automatic copying failed. Select and copy the text manually."
+    },
+    "identity": {
+      "risk_safe": "Safe",
+      "risk_warning": "Warning",
+      "risk_danger": "Danger",
+      "suspicious": "Suspicious clusters",
+      "col_risk": "Risk",
+      "clusters": "Clusters",
+      "title": "Identity Resolution & Entity Relationship Graph",
+      "loading": "Analyzing stored identity links…",
+      "connected_entities": "connected entities",
+      "col_label": "Entity",
+      "edges": "Links",
+      "nodes": "Nodes",
+      "col_connections": "Connections",
+      "list_view": "List view",
+      "graph_view": "3D view",
+      "source_note": "Network data is generated by the ORDIUM API for the current merchant and environment, not mock data from the browser.",
+      "col_type": "Type",
+      "load_error": "Unable to load the identity network.",
+      "load_error_title": "Unable to load the identity network"
     }
   },
   "onboarding": {
@@ -925,7 +1122,11 @@
       "step3_title": "Track confirmation performance",
       "step3_text": "Monitor orders not yet contacted, orders being confirmed, and recorded outcomes.",
       "step3_action": "View summary"
-    }
+    },
+    "eyebrow": "Getting started",
+    "next": "Next",
+    "previous": "Previous",
+    "progress": "Setup progress"
   },
   "manual_confirmation_home": {
     "badge": "Order confirmation with your team",
@@ -940,5 +1141,169 @@
     "step3_text": "Log the contact result to track confirmed orders and orders still being followed up.",
     "metrics_title": "Measure activity from recorded events",
     "metrics_text": "Track orders not yet contacted, orders being confirmed, and the confirmation rate calculated from orders with at least one recorded contact attempt."
+  },
+  "errors": {
+    "403": {
+      "title": "Access denied",
+      "description": "You don't have permission to view this page. If you think this is a mistake, sign in with the correct account or contact the ORDIUM team."
+    },
+    "404": {
+      "title": "We couldn't find this page",
+      "description": "The link may be incorrect or the page may no longer exist. Check the address or go back to the ORDIUM website."
+    },
+    "429": {
+      "title": "Too many requests",
+      "description": "You have temporarily reached the request limit. Wait a moment, then try again."
+    },
+    "500": {
+      "title": "Internal error",
+      "description": "ORDIUM ran into an unexpected problem. Please try again in a moment."
+    },
+    "503": {
+      "title": "Service temporarily unavailable",
+      "description": "We are restoring the service. Please try again shortly."
+    },
+    "eyebrow": "ORDIUM / SYSTEM RESPONSE",
+    "back_home": "Back to home"
+  },
+  "pages": {
+    "security": {
+      "eyebrow": "ORDIUM SECURITY",
+      "p1_title": "Merchant and environment isolation",
+      "p4_title": "Auditable security controls",
+      "subtitle": "ORDIUM uses tenant-scoped authorization, credential hashing and encryption, request tracing, and signed webhooks. This page deliberately avoids claiming certifications, retention guarantees, or cryptographic properties that are not implemented and independently verified.",
+      "p1_desc": "API queries are scoped by merchant and by environment (live traffic vs. simulator). Dashboard credentials are kept server-side and reach the browser only through the authenticated control-plane session.",
+      "p2_title": "Credential protection",
+      "title": "Security controls that match the current implementation.",
+      "p3_desc": "The current order schema accepts commerce metadata and does not accept PAN or CVV fields. Do not send payment-card credentials to ORDIUM.",
+      "p3_title": "No card-number ingestion",
+      "s3": "Webhook HMAC-SHA256 signing with event and delivery identifiers",
+      "s5": "Rate limiting and request IDs for API operations",
+      "p4_desc": "Scoped API keys, request IDs, audit records, idempotency handling, signed webhooks, rate limits, and tenant/environment boundaries are implemented controls. This MVP does not claim compliance certifications.",
+      "s4": "Idempotency protection for order ingestion",
+      "safeguards_title": "Operational safeguards",
+      "s1": "Scoped API-key permissions and merchant isolation",
+      "p2_desc": "API credentials are stored as SHA-256 hashes in the API database. Dashboard session credentials are encrypted before storage in the control-plane database.",
+      "s2": "Live traffic isolated from the simulator, enforced by the API credential"
+    },
+    "docs": {
+      "ep": {
+        "risk_calibration": "Risk calibration",
+        "risk_attribution": "Risk attribution",
+        "risk_profile_get": "Read risk profile",
+        "api_keys": "List API keys",
+        "risk_metrics": "Risk metrics summary",
+        "risk_features": "Risk feature registry",
+        "confirmation_metrics": "Order confirmation metrics",
+        "notifications": "List notifications",
+        "create_order": "Create & evaluate order",
+        "webhook_list": "List webhooks",
+        "get_order": "Retrieve order & risk",
+        "risk_quality": "Risk quality",
+        "webhooks": "Create webhook subscription",
+        "confirmation_history": "Confirmation history",
+        "api_key_create": "Create API key",
+        "risk_profile_patch": "Update risk profile",
+        "get_orders": "List orders",
+        "order_outcome": "Record order outcome",
+        "identity_graph": "Identity graph",
+        "risk_performance": "Risk performance",
+        "risk_backtest": "Risk backtest",
+        "audit": "Audit log",
+        "confirmation_record": "Record confirmation attempt"
+      },
+      "headers_title": "Standard headers",
+      "status_409": "The request conflicts with the current state of the resource",
+      "auth_title": "Authentication",
+      "subtitle": "Integrate order-risk evaluation and manual order confirmation through an authenticated REST API with store-scoped credentials, auditable contact attempts, confirmation metrics, and signed webhooks.",
+      "endpoints": "API endpoints",
+      "status_ok": "Request succeeded; 201 when an order is created and evaluated",
+      "webhook_code_title": "Node.js webhook verifier",
+      "required_scope": "Required scope:",
+      "status_422": "Validation failed, or an Idempotency-Key was reused with a different body",
+      "status_title": "Expected response codes",
+      "general_note": "All data is scoped to the authenticated merchant, environment and selected store. Rate limits are set by the API configuration. The confirmation workflow records staff actions only; WhatsApp messages and phone calls are never sent automatically.",
+      "status_401": "Missing, invalid or revoked API key",
+      "webhook_title": "Webhook signature verification (HMAC-SHA256)",
+      "auth_desc": "Send your store API key as a Bearer token in the Authorization header on every request. Keys start with ordium_live_ or ordium_test_.",
+      "status_403": "The key lacks the scope required by this route",
+      "webhook_desc": "ORDIUM signs every webhook with your endpoint secret and sends the signature in the X-ORDIUM-Signature header as t=<timestamp>,v1=<signature>. The signed string is the timestamp, a dot, and the exact request body. Verify it against the raw body before trusting the event.",
+      "status_429": "Rate limit or usage quota exceeded; retry later",
+      "title": "Developer API Reference"
+    },
+    "company": {
+      "title": "Order risk intelligence for digital commerce.",
+      "contact_title": "Contact",
+      "dev_title": "Developer access",
+      "p3_desc": "Scoped credentials, idempotency, request IDs, webhooks, live order processing and an isolated simulator are core product primitives.",
+      "subtitle": "ORDIUM is an engineering project focused on helping commerce platforms evaluate order risk using deterministic signals, identity relationships, and merchant-scoped telemetry.",
+      "p3_title": "Developer-first API",
+      "p2_desc": "Merchant and environment context is enforced by the API credential and database query scope.",
+      "security_desc": "Security controls and limitations are documented based on the current implementation.",
+      "dev_desc": "Use the developer documentation and dashboard to create scoped integration keys and configure webhooks.",
+      "security_title": "Security",
+      "principles_title": "Engineering principles",
+      "p1_desc": "Risk decisions expose the persisted signals and rule/profile versions used for evaluation.",
+      "contact_desc": "Contact details will be published here once an official support address and disclosure process are configured.",
+      "p2_title": "Tenant boundaries",
+      "p1_title": "Inspectable decisions"
+    },
+    "platform": {
+      "f3_value": "Inspectable",
+      "subtitle": "Designed for merchant-scoped checkout risk evaluation. The platform persists risk signals, rule versions, identity relationships, and measured evaluation telemetry.",
+      "f1_desc": "The dashboard reports measured evaluation time when persisted telemetry is available.",
+      "f2_value": "Merchant-scoped",
+      "f1_value": "Measured",
+      "eyebrow": "ENGINEERING SPECIFICATION",
+      "metrics_desc": "Track confirmed orders, orders awaiting first contact, work in progress, cancellations and contact attempts. The confirmation rate uses orders with recorded confirmation activity as its denominator; untouched new orders are reported separately.",
+      "manual_title": "Manual order confirmation",
+      "title": "The ORDIUM Risk Engine",
+      "metrics_title": "Confirmation metrics and audit history",
+      "f2_label": "Rate limits",
+      "f2_desc": "Request limits are controlled by the active API environment and merchant configuration.",
+      "f3_desc": "Persisted assessments expose the risk events, rule version, profile version, and identity context available for review.",
+      "f3_label": "Decision traceability",
+      "caption_latency": "Latency: measured per evaluation",
+      "f1_label": "Evaluation time",
+      "caption_arch": "Core architecture: distributed decision graph",
+      "manual_desc": "Open a pre-filled WhatsApp conversation or start a phone call yourself, then record the result against the order. ORDIUM does not send messages or place calls automatically."
+    },
+    "pricing": {
+      "feat_1": "Integration simulator for development and testing",
+      "feat_6": "Manual WhatsApp or phone follow-up with confirmation metrics",
+      "feat_5": "No billing or overage charges in the current MVP",
+      "feat_4": "Merchant-scoped identity graph and risk telemetry",
+      "subtitle": "The current release has no subscription billing, paid tiers, overage charges, or SLA guarantees. Future commercial plans will be announced separately when billing infrastructure is available.",
+      "cta": "Open Dashboard",
+      "period": "for the current MVP",
+      "disclaimer": "Performance, availability, fraud-rate, and compliance figures are shown in the product only when backed by measured data or explicitly documented scope.",
+      "feat_2": "Live order risk evaluation API",
+      "feat_3": "Scoped API keys and webhook signing",
+      "no_payment": "No payment required",
+      "title": "Free while the platform is in MVP."
+    }
+  },
+  "ui": {
+    "loading_app": "Loading ORDIUM…",
+    "close_menu": "Close menu",
+    "main_navigation": "Main navigation",
+    "skip_to_content": "Skip to main content",
+    "home_link": "ORDIUM — home",
+    "copy": "Copy",
+    "authenticating": "Restoring your ORDIUM session…",
+    "open_menu": "Open menu",
+    "session_lost": "Your session could not be restored. Please sign in again.",
+    "or": "or",
+    "required_fields": "Required fields",
+    "form_has_errors": "Please correct the highlighted fields.",
+    "dashboard_title": "ORDIUM Dashboard",
+    "copy_code": "Copy code",
+    "session_cookie_note": "Your session is protected by a secure, HttpOnly cookie.",
+    "rule_met": "(met)",
+    "copied": "Copied",
+    "rule_unmet": "(not met)"
+  },
+  "language": {
+    "select": "Language"
   }
 }

@@ -93,7 +93,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({ enviro
           <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-white">{t('dashboard.notifications.title', 'الإشعارات')}</h2>
-              <p className="text-[10px] text-[#64748B] mt-0.5">مساحة عمل التاجر</p>
+              <p className="text-xs text-[#8A97AB] mt-0.5">{t('dashboard.notifications.subtitle', 'Merchant workspace')}</p>
             </div>
             <Button variant="ghost" size="sm" disabled={!unreadCount} onClick={() => void markAll()}>
               {t('dashboard.notifications.mark_all', 'Mark all read')}

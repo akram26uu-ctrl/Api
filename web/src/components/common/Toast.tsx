@@ -21,7 +21,7 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    <div role="region" aria-live="polite" className="fixed bottom-5 end-5 start-5 sm:start-auto z-50 flex flex-col gap-2 sm:max-w-sm sm:w-full pointer-events-none">
       {toasts.map(toast => (
         <div
           key={toast.id}
@@ -37,10 +37,12 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
           </div>
 
           <button
+            type="button"
             onClick={() => onDismiss(toast.id)}
-            className="text-[#94A3B8] hover:text-white transition-colors"
+            aria-label="Dismiss"
+            className="inline-flex min-w-9 min-h-9 items-center justify-center rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X aria-hidden="true" className="w-4 h-4" />
           </button>
         </div>
       ))}

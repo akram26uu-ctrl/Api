@@ -179,12 +179,12 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
         description={t('dashboard.apikeys.revoke_confirm', 'Are you sure you want to revoke this API key? Any applications relying on it will immediately fail.')}
       >
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => setRevokeTarget(null)}>إلغاء</Button>
-          <Button variant="danger" size="sm" onClick={() => revokeTarget && void handleRevoke(revokeTarget.id)}>Revoke</Button>
+          <Button variant="outline" size="sm" onClick={() => setRevokeTarget(null)}>{t('common.cancel', 'Cancel')}</Button>
+          <Button variant="danger" size="sm" onClick={() => revokeTarget && void handleRevoke(revokeTarget.id)}>{t('dashboard.apikeys.revoke_action', 'Revoke key')}</Button>
         </div>
       </Modal>
 
-      {loadError && <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs text-red-300 flex items-center justify-between gap-3"><span>{loadError}</span><Button variant="outline" size="sm" onClick={() => void fetchKeys()}>إعادة المحاولة</Button></div>}
+      {loadError && <div role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-300 flex items-center justify-between gap-3"><span>{loadError}</span><Button variant="outline" size="sm" onClick={() => void fetchKeys()}>{t('common.retry', 'Retry')}</Button></div>}
 
       {/* Keys Table */}
       {loading ? (

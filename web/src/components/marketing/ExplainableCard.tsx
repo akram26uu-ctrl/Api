@@ -46,7 +46,7 @@ export const ExplainableCard: React.FC = () => {
               <Activity className="w-3.5 h-3.5" />
               {t('explainable.snapshot_label', 'ORDIUM ASSESSMENT DEMO SNAPSHOT')}
             </span>
-            <span>RULES: ordium-rules-v2.4</span>
+            <span dir="ltr">MODEL: rules-v4</span>
           </div>
 
           <div className="bg-[#0D1320]/90 border border-white/10 rounded-b-2xl p-6 sm:p-8 shadow-2xl space-y-8 backdrop-blur-md text-start">
