@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.api.v1.integrations import _money, _normalize_order
-from app.core.algeria_geo import resolve_wilaya
+from app.core.algeria_geo import canonical_wilaya_text, resolve_wilaya
 from app.schemas.order import OrderCreate
 
 
@@ -92,3 +92,56 @@ def test_local_currency_labels_are_accepted(currency):
                     "address_1": "5 Rue X", "city": "Oran", "state": "DZ-31"},
     }
     assert _normalize_order(payload, "77").currency == "DZD"
+
+
+import json as _json
+from pathlib import Path as _Path
+
+_WILAYAS = _json.loads((_Path(__file__).resolve().parent.parent / "app" / "data" / "algeria_communes.json").read_text(encoding="utf-8"))["wilayas"]
+_AR_DIGITS = str.maketrans("0123456789", "٠١٢٣٤٥٦٧٨٩")
+
+
+def _forms(code, fr, ar):
+    n = int(code)
+    return [
+        code, str(n), f"DZ-{code}", f"DZ-{n}", f"dz{code}", f"W{n}", f"Wilaya {n}", f"wilaya n° {code}",
+        f"ولاية {n}", f"الولاية {code}", str(n).translate(_AR_DIGITS), f"ولاية {str(n).translate(_AR_DIGITS)}",
+        f"{code} - {fr}", f"{n}-{fr}", f"{fr} ({code})", f"{code} {ar}", fr, ar, fr.upper(), f"{code}000",
+    ]
+
+
+@pytest.mark.parametrize("code", sorted(_WILAYAS))
+def test_every_wilaya_resolves_in_every_format(code):
+    fr, ar = _WILAYAS[code]
+    failures = [form for form in _forms(code, fr, ar) if resolve_wilaya(form) != code]
+    assert failures == []
+
+
+@pytest.mark.parametrize("code", sorted(_WILAYAS))
+def test_every_code_only_form_displays_the_name(code):
+    fr, _ = _WILAYAS[code]
+    n = int(code)
+    for form in (code, str(n), f"DZ-{code}", f"Wilaya {n}", f"ولاية {str(n).translate(_AR_DIGITS)}", f"W{n}"):
+        assert canonical_wilaya_text(form) == fr, form
+
+
+def test_contradictory_wilaya_is_not_guessed():
+    assert resolve_wilaya("31 - Alger") is None
+    assert resolve_wilaya("99") is None
+    assert resolve_wilaya("59000") is None
+
+
+def test_oran_examples():
+    for form in ("31", "DZ-31", "Wilaya 31", "ولاية 31", "٣١", "31000", "31 - Oran", "وهران", "Oran"):
+        assert resolve_wilaya(form) == "31", form
+    assert _order(wilaya="31").wilaya == "Oran"
+    assert _order(wilaya="ولاية ٣١").wilaya == "Oran"
+
+
+def test_postal_code_supplies_a_missing_wilaya():
+    payload = {
+        "id": 78, "currency": "DZD", "total_price": "2500.00",
+        "shipping_address": {"first_name": "Ali", "last_name": "Bena", "phone": "0550123456",
+                             "address1": "5 Rue X", "city": "Es Senia", "zip": "31000", "province": None},
+    }
+    assert _normalize_order(payload, "78").wilaya == "Oran"

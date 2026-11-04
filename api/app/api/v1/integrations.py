@@ -141,10 +141,14 @@ def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
         address.get("province") or address.get("province_code") or address.get("wilaya")
         or address.get("state") or address.get("region") or customer.get("state") or customer.get("region")
     )
-    if not province and city:
-        # Shopify and several checkouts have no wilaya field for Algeria; the city is the best
+    if not province:
+        # Shopify and several checkouts have no wilaya field for Algeria. An Algerian postal
+        # code starts with the wilaya number (31000 = Oran); otherwise the city is the best
         # available location rather than rejecting an otherwise valid order.
-        province = city
+        from app.core.algeria_geo import resolve_wilaya, wilaya_name
+        postal = address.get("zip") or address.get("postcode") or address.get("postal_code") or address.get("zipCode")
+        postal_code = resolve_wilaya(str(postal)) if postal and str(postal).strip().isdigit() and len(str(postal).strip()) == 5 else None
+        province = wilaya_name(postal_code) if postal_code else city
     street = (
         address.get("address1") or address.get("address_1") or address.get("address")
         or address.get("street") or address.get("address_line1")

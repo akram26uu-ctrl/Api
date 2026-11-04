@@ -15,6 +15,7 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
+from app.core.dz_input import ascii_digits
 from app.core.name_matching import _parse, name_skeletons
 
 _DATA = Path(__file__).resolve().parent.parent / "data" / "algeria_communes.json"
@@ -89,40 +90,82 @@ def _index() -> tuple[dict[str, set[str]], dict[str, set[str]], set[str], dict[s
     return wilaya_by_key, commune_by_key, set(data["wilayas"]), commune_by_spelling
 
 
-# ISO 3166-2 (WooCommerce "DZ-16"), bare codes ("16", "1"), "dz16".
-_CODE = re.compile(r"^\s*(?:dz[\s_-]?)?(\d{1,2})(?!\d)", re.IGNORECASE)
-_CODE_ONLY = re.compile(r"^\s*(?:dz[\s_-]?)?(\d{1,2})\s*$", re.IGNORECASE)
+# Words that may surround a wilaya number: "Wilaya 31", "ولاية ٣١", "DZ-31",
+# "Province 31", "W31".
+_NUMBER_WORDS = re.compile(
+    r"\b(?:wilaya|wilayah|province|state|region|dz|w|ولاية|الولاية|رقم|n°|no|num)\b\.?",
+    re.IGNORECASE,
+)
+_POSTAL = re.compile(r"^\s*(\d{2})\d{3}\s*$")
+
+
+def _number_form(text: str) -> tuple[str | None, bool]:
+    """(code, number_only) for the numeric part of a wilaya field.
+
+    number_only is True when the field is *just* a code in any wrapping
+    ("31", "DZ-31", "Wilaya 31", "ولاية ٣١", "W31"), so it can be replaced by
+    the name for display."""
+    value = ascii_digits(text or "")
+    postal = _POSTAL.match(value)
+    if postal:
+        code = postal.group(1)
+        return (code if 1 <= int(code) <= 58 else None), False
+    numbers = re.findall(r"(?<!\d)(\d{1,2})(?!\d)", value)
+    if len(numbers) != 1:
+        return None, False
+    number = int(numbers[0])
+    code = f"{number:02d}" if 1 <= number <= 58 else None
+    rest = _NUMBER_WORDS.sub(" ", re.sub(r"(?<!\d)\d{1,2}(?!\d)", " ", value))
+    number_only = not re.sub(r"[\s\-_:/.,()#°]+", "", rest)
+    return code, number_only
 
 
 def wilaya_name(code: str) -> str | None:
-    """Official Latin name ("Alger") for a wilaya code."""
+    """Official Latin name ("Oran") for a wilaya code."""
     _, _, codes, _ = _index()
     if code not in codes:
         return None
-    data = json.loads(_DATA.read_text(encoding="utf-8"))
-    return data["wilayas"][code][0]
+    return _names()[code][0]
+
+
+@lru_cache(maxsize=1)
+def _names() -> dict[str, list[str]]:
+    return json.loads(_DATA.read_text(encoding="utf-8"))["wilayas"]
 
 
 def canonical_wilaya_text(text: str) -> str:
-    """Replace a bare code ("DZ-16", "16", "1") by the wilaya name so merchants
-    read "Alger"; any other text is kept exactly as typed."""
-    match = _CODE_ONLY.match(text or "")
-    if not match:
+    """Replace a field that is only a code ("31", "DZ-31", "Wilaya 31",
+    "ولاية ٣١") by the wilaya name so merchants read "Oran"; text that
+    contains a name is kept exactly as typed."""
+    code, number_only = _number_form(text)
+    if code is None or not number_only:
         return text
-    return wilaya_name(f"{int(match.group(1)):02d}") or text
+    return wilaya_name(code) or text
+
+
+def _name_code(text: str) -> str | None:
+    wilaya_by_key, _, _, _ = _index()
+    without_numbers = re.sub(r"\d+", " ", ascii_digits(text))
+    candidates = wilaya_by_key.get(_key(without_numbers), set())
+    return next(iter(candidates)) if len(candidates) == 1 else None
 
 
 def resolve_wilaya(text: str | None) -> str | None:
-    """Wilaya code ("01".."58") for a free-text wilaya, or None if unclear."""
+    """Wilaya code ("01".."58") for a free-text wilaya, or None if unclear.
+
+    Reads codes in any wrapping, postal codes ("31000"), Arabic-Indic
+    digits, and names in Arabic/French/English. When the field carries both
+    a number and a name that disagree ("31 - Alger") it is ambiguous: None.
+    """
     if not text or not text.strip():
         return None
-    wilaya_by_key, _, codes, _ = _index()
-    match = _CODE.match(text)
-    if match:
-        code = f"{int(match.group(1)):02d}"
-        return code if code in codes else None
-    candidates = wilaya_by_key.get(_key(text), set())
-    return next(iter(candidates)) if len(candidates) == 1 else None
+    code, number_only = _number_form(text)
+    if code is not None and number_only:
+        return code
+    name = _name_code(text)
+    if code is not None and name is not None:
+        return code if _related(code, name) else None
+    return name or code
 
 
 def commune_wilayas(text: str | None) -> set[str]:
