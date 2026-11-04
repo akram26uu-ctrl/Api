@@ -5,10 +5,11 @@
  */
 
 import React from 'react';
-import { ArrowRight, ArrowLeft, Terminal, CheckCircle2, Code2, Copy } from 'lucide-react';
+import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from '../common/Button';
 import { CodeBlock } from '../common/CodeBlock';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { bidiIsolate } from './Bidi';
 
 interface DeveloperSectionProps {
   onViewDocs: () => void;
@@ -17,6 +18,8 @@ interface DeveloperSectionProps {
 export const DeveloperSection: React.FC<DeveloperSectionProps> = ({ onViewDocs }) => {
   const { t, isRTL } = useLanguage();
   const ArrowIcon = isRTL ? ArrowLeft : ArrowRight;
+  // On /developers this section opens the page, so it carries the h1 (the API reference below steps down to h2).
+  const Title = typeof window !== 'undefined' && window.location.pathname === '/developers' ? 'h1' : 'h2';
 
   // Samples mirror the real API contract (api/app/schemas/order.py): DZD only, Algerian phone format.
   const curlCode = `curl -X POST https://api.ordium.dev/api/v1/orders \\
@@ -84,24 +87,19 @@ if (!response.ok) throw new Error(\`ORDIUM error \${response.status}\`);
 const { risk } = await response.json();
 
 if (risk.decision === 'reject') {
-  // Hold the order for manual confirmation before shipping.
+  // Hold the order and confirm it with the customer before shipping.
 }`;
 
   return (
-    <section className="py-24 border-t border-white/5 bg-[#080B12] relative">
+    <section className="py-20 sm:py-24 border-t border-white/5 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D1320] border border-white/10 text-xs font-mono text-[#22D3EE]">
-            <Code2 className="w-3.5 h-3.5" />
-            <span>{t('developer.badge', 'DEVELOPER EXPERIENCE FIRST')}</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-            {t('developer.title', 'Built for developers.')}
-          </h2>
-          <p className="text-base text-[#94A3B8] leading-relaxed">
-            {t('developer.subtitle', 'One clean REST request. Instant JSON response with transparent risk scores, actionable decisions, and categorized event signals.')}
+        <div className="max-w-3xl mb-12 sm:mb-14 text-start">
+          <Title className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight rtl:tracking-normal text-balance">
+            {t('mkt.dev.title', 'لمتجرك الخاص: طلب API واحد')}
+          </Title>
+          <p className="mt-5 text-base sm:text-lg text-[var(--ordium-muted)] leading-relaxed max-w-[65ch] text-pretty">
+            {bidiIsolate(t('mkt.dev.subtitle', 'تُربط متاجر Shopify أو YouCan أو WooCommerce من لوحة التحكم مباشرة. إذا كان متجرك مبنيًا خصيصًا، أرسل كل طلب إلى API واحصل على الدرجة والقرار والأسباب في الرد.'), isRTL)}
           </p>
         </div>
 
@@ -109,9 +107,9 @@ if (risk.decision === 'reject') {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* Request */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8] px-1">
-              <span>{t('developer.request_payload', 'REQUEST PAYLOAD')}</span>
-              <span className="text-[#22D3EE]" dir="ltr">POST /api/v1/orders</span>
+            <div className="flex items-center justify-between gap-3 text-sm text-[var(--ordium-muted)] px-1">
+              <span>{t('mkt.dev.request', 'الطلب المُرسل')}</span>
+              <code className="font-mono text-xs text-[var(--ordium-signal)]" dir="ltr">POST /api/v1/orders</code>
             </div>
             <CodeBlock
               tabs={[
@@ -124,9 +122,9 @@ if (risk.decision === 'reject') {
 
           {/* Response */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8] px-1">
-              <span>{t('developer.eval_response', 'EVALUATION RESPONSE (HTTP 201 CREATED)')}</span>
-              <span className="text-[#10B981]" dir="ltr">risk.decision</span>
+            <div className="flex items-center justify-between gap-3 text-sm text-[var(--ordium-muted)] px-1">
+              <span>{t('mkt.dev.response', 'الرد (HTTP 201)')}</span>
+              <code className="font-mono text-xs text-[var(--ordium-success)]" dir="ltr">risk.decision</code>
             </div>
             <CodeBlock
               code={responseCode}
@@ -144,7 +142,7 @@ if (risk.decision === 'reject') {
             onClick={onViewDocs}
             rightIcon={<ArrowIcon className="w-4 h-4" />}
           >
-            {t('developer.view_full_docs', 'View Full API Reference')}
+            {t('mkt.dev.cta', 'مرجع API الكامل')}
           </Button>
         </div>
 

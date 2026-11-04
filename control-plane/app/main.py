@@ -21,6 +21,16 @@ def healthz():
 
 
 @app.middleware("http")
+async def no_store_for_account_data(request: Request, call_next):
+    """Session and account responses carry personal data; never let browsers or proxies cache them."""
+    response = await call_next(request)
+    if request.url.path.startswith(("/api/v1/auth", "/api/v1/dashboard")):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers.setdefault("Pragma", "no-cache")
+    return response
+
+
+@app.middleware("http")
 async def enforce_allowed_origin_for_mutations(request: Request, call_next):
     """Reject cross-origin browser mutations while allowing clients without Origin."""
     if request.method in {"POST", "PUT", "PATCH", "DELETE"}:

@@ -266,6 +266,18 @@ Authenticated requests are rate-limited per API key. Response headers expose `X-
 
 Order creation supports `Idempotency-Key`. The key is scoped to the merchant and API-key environment and is retained for the configured TTL.
 
+### Shopper IP (`customer_ip`)
+
+Calls to `POST /v1/orders` are server-to-server, so the connection IP is the merchant's backend and is **never** used as a risk signal in live mode. Send the shopper's public IP as `customer_ip` in the body (or the `X-Customer-IP` header). Private, loopback and reserved addresses are ignored; malformed values return 422. Without a shopper IP, IP-based rules are skipped. Store integrations read WooCommerce `customer_ip_address` and Shopify `browser_ip` automatically.
+
+### Automatic WhatsApp confirmation
+
+When `WHATSAPP_ENABLED=true` and a merchant enables it (`GET/PUT /v1/confirmation-settings`), each live order whose risk decision is in the merchant's list gets one approved WhatsApp template from the Ordium number. It has two buttons, Confirm and Cancel. The customer's reply updates the order and creates a confirmation attempt, and a `order.confirmation.updated` webhook is sent. The dispatcher is `python -m scripts.dispatch_whatsapp`, and Meta calls `POST /api/v1/whatsapp/webhook`, which is authenticated by `X-Hub-Signature-256`. Setup is described in `deploy/ec2/WHATSAPP_SETUP.md`.
+
+### Outcome `reason`
+
+`POST/PUT /v1/orders/{id}/outcome` accepts an optional `reason`: `customer_refused`, `unreachable`, `fake_order`, `customer_cancelled`, `out_of_stock`, `risk_decision` or `other`. Outcomes with reason `out_of_stock` or `risk_decision` are not used as fraud labels, which keeps the engine from learning from its own decisions. A correction (PUT) that omits `reason` keeps the previous one.
+
 ### Production checklist
 
 1. Run `python -m pip install -e ".[test]"` in Python 3.13.

@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     web_origins: str = Field(default="http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173", alias="WEB_ORIGINS")
     session_ttl_seconds: int = Field(default=86_400, alias="SESSION_TTL_SECONDS", ge=900, le=2_592_000)
     cookie_secure: bool = Field(default=False, alias="COOKIE_SECURE")
+    # Sessions renew while the user is active, but never live longer than this from sign-in.
+    session_absolute_max_seconds: int = Field(default=2_592_000, alias="SESSION_ABSOLUTE_MAX_SECONDS", ge=3_600, le=7_776_000)
+    # Internal proxies (the Web container) allowed to report the browser's IP via X-Ordium-Client-IP.
+    trusted_proxy_networks: str = Field(default="127.0.0.1/32", alias="TRUSTED_PROXY_NETWORKS")
     require_email_verification: bool = Field(default=True, alias="REQUIRE_EMAIL_VERIFICATION")
     expose_verification_token: bool = Field(default=False, alias="EXPOSE_VERIFICATION_TOKEN")
     smtp_host: str | None = Field(default=None, alias="SMTP_HOST")

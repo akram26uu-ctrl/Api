@@ -38,7 +38,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
 
   if (variant === 'segmented') {
     return (
-      <div role="group" aria-label={t('language.select', 'Language')} className={`flex items-center bg-[#0D1320] p-0.5 rounded-lg border border-white/10 ${className}`}>
+      <div role="group" aria-label={t('language.select', 'Language')} className={`flex items-center bg-[var(--ordium-surface)] p-0.5 rounded-lg border border-white/10 ${className}`}>
         {SUPPORTED_LANGUAGES.map(lang => {
           const isActive = language === lang.code;
           return (
@@ -50,8 +50,8 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
               onClick={() => setLanguage(lang.code)}
               className={`flex-1 min-h-10 px-2.5 text-sm font-medium rounded-md transition-all ${
                 isActive
-                  ? 'bg-[#22D3EE]/20 text-[#22D3EE] font-bold shadow-sm'
-                  : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
+                  ? 'bg-[var(--ordium-signal)]/20 text-[var(--ordium-signal)] font-bold shadow-sm'
+                  : 'text-[var(--ordium-muted)] hover:text-white hover:bg-white/5'
               }`}
             >
               {lang.nativeLabel}
@@ -74,13 +74,13 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
           setIsOpen(!isOpen);
         }}
         type="button"
-        className="flex items-center gap-1.5 min-h-10 px-2.5 rounded-lg bg-[#0D1320] border border-white/10 hover:border-white/20 text-[#A5B1C3] hover:text-white text-xs font-medium transition-colors"
+        className="flex items-center gap-1.5 min-h-10 px-2.5 rounded-lg bg-[var(--ordium-surface)] border border-white/10 hover:border-white/20 text-[var(--ordium-muted)] hover:text-white text-xs font-medium transition-colors"
         aria-label={`${t('language.select', 'Language')}: ${currentLang.nativeLabel}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         onKeyDown={(e) => { if (e.key === 'Escape') setIsOpen(false); }}
       >
-        <Globe aria-hidden="true" className="w-3.5 h-3.5 text-[#22D3EE] shrink-0" />
+        <Globe aria-hidden="true" className="w-3.5 h-3.5 text-[var(--ordium-signal)] shrink-0" />
         <span lang={currentLang.code}>{currentLang.nativeLabel}</span>
         <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -90,7 +90,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
           role="listbox"
           aria-label={t('language.select', 'Language')}
           onKeyDown={(e) => { if (e.key === 'Escape') setIsOpen(false); }}
-          className={`absolute mt-1.5 w-40 rounded-xl bg-[#0D1320] border border-white/15 shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-1 ${alignmentClass}`}
+          className={`absolute mt-1.5 w-40 rounded-xl bg-[var(--ordium-surface)] border border-white/15 shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-1 ${alignmentClass}`}
         >
           {SUPPORTED_LANGUAGES.map(lang => {
             const isSelected = language === lang.code;
@@ -108,15 +108,15 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
                 }}
                 className={`w-full min-h-11 flex items-center justify-between px-3 py-2 text-sm transition-colors text-start ${
                   isSelected
-                    ? 'text-[#22D3EE] bg-[#22D3EE]/10 font-bold'
-                    : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
+                    ? 'text-[var(--ordium-signal)] bg-[var(--ordium-signal)]/10 font-bold'
+                    : 'text-[var(--ordium-muted)] hover:text-white hover:bg-white/5'
                 }`}
               >
                 <div className="flex flex-col text-start">
                   <span className="font-medium text-white">{lang.nativeLabel}</span>
-                  <span className="text-[10px] text-[#64748B] font-mono">{lang.label}</span>
+                  <span className="text-xs text-[var(--ordium-subtle)] font-mono">{lang.label}</span>
                 </div>
-                {isSelected && <Check className="w-3.5 h-3.5 text-[#22D3EE] shrink-0 ms-2" />}
+                {isSelected && <Check className="w-3.5 h-3.5 text-[var(--ordium-signal)] shrink-0 ms-2" />}
               </button>
             );
           })}

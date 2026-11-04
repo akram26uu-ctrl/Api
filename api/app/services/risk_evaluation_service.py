@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from app.core.outcomes import BAD_OUTCOME_STATUSES, NON_BAD_REASONS, is_bad_outcome
 from app.models.order import Order
 from app.models.order_outcome import OrderOutcome
 from app.models.risk_evaluation import RiskEvaluation
@@ -35,10 +36,20 @@ class RiskEvaluationService:
         ):
             return None
 
-        predicted_risky = assessment.decision.value != "allow"
-        actual_bad = outcome.outcome_status in {"cancelled", "returned"}
-        classification = self._classification(predicted_risky, actual_bad)
         existing = self.repository.get_by_order_id(order.id)
+        reason = getattr(outcome, "reason", None)
+        if outcome.outcome_status in BAD_OUTCOME_STATUSES and reason in NON_BAD_REASONS:
+            # Stock problems or a cancellation caused by our own decision say
+            # nothing about whether the buyer was bad: no label at all. Counting
+            # it as "good" would turn every correct block into a false positive.
+            if existing is not None:
+                self.repository.db.delete(existing)
+                self.repository.db.flush()
+            return None
+
+        predicted_risky = assessment.decision.value != "allow"
+        actual_bad = is_bad_outcome(outcome.outcome_status, getattr(outcome, "reason", None))
+        classification = self._classification(predicted_risky, actual_bad)
 
         if existing is not None:
             # Outcome corrections must update the feedback label rather than

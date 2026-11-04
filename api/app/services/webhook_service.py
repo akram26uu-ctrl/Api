@@ -19,7 +19,7 @@ from app.models.webhook_endpoint import WebhookEndpoint
 
 
 class WebhookService:
-    ALLOWED_EVENTS = {"*", "order.risk_assessed", "order.outcome.updated"}
+    ALLOWED_EVENTS = {"*", "order.risk_assessed", "order.outcome.updated", "order.confirmation.updated"}
 
     def __init__(self, db: Session):
         self.db = db

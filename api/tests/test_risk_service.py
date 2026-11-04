@@ -143,7 +143,7 @@ def test_risk_engine_high_risk_order():
         # ---------------------------------------------------------
         # 7. Assertions
         # ---------------------------------------------------------
-        assert result.score == 100
+        assert result.score == 95  # identity_reuse group capped at 45 (rules-v5)
         assert result.decision == RiskDecision.REJECT
 
         print("Risk Engine test passed.")

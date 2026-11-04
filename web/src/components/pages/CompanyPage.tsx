@@ -1,9 +1,10 @@
 import React from 'react';
 import { Cpu, Mail, Shield, Terminal, Eye, Layers, Code2 } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { bidiIsolate } from '../marketing/Bidi';
 
 export const CompanyPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
   const principles = [
     { icon: <Eye className="w-5 h-5" />, title: t('pages.company.p1_title', 'Inspectable decisions'), desc: t('pages.company.p1_desc', 'Risk decisions expose the persisted signals and rule/profile versions used for evaluation.') },
     { icon: <Layers className="w-5 h-5" />, title: t('pages.company.p2_title', 'Tenant boundaries'), desc: t('pages.company.p2_desc', 'Merchant and environment context is enforced by the API credential and database query scope.') },
@@ -19,9 +20,8 @@ export const CompanyPage: React.FC = () => {
     <div className="py-16 sm:py-20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="text-center max-w-3xl mx-auto mb-14 space-y-5">
-          <span className="ordium-eyebrow">ORDIUM</span>
           <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight text-balance">{t('pages.company.title', 'Order risk intelligence for digital commerce.')}</h1>
-          <p className="text-base sm:text-lg text-[#A5B1C3] leading-relaxed">{t('pages.company.subtitle', 'ORDIUM is an engineering project focused on helping commerce platforms evaluate order risk using deterministic signals, identity relationships, and merchant-scoped telemetry.')}</p>
+          <p className="text-base sm:text-lg text-[#A5B1C3] leading-relaxed max-w-[68ch] mx-auto">{bidiIsolate(t('pages.company.subtitle', 'ORDIUM is an engineering project focused on helping commerce platforms evaluate order risk using deterministic signals, identity relationships, and merchant-scoped telemetry.'), isRTL)}</p>
         </header>
 
         <section className="ordium-card p-6 sm:p-10 mb-8" aria-labelledby="company-principles">
@@ -33,7 +33,7 @@ export const CompanyPage: React.FC = () => {
             {principles.map(item => (
               <div key={item.title} className="space-y-2">
                 <div className="flex items-center gap-2 text-[#52D9E8]"><span aria-hidden="true">{item.icon}</span><h3 className="text-base font-semibold text-white">{item.title}</h3></div>
-                <p className="text-sm text-[#A5B1C3] leading-relaxed">{item.desc}</p>
+                <p className="text-sm text-[#A5B1C3] leading-relaxed">{bidiIsolate(item.desc, isRTL)}</p>
               </div>
             ))}
           </div>
@@ -44,7 +44,7 @@ export const CompanyPage: React.FC = () => {
             <article key={card.title} className="ordium-card p-6 space-y-3">
               <span aria-hidden="true" className="inline-flex w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 items-center justify-center text-[#52D9E8]">{card.icon}</span>
               <h3 className="text-lg font-semibold text-white">{card.title}</h3>
-              <p className="text-sm text-[#A5B1C3] leading-relaxed">{card.desc}</p>
+              <p className="text-sm text-[#A5B1C3] leading-relaxed">{bidiIsolate(card.desc, isRTL)}</p>
             </article>
           ))}
         </div>

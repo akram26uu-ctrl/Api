@@ -55,3 +55,8 @@ build/
 # Windows
 Thumbs.db
 >>>>>>> 4b03b26421016567808815a723eb1b80f19ef75f
+
+# Local tool state
+.claude/
+.impeccable/
+.router/

@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Activity, CheckCircle2, Clock3, MessageCircle, RefreshCw, XCircle } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, Clock3, Info, Loader2, MessageCircle, RefreshCw, XCircle } from 'lucide-react';
 import { ordiumClient } from '../../lib/api/client';
 import { OrderConfirmationMetrics as Metrics } from '../../lib/api/types';
 import { useLanguage } from '../../i18n/LanguageContext';
 
-export const OrderConfirmationMetrics: React.FC = () => {
+/** Full metrics on the confirmation page; `compact` = one quiet line above the orders queue. */
+export const OrderConfirmationMetrics: React.FC<{ compact?: boolean; onOpenDetails?: () => void }> = ({ compact = false, onOpenDetails }) => {
   const { t } = useLanguage();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,16 +30,29 @@ export const OrderConfirmationMetrics: React.FC = () => {
     { label: t('dashboard.confirmation_metrics.confirmed', 'طلبات مؤكدة'), value: metrics.confirmed_orders.toLocaleString(), detail: t('dashboard.confirmation_metrics.confirmed_hint', 'تأكيدات مسجلة في سجل النشاط'), icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" /> },
   ] : [];
 
-  return <section className="space-y-3" aria-live="polite">
+  if (compact) {
+    if (error || !metrics) return null;
+    const fmt = (n: number) => n.toLocaleString();
+    return (
+      <p className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-[var(--ordium-muted)]" aria-live="polite">
+        <span><strong className="text-[var(--ordium-text)] tabular-nums">{metrics.confirmation_rate.toLocaleString(undefined, { maximumFractionDigits: 1 })}%</strong> {t('dashboard.confirmation_metrics.rate_short', 'نسبة التأكيد')}</span>
+        <span><strong className="text-[var(--ordium-text)] tabular-nums">{fmt(metrics.unstarted_pending_orders)}</strong> {t('dashboard.confirmation_metrics.unstarted_short', 'لم يُتواصل معها')}</span>
+        <span><strong className="text-[var(--ordium-text)] tabular-nums">{fmt(metrics.in_progress_orders)}</strong> {t('dashboard.confirmation_metrics.progress_short', 'قيد المتابعة')}</span>
+        {onOpenDetails && <button type="button" onClick={onOpenDetails} className="min-h-11 text-[var(--ordium-signal)] hover:underline underline-offset-4">{t('dashboard.confirmation_metrics.open_details', 'تفاصيل التأكيد')}</button>}
+      </p>
+    );
+  }
+
+  return <div className="space-y-6"><section className="space-y-3" aria-live="polite">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h3 className="text-sm font-bold text-white">{t('dashboard.confirmation_metrics.title', 'مؤشرات تأكيد الطلبات')}</h3><p className="mt-1 text-xs text-[#94A3B8]">{t('dashboard.confirmation_metrics.subtitle', 'تُحسب النسبة من الطلبات التي سُجّلت لها محاولة تأكيد واحدة على الأقل، وتُعرض الطلبات الجديدة منفصلة.')}</p></div>
-      <button type="button" onClick={() => void refresh()} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/[0.12] px-3 py-2 text-xs text-[#CBD5E1] hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#43D9E8] disabled:opacity-50 disabled:cursor-not-allowed"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />{t('dashboard.confirmation_metrics.refresh', 'تحديث المؤشرات')}</button>
+      <div><h2 className="text-base font-semibold text-[var(--ordium-text)]">{t('dashboard.confirmation_metrics.title', 'مؤشرات تأكيد الطلبات')}</h2><p className="mt-1 text-xs text-[var(--ordium-muted)]">{t('dashboard.confirmation_metrics.subtitle', 'تُحسب النسبة من الطلبات التي سُجّلت لها محاولة تأكيد واحدة على الأقل، وتُعرض الطلبات الجديدة منفصلة.')}</p></div>
+      <button type="button" onClick={() => void refresh()} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/[0.12] px-3 py-2 text-xs text-[#CBD5E1] hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ordium-signal)] disabled:opacity-50 disabled:cursor-not-allowed"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />{t('dashboard.confirmation_metrics.refresh', 'تحديث المؤشرات')}</button>
     </div>
     {error ? <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-200">{t('dashboard.confirmation_metrics.error', 'تعذر تحميل مؤشرات التأكيد. يمكنك إعادة المحاولة من زر التحديث.')}</div> : <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        {cards.map(card => <div key={card.label} className="dashboard-panel p-4 sm:p-5 space-y-3"><div className="flex items-center justify-between gap-2"><span className="text-xs text-[#94A3B8]">{card.label}</span>{card.icon}</div><div className="text-2xl font-bold text-white tabular-nums">{loading ? '—' : card.value}</div><p className="text-[11px] leading-relaxed text-[#64748B]">{loading ? t('dashboard.confirmation_metrics.loading', 'جارٍ تحميل المؤشرات…') : card.detail}</p></div>)}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        {cards.map(card => <div key={card.label} className="dashboard-panel p-3.5 sm:p-5 space-y-2 sm:space-y-3"><div className="flex items-center justify-between gap-2"><span className="text-xs text-[var(--ordium-muted)]">{card.label}</span>{card.icon}</div><div className="text-xl sm:text-2xl font-bold text-white tabular-nums">{loading ? '—' : card.value}</div><p className="text-xs leading-relaxed text-[var(--ordium-subtle)]">{loading ? t('dashboard.confirmation_metrics.loading', 'جارٍ تحميل المؤشرات…') : card.detail}</p></div>)}
       </div>
-      {metrics && <div className="flex flex-wrap gap-x-5 gap-y-2 rounded-xl border border-white/[0.08] bg-[#101827]/65 px-4 py-3 text-[11px] text-[#A1AEC1]"><span className="inline-flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5" />{t('dashboard.confirmation_metrics.attempts', 'إجمالي محاولات التواصل')}: <strong className="text-white">{metrics.total_attempts}</strong></span><span className="inline-flex items-center gap-1.5"><XCircle className="h-3.5 w-3.5" />{t('dashboard.confirmation_metrics.cancelled', 'أُلغيت بعد بدء التأكيد')}: <strong className="text-white">{metrics.cancelled_orders}</strong></span><span>{t('dashboard.confirmation_metrics.average_attempts', 'متوسط المحاولات لكل طلب قيد المتابعة')}: <strong className="text-white">{metrics.average_attempts_per_order}</strong></span></div>}
+      {metrics && <div className="flex flex-wrap gap-x-5 gap-y-2 rounded-xl border border-white/[0.08] bg-[var(--ordium-surface-raised)]/65 px-4 py-3 text-xs text-[var(--ordium-muted)]"><span className="inline-flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5" />{t('dashboard.confirmation_metrics.attempts', 'إجمالي محاولات التواصل')}: <strong className="text-white">{metrics.total_attempts}</strong></span><span className="inline-flex items-center gap-1.5"><XCircle className="h-3.5 w-3.5" />{t('dashboard.confirmation_metrics.cancelled', 'أُلغيت بعد بدء التأكيد')}: <strong className="text-white">{metrics.cancelled_orders}</strong></span><span>{t('dashboard.confirmation_metrics.average_attempts', 'متوسط المحاولات لكل طلب قيد المتابعة')}: <strong className="text-white">{metrics.average_attempts_per_order}</strong></span></div>}
     </>}
-  </section>;
+  </section></div>;
 };

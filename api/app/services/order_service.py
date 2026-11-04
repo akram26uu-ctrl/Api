@@ -83,6 +83,11 @@ class OrderService:
         if store_id is None:
             raise ValueError("store_id is required")
         request_hash = self._request_hash(data, device_fingerprint)
+        # External IP intelligence runs before any write so a slow provider
+        # never holds row locks / an open write transaction.
+        if ip_address:
+            self.db.commit()
+        network_result = self.risk_service.lookup_network(ip_address)
 
         try:
             if idempotency_key is not None:
@@ -210,7 +215,8 @@ class OrderService:
                 self.db.rollback()
                 raise ValueError("An order with this external order number already exists") from exc
 
-            risk_result = self.risk_service.assess_order(order)
+            risk_result = self.risk_service.assess_order(order, network_result=network_result)
+            engine_decision = risk_result.decision
 
             # Shadow mode: when enabled, the merchant observes rejections without
             # being blocked. Downgrade REJECT to REVIEW before the response body,
@@ -224,6 +230,14 @@ class OrderService:
                 and risk_result.decision is RiskDecision.REJECT
             ):
                 risk_result.assessment.decision = RiskDecision.REVIEW
+                # Keep the engine's real decision for calibration and audit.
+                snapshot = risk_result.assessment.feature_snapshot
+                if snapshot is not None:
+                    snapshot.features = {
+                        **(snapshot.features or {}),
+                        "engine_decision": engine_decision.value,
+                        "shadow_mode": True,
+                    }
                 risk_result = RiskResult(
                     score=risk_result.score,
                     decision=RiskDecision.REVIEW,
@@ -231,9 +245,16 @@ class OrderService:
                     events=risk_result.events,
                 )
 
+            # Automatic WhatsApp confirmation: outbox row in this same transaction;
+            # the dispatcher sends it only after the order commits.
+            from app.services.whatsapp_service import enqueue_for_order
+            enqueue_for_order(self.db, order, merchant, risk_result.decision, data.phone)
+
             graph_summary = self.graph_service.summarize_order(order)
 
             response_body = to_json_safe(self._build_response_body(order, risk_result, graph_summary))
+            response_body["risk"]["engine_decision"] = engine_decision.value
+            response_body["risk"]["shadow_mode"] = engine_decision is not risk_result.decision
 
             if idempotency_key is not None:
                 record = self.idempotency_repository.get(merchant_id, environment, idempotency_key)
@@ -246,7 +267,7 @@ class OrderService:
             self.audit_service.record(
                 action="order.created", resource_type="order", resource_id=order.id,
                 merchant_id=merchant_id, api_key_id=api_key.id if api_key else None,
-                environment=environment, metadata={"decision": risk_result.decision.value, "score": str(risk_result.score) if isinstance(risk_result.score, Decimal) else risk_result.score},
+                environment=environment, metadata={"decision": risk_result.decision.value, "engine_decision": engine_decision.value, "score": str(risk_result.score) if isinstance(risk_result.score, Decimal) else risk_result.score},
             )
             self.webhook_service.enqueue(
                 merchant_id, environment, "order.risk_assessed",
@@ -381,7 +402,9 @@ class OrderService:
     @staticmethod
     def _request_hash(data: OrderCreate, device_fingerprint: str | None) -> str:
         payload = {
-            "order": data.model_dump(mode="json"),
+            # customer_ip may arrive via header on one attempt and not another;
+            # it does not change which order this is.
+            "order": data.model_dump(mode="json", exclude={"customer_ip"}),
             "device_fingerprint": device_fingerprint,
         }
         serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))

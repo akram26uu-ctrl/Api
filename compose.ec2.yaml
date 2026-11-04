@@ -1,14 +1,16 @@
 name: ordium
 
+# Local, size-capped logs. The awslogs driver is disabled because the instance role cannot create
+# the CloudWatch log group yet: with a missing group the driver blocks container shutdown, which
+# hung `docker compose up` during deploys. Restore it once IAM allows logs:CreateLogGroup/PutLogEvents:
+#   driver: awslogs
+#   options: { awslogs-region: eu-west-1, awslogs-group: /ordium/containers, awslogs-create-group: "true",
+#              tag: "ordium/{{.Name}}/{{.ID}}", mode: non-blocking, max-buffer-size: 4m }
 x-log-settings: &log-settings
-  driver: awslogs
+  driver: json-file
   options:
-    awslogs-region: ${AWS_REGION:?Set AWS_REGION in .env.ec2}
-    awslogs-group: /ordium/containers
-    awslogs-create-group: "true"
-    tag: "ordium/{{.Name}}/{{.ID}}"
-    mode: non-blocking
-    max-buffer-size: 4m
+    max-size: 20m
+    max-file: "5"
 
 x-api-environment: &api-environment
   APP_NAME: "ORDIUM API"
@@ -29,6 +31,7 @@ x-api-environment: &api-environment
   ENABLE_DOCS: "false"
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS in .env.ec2}
   ORDIUM_INTERNAL_SHARED_SECRET: ${ORDIUM_INTERNAL_SHARED_SECRET:?Set ORDIUM_INTERNAL_SHARED_SECRET in .env.ec2}
+  PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL:-https://api.ordium.dev}
   SHOPIFY_WEBHOOK_SECRET: ${SHOPIFY_WEBHOOK_SECRET:-}
   SHOPIFY_STORE_MAP: ${SHOPIFY_STORE_MAP:-}
   OMNITERRA_WEBHOOK_SECRET: ${OMNITERRA_WEBHOOK_SECRET:-}
@@ -45,6 +48,14 @@ x-api-environment: &api-environment
   DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-2}
   DB_POOL_TIMEOUT_SECONDS: ${DB_POOL_TIMEOUT_SECONDS:-10}
   DB_POOL_RECYCLE_SECONDS: ${DB_POOL_RECYCLE_SECONDS:-1800}
+  WHATSAPP_ENABLED: ${WHATSAPP_ENABLED:-false}
+  WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v21.0}
+  WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+  WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+  WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+  WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+  WHATSAPP_TEMPLATE_NAME: ${WHATSAPP_TEMPLATE_NAME:-order_confirmation}
+  WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE:-ar}
 
 services:
   api:
@@ -85,6 +96,9 @@ services:
       SESSION_ENCRYPTION_KEY: ${SESSION_ENCRYPTION_KEY:?Set SESSION_ENCRYPTION_KEY in .env.ec2}
       WEB_ORIGINS: ${WEB_ORIGINS:?Set WEB_ORIGINS in .env.ec2}
       SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-86400}
+      SESSION_ABSOLUTE_MAX_SECONDS: ${SESSION_ABSOLUTE_MAX_SECONDS:-2592000}
+      # Only the Web container (Compose network) may report the browser IP to the Control Plane.
+      TRUSTED_PROXY_NETWORKS: ${CONTROL_PLANE_TRUSTED_PROXIES:-172.16.0.0/12}
       COOKIE_SECURE: "true"
       REQUIRE_EMAIL_VERIFICATION: "true"
       EXPOSE_VERIFICATION_TOKEN: "false"
@@ -147,7 +161,7 @@ services:
     command:
       - sh
       - -c
-      - while true; do python -m scripts.dispatch_webhooks || echo "Webhook batch failed; retrying"; sleep 10; done
+      - while true; do python -m scripts.dispatch_webhooks || echo "Webhook batch failed; retrying"; python -m scripts.dispatch_whatsapp || echo "WhatsApp batch failed; retrying"; sleep 10; done
     environment: *api-environment
     depends_on:
       api:

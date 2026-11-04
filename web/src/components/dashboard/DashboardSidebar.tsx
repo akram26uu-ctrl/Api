@@ -1,10 +1,10 @@
 /** ORDIUM Dashboard Sidebar Navigation */
 import React, { useEffect, useRef } from 'react';
-import { LayoutDashboard, ShoppingCart, ClipboardCheck, Network, Zap, Sliders, Webhook, Key, BarChart3, Cpu, X, Link2 } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, ClipboardCheck, Network, Zap, Cpu, X, Settings, Link2, Sliders } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 
-export type DashboardTab = 'overview' | 'confirmation' | 'orders' | 'network' | 'simulator' | 'rules' | 'integrations' | 'webhooks' | 'apikeys' | 'usage';
+export type DashboardTab = 'overview' | 'confirmation' | 'orders' | 'integrations' | 'network' | 'rules' | 'simulator' | 'settings';
 
 interface DashboardSidebarProps {
   activeTab: DashboardTab;
@@ -43,40 +43,33 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ activeTab, o
     };
   }, [mobileOpen]);
 
+  // Daily work only. Everything configurable lives in Settings (bottom of the rail).
   const menuGroups: { label: string; items: { id: DashboardTab; label: string; icon: React.ReactNode }[] }[] = [
     {
       label: t('dashboard.sidebar.group_main', 'الرئيسية'),
       items: [
-        { id: 'overview', label: t('dashboard.sidebar.overview', 'ملخص المتجر'), icon: <LayoutDashboard className="w-4 h-4" /> }
+        { id: 'overview', label: t('dashboard.sidebar.overview', 'نظرة عامة'), icon: <LayoutDashboard className="w-4 h-4" /> }
       ]
     },
     {
       label: t('dashboard.sidebar.group_orders', 'الطلبات'),
       items: [
         { id: 'orders', label: t('dashboard.sidebar.orders', 'الطلبات'), icon: <ShoppingCart className="w-4 h-4" /> },
-        { id: 'confirmation', label: t('dashboard.confirmation_metrics.title', 'مؤشرات التأكيد'), icon: <ClipboardCheck className="w-4 h-4" /> },
-        { id: 'simulator', label: t('dashboard.sidebar.simulator', 'تجربة طلب'), icon: <Zap className="w-4 h-4" /> }
+        { id: 'confirmation', label: t('dashboard.sidebar.confirmation_page', 'التأكيد'), icon: <ClipboardCheck className="w-4 h-4" /> }
+      ]
+    },
+    {
+      label: t('dashboard.sidebar.group_store', 'المتجر'),
+      items: [
+        { id: 'integrations', label: t('dashboard.sidebar.integrations', 'ربط المتجر'), icon: <Link2 className="w-4 h-4" /> }
       ]
     },
     {
       label: t('dashboard.sidebar.group_risk', 'المخاطر'),
       items: [
         { id: 'network', label: t('dashboard.sidebar.network', 'تحليل المخاطر'), icon: <Network className="w-4 h-4" /> },
-        { id: 'rules', label: t('dashboard.sidebar.rules', 'قواعد المخاطر'), icon: <Sliders className="w-4 h-4" /> }
-      ]
-    },
-    {
-      label: t('dashboard.sidebar.group_store', 'المتجر والربط'),
-      items: [
-        { id: 'integrations', label: t('dashboard.sidebar.integrations', 'ربط المتجر'), icon: <Link2 className="w-4 h-4" /> },
-        { id: 'webhooks', label: t('dashboard.sidebar.webhooks', 'الربط مع المتجر'), icon: <Webhook className="w-4 h-4" /> },
-        { id: 'apikeys', label: t('dashboard.sidebar.apikeys', 'مفاتيح الربط'), icon: <Key className="w-4 h-4" /> }
-      ]
-    },
-    {
-      label: t('dashboard.sidebar.group_usage', 'الاستخدام'),
-      items: [
-        { id: 'usage', label: t('dashboard.sidebar.usage', 'الاستخدام'), icon: <BarChart3 className="w-4 h-4" /> }
+        { id: 'rules', label: t('dashboard.sidebar.rules', 'قواعد المخاطر'), icon: <Sliders className="w-4 h-4" /> },
+        { id: 'simulator', label: t('dashboard.sidebar.simulator', 'طلب تجريبي'), icon: <Zap className="w-4 h-4" /> }
       ]
     }
   ];
@@ -86,26 +79,26 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ activeTab, o
       <div>
         <div className="h-[4.5rem] px-6 border-b border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="ordium-brand-mark w-9 h-9 rounded-xl bg-gradient-to-br from-[#6C63F5]/20 to-[#43D9E8]/10 border border-[#43D9E8]/20 flex items-center justify-center shadow-lg shadow-black/20"><Cpu className="w-4 h-4 text-[#22D3EE]" /></div>
-            <div><span className="font-mono text-sm font-extrabold tracking-wider text-white">ORDIUM</span><span className="block text-[8px] font-mono tracking-widest text-[#22D3EE] uppercase -mt-0.5">{t('nav.console', 'Console')}</span></div>
+            <div className="ordium-brand-mark w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--ordium-accent)]/20 to-[var(--ordium-signal)]/10 border border-[var(--ordium-signal)]/20 flex items-center justify-center shadow-lg shadow-black/20"><Cpu className="w-4 h-4 text-[var(--ordium-signal)]" /></div>
+            <div><span className="font-mono text-sm font-extrabold tracking-wider text-white">ORDIUM</span><span className="block text-xs font-mono tracking-widest text-[var(--ordium-signal)] uppercase -mt-0.5">{t('nav.console', 'Console')}</span></div>
           </div>
-          {onCloseMobile && <button ref={closeButtonRef} type="button" onClick={onCloseMobile} className="lg:hidden inline-flex items-center justify-center min-w-11 min-h-11 rounded-lg text-[#A1AEC1] hover:text-white hover:bg-white/5" aria-label={t('common.close', 'إغلاق')}><X className="w-4 h-4" /></button>}
+          {onCloseMobile && <button ref={closeButtonRef} type="button" onClick={onCloseMobile} className="lg:hidden inline-flex items-center justify-center min-w-11 min-h-11 rounded-lg text-[var(--ordium-muted)] hover:text-white hover:bg-white/5" aria-label={t('common.close', 'إغلاق')}><X className="w-4 h-4" /></button>}
         </div>
         <nav className="p-4 space-y-4" aria-label={t('nav.console', 'Console')}>
           {menuGroups.map(group => (
             <div key={group.label} className="space-y-1.5">
-              <div className="px-3 py-1.5 text-[10px] font-mono uppercase text-[#A1AEC1] font-bold tracking-wider text-start">{group.label}</div>
+              <div className="px-3 pt-1.5 pb-1 text-xs font-semibold text-[var(--ordium-subtle)] text-start">{group.label}</div>
               {group.items.map(item => {
                 const isActive = activeTab === item.id;
-                return <button key={item.id} type="button" onClick={() => { onSelectTab(item.id); onCloseMobile?.(); }} aria-current={isActive ? 'page' : undefined} className={`ordium-nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-start ${isActive ? 'bg-gradient-to-r from-[#6C63F5]/15 to-[#43D9E8]/[0.06] text-white border border-[#6C63F5]/30 shadow-sm font-semibold' : 'text-[#A1AEC1] hover:text-white hover:bg-white/[0.045] active:bg-white/[0.08]'}`}><span className={isActive ? 'text-[#22D3EE]' : 'text-[#A1AEC1]'}>{item.icon}</span><span>{item.label}</span></button>;
+                return <button key={item.id} type="button" onClick={() => { onSelectTab(item.id); onCloseMobile?.(); }} aria-current={isActive ? 'page' : undefined} className={`ordium-nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-start ${isActive ? 'bg-gradient-to-r from-[var(--ordium-accent)]/15 to-[var(--ordium-signal)]/[0.06] text-white border border-[var(--ordium-accent)]/30 shadow-sm font-semibold' : 'text-[var(--ordium-muted)] hover:text-white hover:bg-white/[0.045] active:bg-white/[0.08]'}`}><span className={isActive ? 'text-[var(--ordium-signal)]' : 'text-[var(--ordium-muted)]'}>{item.icon}</span><span>{item.label}</span></button>;
               })}
             </div>
           ))}
         </nav>
       </div>
-      <div className="p-4 border-t border-white/[0.08] space-y-3 shrink-0">
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#0D1320] border border-white/5 text-xs font-mono"><span className="text-[#A1AEC1] text-[11px]">{t('language.select', 'Language')}:</span><LanguageSwitcher variant="dropdown" align="start" /></div>
-        <div className="p-4 rounded-xl bg-[#101827] border border-white/[0.08] text-[11px] text-[#A1AEC1] space-y-1.5 text-start"><div className="font-semibold text-white">{t('dashboard.sidebar.store_workspace', 'مساحة عمل المتجر')}</div><div className="leading-relaxed">{t('dashboard.sidebar.store_workspace_hint', 'تابع الطلبات وسجّل نتائج التواصل من صفحة الطلبات.')}</div></div>
+      <div className="p-4 border-t border-white/[0.08] space-y-2 shrink-0">
+        <button type="button" onClick={() => { onSelectTab('settings'); onCloseMobile?.(); }} aria-current={activeTab === 'settings' ? 'page' : undefined} className={`ordium-nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-start ${activeTab === 'settings' ? 'bg-gradient-to-r from-[var(--ordium-accent)]/15 to-[var(--ordium-signal)]/[0.06] text-white border border-[var(--ordium-accent)]/30 font-semibold' : 'text-[var(--ordium-muted)] hover:text-white hover:bg-white/[0.045] active:bg-white/[0.08]'}`}><Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'text-[var(--ordium-signal)]' : ''}`} /><span>{t('settings.title', 'الإعدادات')}</span></button>
+        <div className="flex items-center justify-between px-3.5 py-2 text-[13px] text-[var(--ordium-muted)]"><span>{t('language.select', 'اللغة')}</span><LanguageSwitcher variant="dropdown" align="start" /></div>
       </div>
     </div>
   );

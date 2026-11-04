@@ -3,7 +3,29 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from datetime import datetime
 
+import ipaddress
+
 from app.schemas.risk import RiskAssessmentResponse
+
+
+def normalize_customer_ip(value: str | None) -> str | None:
+    """Validate a shopper IP. Malformed -> error; non-public (private,
+    loopback, reserved) -> None, because such an address cannot identify a
+    shopper and would collapse unrelated customers into one network signal."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    try:
+        parsed = ipaddress.ip_address(value)
+    except ValueError as exc:
+        raise ValueError("customer_ip must be a valid IPv4 or IPv6 address") from exc
+    if getattr(parsed, "ipv4_mapped", None) is not None:
+        parsed = parsed.ipv4_mapped
+    if not parsed.is_global:
+        return None
+    return str(parsed)
 
 
 class OrderItemCreate(BaseModel):
@@ -103,6 +125,16 @@ class OrderCreate(BaseModel):
             )
 
         return value
+
+    # The shopper's public IP as seen by the merchant's storefront. The API is
+    # called server-to-server, so the transport peer IP is the merchant's
+    # backend and must never be used as a customer risk signal.
+    customer_ip: str | None = Field(default=None, max_length=45)
+
+    @field_validator("customer_ip")
+    @classmethod
+    def validate_customer_ip(cls, value: str | None) -> str | None:
+        return normalize_customer_ip(value)
 
     @field_validator("currency")
     @classmethod

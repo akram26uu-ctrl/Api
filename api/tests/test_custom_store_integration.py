@@ -131,5 +131,6 @@ def test_custom_store_can_connect_and_send_signed_order_webhook(monkeypatch):
     assert accepted_response.json()["accepted"] is True
     assert captured["merchant_id"] == merchant_id
     assert captured["store_id"] == store_id
-    assert captured["event_id"] == f"custom:{connection['id']}:delivery-123"
+    # Deduplicated by the store order ID, not the delivery ID (delivery IDs can repeat across orders).
+    assert captured["event_id"] == f"custom:{connection['id']}:custom:order:SHOP-ORDER-123"
     assert captured["order"]["id"] == "SHOP-ORDER-123"

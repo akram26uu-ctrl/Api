@@ -17,6 +17,8 @@ from app.api.v1.stores import router as stores_router
 from app.api.v1.usage import router as usage_router
 from app.api.v1.integrations import router as integrations_router
 from app.api.v1.integration_connections import router as integration_connections_router
+from app.api.v1.whatsapp_webhook import router as whatsapp_webhook_router
+from app.api.v1.confirmation_settings import router as confirmation_settings_router
 
 
 router = APIRouter(
@@ -46,3 +48,5 @@ router.include_router(audit_router)
 router.include_router(risk_features_router)
 router.include_router(integrations_router)
 router.include_router(integration_connections_router)
+router.include_router(whatsapp_webhook_router)
+router.include_router(confirmation_settings_router)

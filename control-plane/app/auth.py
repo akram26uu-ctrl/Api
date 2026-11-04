@@ -48,12 +48,17 @@ def _as_utc(value: datetime) -> datetime:
     return value
 
 
+# Persist activity at most this often to avoid a database write on every dashboard request.
+LAST_SEEN_WRITE_INTERVAL = timedelta(minutes=5)
+
+
 def get_current_session(request: Request, db: Session = Depends(get_db)) -> tuple[DbSession, User, Membership]:
     raw = request.cookies.get(COOKIE_NAME)
     if not raw:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
     session = db.scalar(select(DbSession).where(DbSession.token_hash == _hash_token(raw), DbSession.revoked_at.is_(None)))
-    if session is None or _as_utc(session.expires_at) <= datetime.now(timezone.utc):
+    now = datetime.now(timezone.utc)
+    if session is None or _as_utc(session.expires_at) <= now:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
     user = db.get(User, session.user_id)
     if user is None or user.status != "active":
@@ -61,24 +66,45 @@ def get_current_session(request: Request, db: Session = Depends(get_db)) -> tupl
     membership = db.scalar(select(Membership).where(Membership.user_id == user.id).order_by(Membership.created_at.asc()))
     if membership is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization membership not found")
-    session.last_seen_at = datetime.now(timezone.utc)
+
+    changed = False
+    if _as_utc(session.last_seen_at) <= now - LAST_SEEN_WRITE_INTERVAL:
+        session.last_seen_at = now
+        changed = True
+    # Sliding expiry: an active merchant is not signed out mid-work after a fixed 24 hours.
+    # Renew once less than half of the lifetime remains, capped by an absolute maximum from sign-in.
+    ttl = timedelta(seconds=settings.session_ttl_seconds)
+    absolute_end = _as_utc(session.created_at) + timedelta(seconds=settings.session_absolute_max_seconds)
+    remaining = _as_utc(session.expires_at) - now
+    if remaining < ttl / 2:
+        renewed = min(now + ttl, absolute_end)
+        if renewed > _as_utc(session.expires_at):
+            session.expires_at = renewed
+            session.last_seen_at = now
+            changed = True
+    if changed:
+        db.commit()
     return session, user, membership
 
 
-def set_session_cookie(response: Response, raw: str) -> None:
+def set_session_cookie(response: Response, raw: str, max_age: int | None = None) -> None:
+    # SameSite=Lax: every browser request reaches the account service through the Web origin's
+    # same-origin proxy, so the cookie never needs to travel on cross-site requests (CSRF defence).
+    # The cookie lives for the absolute session cap; the server-side expires_at (renewed while the
+    # user is active) decides when the session really ends, so no cookie refresh is needed.
     response.set_cookie(
         COOKIE_NAME,
         raw,
         httponly=True,
         secure=settings.cookie_secure,
-        samesite="none" if settings.cookie_secure else "lax",
-        max_age=settings.session_ttl_seconds,
+        samesite="lax",
+        max_age=max_age if max_age is not None else settings.session_absolute_max_seconds,
         path="/",
     )
 
 
 def clear_session_cookie(response: Response) -> None:
-    response.delete_cookie(COOKIE_NAME, path="/")
+    response.delete_cookie(COOKIE_NAME, path="/", secure=settings.cookie_secure, httponly=True, samesite="lax")
 
 
 def session_response(db: Session, user: User, membership: Membership) -> SessionResponse:

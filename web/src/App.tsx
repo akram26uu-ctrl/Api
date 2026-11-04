@@ -2,6 +2,7 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { authApi } from './lib/api/auth';
+import { broadcastSignOut, onSessionEnded } from './lib/api/sessionEvents';
 import { AuthSession } from './lib/api/types';
 import { DataStreamCanvas } from './components/3d/DataStreamCanvas';
 import { Navbar } from './components/common/Navbar';
@@ -15,6 +16,7 @@ import { ManualConfirmationSection } from './components/marketing/ManualConfirma
 import { DeveloperSection } from './components/marketing/DeveloperSection';
 import { RoadmapSection } from './components/marketing/RoadmapSection';
 import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 declare const __ORDIUM_VERCEL_ANALYTICS__: boolean;
 const VERCEL_ANALYTICS_ENABLED = typeof __ORDIUM_VERCEL_ANALYTICS__ !== 'undefined' && __ORDIUM_VERCEL_ANALYTICS__;
@@ -50,6 +52,15 @@ export function AppContent() {
     return () => { active = false; };
   }, [viewMode, authSession]);
 
+  // Session expired mid-use (any 401) or signed out in another tab: return to sign-in with a notice
+  // instead of leaving the dashboard showing errors.
+  useEffect(() => onSessionEnded(reason => {
+    setAuthSession(null);
+    setViewMode('website');
+    setCurrentPath('/login');
+    try { window.history.pushState(null, '', `/login?session=${reason}`); } catch { /* Restricted environments. */ }
+  }), []);
+
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname || '/';
@@ -83,7 +94,7 @@ export function AppContent() {
   if (viewMode === 'dashboard') {
     if (authChecking) return <FullScreenStatus label={t('ui.authenticating', 'Restoring your ORDIUM session…')} />;
     if (!authSession) return <div className="min-h-screen bg-[#080B12] text-white flex items-center justify-center px-6"><div className="ordium-auth-card w-full max-w-md p-6 text-center"><h1 className="text-lg font-semibold">{t('ui.dashboard_title', 'ORDIUM Dashboard')}</h1><p className="mt-2 text-sm text-[#A1AEC1]">{t('ui.session_lost', 'Your session could not be restored. Please sign in again.')}</p><button type="button" className="mt-5 min-h-11 rounded-lg bg-[#22D3EE] px-4 py-2 text-sm font-semibold text-[#061018] hover:bg-[#67E8F9]" onClick={() => { setViewMode('website'); setCurrentPath('/login'); window.history.replaceState(null, '', '/login'); }}>{t('nav.sign_in', 'Sign in')}</button></div></div>;
-    return <DashboardLayout session={authSession} onLogout={() => { void authApi.logout(); setAuthSession(null); handleExitToWebsite(); }} />;
+    return <DashboardLayout session={authSession} onLogout={() => { void authApi.logout().finally(broadcastSignOut); setAuthSession(null); handleExitToWebsite(); }} />;
   }
 
   const errorRoutes: Record<string, number> = { '/403': 403, '/forbidden': 403, '/404': 404, '/not-found': 404, '/429': 429, '/500': 500, '/503': 503, '/service-unavailable': 503 };
@@ -127,5 +138,5 @@ const AppLoading: React.FC = () => {
 };
 
 export default function App() {
-  return <LanguageProvider><Suspense fallback={<AppLoading />}><AppContent /></Suspense>{VERCEL_ANALYTICS_ENABLED && <Analytics />}</LanguageProvider>;
+  return <LanguageProvider><ErrorBoundary variant="page"><Suspense fallback={<AppLoading />}><AppContent /></Suspense></ErrorBoundary>{VERCEL_ANALYTICS_ENABLED && <Analytics />}</LanguageProvider>;
 }

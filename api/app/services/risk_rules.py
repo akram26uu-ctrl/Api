@@ -24,6 +24,21 @@ class RiskRules:
         self.order_repository = order_repository
         self.profile = profile
 
+    # Merchant-wide frequency is only suspicious relative to the merchant's own
+    # normal traffic at the same time of day over the previous 7 days.
+    TRAFFIC_BASELINE_DAYS = 7
+    TRAFFIC_SPIKE_MULTIPLIER = 3.0
+
+    # Shared-IP associations older than this are stale: mobile carriers use
+    # CGNAT and rotate addresses, so unrelated shoppers share IPs over time.
+    SHARED_IP_WINDOW_DAYS = 7
+
+    @staticmethod
+    def _self_count(identifier) -> int:
+        """Distinct-entity counts are "other entities + the current one", so
+        the result no longer depends on whether this customer has history."""
+        return 1 if identifier is not None else 0
+
     def evaluate_high_cancel_rate(
         self,
         order: Order,
@@ -189,8 +204,9 @@ class RiskRules:
                 environment=order.environment,
                 phone_identifier_id=order.phone_identifier_id,
                 exclude_order_id=order.id,
+                exclude_customer_id=order.customer_id,
             )
-        )
+        ) + self._self_count(order.customer_id)
 
         if (
             customer_count
@@ -229,8 +245,9 @@ class RiskRules:
                 environment=order.environment,
                 device_identifier_id=order.device_identifier_id,
                 exclude_order_id=order.id,
+                exclude_phone_identifier_id=order.phone_identifier_id,
             )
-        )
+        ) + self._self_count(order.phone_identifier_id)
 
         if (
             phone_count
@@ -278,6 +295,26 @@ class RiskRules:
         if order_count < self.profile.high_order_frequency_count:
             return RiskRuleResult(score=0)
 
+        window_minutes = self.profile.high_order_frequency_window_minutes
+        # Same time-of-day window on each of the previous N days, so normal
+        # daily peaks are part of the baseline.
+        baseline_orders = self.order_repository.count_orders_in_ranges(
+            merchant_id=order.merchant_id,
+            environment=order.environment,
+            ranges=[
+                (window_start - timedelta(days=day), order.created_at - timedelta(days=day))
+                for day in range(1, self.TRAFFIC_BASELINE_DAYS + 1)
+            ],
+        )
+        # Too little history to tell a launch/promo from an attack; a
+        # merchant-wide signal would otherwise add score to every legit order.
+        if baseline_orders < self.profile.high_order_frequency_count:
+            return RiskRuleResult(score=0)
+        expected_per_window = baseline_orders / self.TRAFFIC_BASELINE_DAYS
+        spike_threshold = expected_per_window * self.TRAFFIC_SPIKE_MULTIPLIER
+        if order_count <= spike_threshold:
+            return RiskRuleResult(score=0)
+
         event = RiskEvent(
             event_type=RiskEventType.HIGH_ORDER_FREQUENCY,
             score_impact=self.profile.high_order_frequency_score,
@@ -289,6 +326,8 @@ class RiskRules:
                 "threshold": (
                     self.profile.high_order_frequency_count
                 ),
+                "expected_orders_in_window": round(expected_per_window, 3),
+                "spike_multiplier": self.TRAFFIC_SPIKE_MULTIPLIER,
             },
         )
 
@@ -367,8 +406,10 @@ class RiskRules:
                 environment=order.environment,
                 ip_address=order.ip_address,
                 exclude_order_id=order.id,
+                exclude_customer_id=order.customer_id,
+                since=order.created_at - timedelta(days=self.SHARED_IP_WINDOW_DAYS),
             )
-        )
+        ) + self._self_count(order.customer_id)
 
         if (
             customer_count
@@ -384,6 +425,7 @@ class RiskRules:
                 "threshold": (
                     self.profile.multiple_customers_same_ip_threshold
                 ),
+                "window_days": self.SHARED_IP_WINDOW_DAYS,
             },
         )
 
@@ -489,14 +531,16 @@ class RiskRules:
             ip_address=order.ip_address,
             since=window_start,
             exclude_order_id=order.id,
-        )
+            exclude_customer_id=order.customer_id,
+        ) + self._self_count(order.customer_id)
         distinct_phones = self.order_repository.count_distinct_phones_for_ip_since(
             merchant_id=order.merchant_id,
             ip_address=order.ip_address,
             since=window_start,
             environment=order.environment,
             exclude_order_id=order.id,
-        )
+            exclude_phone_identifier_id=order.phone_identifier_id,
+        ) + self._self_count(order.phone_identifier_id)
 
         if (
             distinct_customers < self.profile.burst_ip_customer_threshold
@@ -580,7 +624,8 @@ class RiskRules:
         count = self.order_repository.count_distinct_customers_for_address(
             merchant_id=order.merchant_id, address_identifier_id=order.address_identifier_id,
             exclude_order_id=order.id, environment=order.environment,
-        )
+            exclude_customer_id=order.customer_id,
+        ) + self._self_count(order.customer_id)
         if count < self.profile.multiple_customers_same_address_threshold:
             return RiskRuleResult(score=0)
         return RiskRuleResult(
@@ -598,7 +643,8 @@ class RiskRules:
         count = self.order_repository.count_distinct_customers_for_device(
             merchant_id=order.merchant_id, device_identifier_id=order.device_identifier_id,
             exclude_order_id=order.id, environment=order.environment,
-        )
+            exclude_customer_id=order.customer_id,
+        ) + self._self_count(order.customer_id)
         if count < self.profile.multiple_customers_same_device_threshold:
             return RiskRuleResult(score=0)
         return RiskRuleResult(

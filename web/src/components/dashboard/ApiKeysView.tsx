@@ -86,15 +86,15 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
     <div className="dashboard-content space-y-6 sm:space-y-8">
       <section className="dashboard-page-heading">
         <div className="relative z-10 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-[#9d96ff] uppercase">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold tracking-[0.12em] text-[#9d96ff] uppercase">
             <ShieldCheck className="w-4 h-4" />
             <span>{t('dashboard.apikeys.eyebrow', 'إدارة الوصول')}</span>
-            <span className="rounded-full border border-[#48D6A0]/25 bg-[#48D6A0]/10 px-2.5 py-1 text-[#48D6A0] tracking-normal">
+            <span className="rounded-full border border-[var(--ordium-success)]/25 bg-[var(--ordium-success)]/10 px-2.5 py-1 text-[var(--ordium-success)] tracking-normal">
               {environment === 'live' ? t('dashboard.apikeys.live_badge', 'LIVE · الإنتاج') : t('dashboard.apikeys.test_badge', 'TEST · الاختبار')}
             </span>
           </div>
           <h2 className="mt-3 flex items-center gap-3">
-            <Key className="h-6 w-6 shrink-0 text-[#52D9E8]" />
+            <Key className="h-6 w-6 shrink-0 text-[var(--ordium-signal)]" />
             {t('dashboard.apikeys.title', 'مفاتيح API')}
           </h2>
           <p className="mt-2 text-sm">
@@ -102,14 +102,14 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-[#C7D2E0]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#52D9E8]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--ordium-signal)]" />
               {loading ? '—' : keys.length.toLocaleString()} {t('dashboard.apikeys.summary_total', 'مفتاح إجمالًا')}
             </span>
-            <span className="inline-flex items-center gap-2 rounded-xl border border-[#48D6A0]/20 bg-[#48D6A0]/[0.06] px-3 py-2 text-[#8AE7BD]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#48D6A0]" />
+            <span className="inline-flex items-center gap-2 rounded-xl border border-[var(--ordium-success)]/20 bg-[var(--ordium-success)]/[0.06] px-3 py-2 text-[#8AE7BD]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--ordium-success)]" />
               {loading ? '—' : keys.filter(key => key.status === 'active').length.toLocaleString()} {t('dashboard.apikeys.summary_active', 'مفعّل')}
             </span>
-            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-[#A5B1C3]">
+            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-[var(--ordium-muted)]">
               <ShieldCheck className="h-3.5 w-3.5" />
               {t('dashboard.apikeys.summary_scoped', 'صلاحيات قابلة للتحديد')}
             </span>
@@ -135,18 +135,18 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
         description={t('dashboard.apikeys.secret_modal_desc', 'Please copy your secret key right now. For security purposes, you will never see it again.')}
       >
         <div className="space-y-4 text-xs font-mono text-start">
-          <div className="p-3.5 bg-[#080B12] border border-[#43D9E8]/30 rounded-xl text-[#67E8F9] font-bold break-all select-all flex items-center justify-between gap-3" dir="ltr">
+          <div className="p-3.5 bg-[var(--ordium-canvas)] border border-[var(--ordium-signal)]/30 rounded-xl text-[#67E8F9] font-bold break-all select-all flex items-center justify-between gap-3" dir="ltr">
             <span>{createdSecret}</span>
             <button
               onClick={copySecret}
               className="p-1.5 rounded hover:bg-white/10 text-white shrink-0"
               title="t('dashboard.apikeys.copy', 'نسخ المفتاح')"
             >
-              {copied ? <Check className="w-4 h-4 text-[#10B981]" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-[var(--ordium-success)]" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
 
-          <div className="p-3 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-[11px] leading-relaxed">
+          <div className="p-3 rounded-lg bg-[var(--ordium-danger)]/10 border border-[var(--ordium-danger)]/20 text-[var(--ordium-danger)] text-xs leading-relaxed">
             ⚠ {t('dashboard.apikeys.warning', 'Do not commit this key into public client-side JavaScript or version control repositories.')}
           </div>
 
@@ -195,13 +195,13 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
           description={t('dashboard.apikeys.empty_desc', 'Generate an API key to begin authenticating checkout endpoints.')}
           actionText={t('dashboard.apikeys.create_key', 'إنشاء مفتاح')}
           onAction={() => setIsCreateModalOpen(true)}
-          icon={<Key className="w-8 h-8 text-[#94A3B8]" />}
+          icon={<Key className="w-8 h-8 text-[var(--ordium-muted)]" />}
         />
       ) : (
         <div className="dashboard-panel overflow-hidden">
-          <div className="overflow-x-auto"><table className="min-w-[760px] w-full text-start border-collapse text-xs font-mono">
+          <div className="overflow-x-auto"><table className="ordium-stack-table md:min-w-[760px] w-full text-start border-collapse text-xs font-mono">
             <thead>
-              <tr className="border-b border-white/[0.08] bg-[#101827] text-[11px] text-[#A1AEC1] uppercase">
+              <tr className="border-b border-white/[0.08] bg-[var(--ordium-surface-raised)] text-xs text-[var(--ordium-muted)] uppercase">
                 <th className="py-3 px-4 text-start">{t('dashboard.apikeys.key_name', 'الاسم')}</th>
                 <th className="py-3 px-4 text-start">{t('dashboard.apikeys.secret_token', 'المفتاح')}</th>
                 <th className="py-3 px-4 text-start">{t('dashboard.apikeys.scopes', 'الصلاحيات')}</th>
@@ -214,39 +214,39 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
             <tbody className="divide-y divide-white/5">
               {keys.map(k => (
                 <tr key={k.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-3 px-4 font-bold text-white text-start">{k.name}</td>
-                  <td className="py-3 px-4 text-[#22D3EE] select-all font-mono text-start" dir="ltr">
+                  <td data-label={t('dashboard.apikeys.key_name', 'الاسم')} className="py-3 px-4 font-bold text-white text-start">{k.name}</td>
+                  <td data-label={t('dashboard.apikeys.secret_token', 'المفتاح')} className="py-3 px-4 text-[var(--ordium-signal)] select-all font-mono text-start" dir="ltr">
                     {k.key_prefix}...
                   </td>
-                  <td className="py-3 px-4 text-start">
+                  <td data-label={t('dashboard.apikeys.scopes', 'الصلاحيات')} className="py-3 px-4 text-start">
                     <div className="flex min-w-[160px] max-w-[280px] flex-wrap gap-1.5">
                       {(k.scopes || []).map(scope => (
-                        <span key={scope} className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-[#B9C6D7]" dir="ltr">{scope}</span>
+                        <span key={scope} className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-[#B9C6D7]" dir="ltr">{scope}</span>
                       ))}
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-[#94A3B8] text-start">
+                  <td data-label={t('dashboard.apikeys.created', 'تاريخ الإنشاء')} className="py-3 px-4 text-[var(--ordium-muted)] text-start">
                     {new Date(k.created_at).toLocaleDateString()}
                   </td>
-                  <td className="py-3 px-4 text-[#94A3B8] text-start">
+                  <td data-label={t('dashboard.apikeys.last_used', 'آخر استخدام')} className="py-3 px-4 text-[var(--ordium-muted)] text-start">
                     {k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : t('dashboard.apikeys.never', 'Never')}
                   </td>
-                  <td className="py-3 px-4 text-start">
+                  <td data-label={t('dashboard.apikeys.col_status', 'Status')} className="py-3 px-4 text-start">
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
+                      className={`px-2 py-0.5 rounded text-xs uppercase font-bold ${
                         k.status === 'active'
-                          ? 'bg-[#10B981]/20 text-[#10B981]'
-                          : 'bg-[#EF4444]/20 text-[#EF4444]'
+                          ? 'bg-[var(--ordium-success)]/20 text-[var(--ordium-success)]'
+                          : 'bg-[var(--ordium-danger)]/20 text-[var(--ordium-danger)]'
                       }`}
                     >
                       {k.status === 'active' ? t('dashboard.apikeys.active', 'نشط') : t('dashboard.apikeys.revoked', 'ملغى')}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-end">
+                  <td data-label={t('dashboard.apikeys.col_actions', 'Actions')} className="py-3 px-4 text-end">
                     {k.status === 'active' && (
                       <button
                         onClick={() => setRevokeTarget(k)}
-                        className="text-[#94A3B8] hover:text-[#EF4444] p-1 rounded hover:bg-white/5 transition-colors"
+                        className="text-[var(--ordium-muted)] hover:text-[var(--ordium-danger)] p-1 rounded hover:bg-white/5 transition-colors"
                         title={t('dashboard.apikeys.revoke', 'إلغاء المفتاح')}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -272,9 +272,9 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
           className="space-y-5 text-start"
           onSubmit={event => { event.preventDefault(); void handleCreate(); }}
         >
-          <div className="rounded-xl border border-[#52D9E8]/15 bg-[#52D9E8]/[0.045] p-3.5 text-sm leading-relaxed text-[#B8C7D8]">
+          <div className="rounded-xl border border-[var(--ordium-signal)]/15 bg-[var(--ordium-signal)]/[0.045] p-3.5 text-sm leading-relaxed text-[#B8C7D8]">
             <div className="mb-1.5 flex items-center gap-2 font-semibold text-white">
-              <ShieldCheck className="h-4 w-4 text-[#52D9E8]" />
+              <ShieldCheck className="h-4 w-4 text-[var(--ordium-signal)]" />
               {t('dashboard.apikeys.least_privilege_title', 'اختر أقل صلاحيات لازمة')}
             </div>
             {t('dashboard.apikeys.least_privilege_desc', 'لا تمنح المفتاح صلاحيات إدارة المفاتيح أو Webhooks إلا إذا كان التكامل يحتاجها فعلًا.')}
@@ -296,10 +296,10 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
               placeholder={t('dashboard.apikeys.name_placeholder', 'مثال: تكامل متجر Shopify')}
               value={newKeyName}
               onChange={event => setNewKeyName(event.target.value)}
-              className="w-full min-h-12 rounded-xl border border-white/10 bg-[#080B12] px-4 py-3 text-sm text-white placeholder:text-[#718096] focus:outline-none focus:border-[#52D9E8] focus:ring-2 focus:ring-[#52D9E8]/15"
+              className="w-full min-h-12 rounded-xl border border-white/10 bg-[var(--ordium-canvas)] px-4 py-3 text-sm text-white placeholder:text-[var(--ordium-subtle)] focus:outline-none focus:border-[var(--ordium-signal)] focus:ring-2 focus:ring-[var(--ordium-signal)]/15"
               dir={isRTL ? 'rtl' : 'auto'}
             />
-            <div className="mt-1.5 flex justify-between gap-3 text-[11px] text-[#718096]">
+            <div className="mt-1.5 flex justify-between gap-3 text-xs text-[var(--ordium-subtle)]">
               <span>{t('dashboard.apikeys.name_hint', 'استخدم اسمًا يوضح مكان استخدام هذا المفتاح.')}</span>
               <span className="shrink-0 tabular-nums">{newKeyName.length}/100</span>
             </div>
@@ -308,7 +308,7 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
           <div role="group" aria-labelledby="ordium-api-scopes-label" className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <span id="ordium-api-scopes-label" className="text-sm font-semibold text-[#E6EDF6]">{t('dashboard.apikeys.scopes', 'صلاحيات المفتاح')}</span>
-              <span className="text-[11px] text-[#A5B1C3]">{newScopes.length} {t('dashboard.apikeys.selected_scopes', 'محددة')}</span>
+              <span className="text-xs text-[var(--ordium-muted)]">{newScopes.length} {t('dashboard.apikeys.selected_scopes', 'محددة')}</span>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {[
@@ -325,17 +325,17 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ environment }) => {
               ].map(scope => {
                 const checked = newScopes.includes(scope.id);
                 return (
-                  <label key={scope.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${checked ? 'border-[#786BFF]/45 bg-[#786BFF]/[0.09]' : 'border-white/[0.09] bg-black/10 hover:border-white/20'}`}>
+                  <label key={scope.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${checked ? 'border-[var(--ordium-accent)]/45 bg-[var(--ordium-accent)]/[0.09]' : 'border-white/[0.09] bg-black/10 hover:border-white/20'}`}>
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={event => setNewScopes(prev => event.target.checked ? [...prev, scope.id] : prev.filter(item => item !== scope.id))}
-                      className="mt-1 h-4 w-4 shrink-0 rounded border-white/20 bg-[#080B12] text-[#786BFF] focus:ring-2 focus:ring-[#52D9E8]/40"
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-white/20 bg-[var(--ordium-canvas)] text-[var(--ordium-accent)] focus:ring-2 focus:ring-[var(--ordium-signal)]/40"
                     />
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold text-[#E6EDF6]">{scope.label}</span>
                       <span className="mt-0.5 block text-xs leading-relaxed text-[#8D9AAF]">{scope.desc}</span>
-                      <code className="mt-1.5 inline-block text-[10px] text-[#52D9E8]" dir="ltr">{scope.id}</code>
+                      <code className="mt-1.5 inline-block text-xs text-[var(--ordium-signal)]" dir="ltr">{scope.id}</code>
                     </span>
                   </label>
                 );

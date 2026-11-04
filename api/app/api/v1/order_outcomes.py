@@ -44,6 +44,7 @@ def outcome_to_response(
         outcome_status=outcome.outcome_status,
         source=outcome.source,
         note=outcome.note,
+        reason=outcome.reason,
         occurred_at=outcome.occurred_at,
         created_at=outcome.created_at,
     )
@@ -110,6 +111,7 @@ def create_order_outcome(
         outcome_status=data.outcome_status,
         source=data.source,
         note=data.note,
+        reason=data.reason,
         occurred_at=occurred_at,
     )
 
@@ -140,11 +142,11 @@ def create_order_outcome(
     AuditService(db).record(
         action="order.outcome.updated", resource_type="order", resource_id=order.id,
         merchant_id=api_key.merchant_id, api_key_id=api_key.id, environment=order.environment,
-        metadata={"outcome_status": outcome.outcome_status},
+        metadata={"outcome_status": outcome.outcome_status, "reason": outcome.reason},
     )
     WebhookService(db).enqueue(
         api_key.merchant_id, order.environment, "order.outcome.updated",
-        {"order_id": str(order.id), "outcome_status": outcome.outcome_status, "environment": order.environment},
+        {"order_id": str(order.id), "outcome_status": outcome.outcome_status, "reason": outcome.reason, "environment": order.environment},
         store_id=order.store_id,
     )
     db.commit()
@@ -202,6 +204,8 @@ def update_order_outcome(
     if data.source is not None:
         outcome.source = data.source
     outcome.note = data.note
+    if "reason" in data.model_fields_set:
+        outcome.reason = data.reason
     outcome.occurred_at = occurred_at
 
     status_map = {
@@ -219,11 +223,11 @@ def update_order_outcome(
     AuditService(db).record(
         action="order.outcome.corrected", resource_type="order", resource_id=order.id,
         merchant_id=api_key.merchant_id, api_key_id=api_key.id, environment=order.environment,
-        metadata={"previous_outcome_status": old_status, "outcome_status": outcome.outcome_status},
+        metadata={"previous_outcome_status": old_status, "outcome_status": outcome.outcome_status, "reason": outcome.reason},
     )
     WebhookService(db).enqueue(
         api_key.merchant_id, order.environment, "order.outcome.updated",
-        {"order_id": str(order.id), "outcome_status": outcome.outcome_status, "environment": order.environment},
+        {"order_id": str(order.id), "outcome_status": outcome.outcome_status, "reason": outcome.reason, "environment": order.environment},
         store_id=order.store_id,
     )
     db.commit()

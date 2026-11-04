@@ -35,6 +35,10 @@ export const RulesEngineView: React.FC = () => {
     setLoading(true); setError(null); setSaved(false);
     try {
       const data = await ordiumClient.getRiskProfile();
+      // An empty profile is a failed read, not twelve signals at zero.
+      if (!data || typeof data.review_threshold !== 'number') {
+        throw new Error(t('dashboard.rules.empty_profile', 'لم تصل إعدادات المخاطر من الخادم. أعد المحاولة بعد قليل.'));
+      }
       setProfile(data); setDraft(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('dashboard.rules.load_error', 'تعذر تحميل ملف المخاطر.'));
@@ -68,8 +72,8 @@ export const RulesEngineView: React.FC = () => {
   const enabledSignals = RULES.filter(([key]) => Number(draft?.[key] ?? 0) > 0).length;
   const thresholdValid = draft ? Number(draft.review_threshold) < Number(draft.reject_threshold) : true;
 
-  if (loading) return <div className="p-6 text-sm text-[#94A3B8]">{t('dashboard.rules.loading', 'جارٍ تحميل محرك القواعد…')}</div>;
-  if (!draft) return <div className="p-6"><div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-sm text-white">{error || t('dashboard.rules.unavailable', 'ملف المخاطر غير متاح.')}</div></div>;
+  if (loading) return <div className="p-6 text-sm text-[var(--ordium-muted)]">{t('dashboard.rules.loading', 'جارٍ تحميل محرك القواعد…')}</div>;
+  if (!draft) return <div className="p-6"><div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-sm text-white"><p>{error || t('dashboard.rules.unavailable', 'ملف المخاطر غير متاح.')}</p><Button className="mt-4" variant="outline" size="sm" onClick={() => void load()}>{t('common.retry', 'إعادة المحاولة')}</Button></div></div>;
 
   return (
     <div className="dashboard-content space-y-6 sm:space-y-8" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -81,9 +85,9 @@ export const RulesEngineView: React.FC = () => {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-lg font-bold text-white">{t('dashboard.rules.title', 'محرك القواعد')}</h2>
-                <span className="rounded-full border border-[#22D3EE]/15 bg-[#22D3EE]/5 px-2.5 py-1 text-[10px] font-semibold text-[#67E8F9]">{signalCount} {t('dashboard.rules.signals', 'إشارات')}</span>
+                <span className="rounded-full border border-[var(--ordium-signal)]/15 bg-[var(--ordium-signal)]/5 px-2.5 py-1 text-xs font-semibold text-[#67E8F9]">{signalCount} {t('dashboard.rules.signals', 'إشارات')}</span>
               </div>
-              <p className="mt-1.5 text-xs text-[#94A3B8] max-w-2xl leading-relaxed">{t('dashboard.rules.subtitle', 'اضبط مساهمة إشارات المخاطر وعتبات القرار. التغييرات تحفظ على ملف حسابك وتدخل في التقييمات الجديدة فقط.')}</p>
+              <p className="mt-1.5 text-xs text-[var(--ordium-muted)] max-w-2xl leading-relaxed">{t('dashboard.rules.subtitle', 'اضبط مساهمة إشارات المخاطر وعتبات القرار. التغييرات تحفظ على ملف حسابك وتدخل في التقييمات الجديدة فقط.')}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -99,33 +103,33 @@ export const RulesEngineView: React.FC = () => {
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="dashboard-panel p-5">
-          <div className="flex items-center gap-2 text-[#22D3EE]"><Gauge className="w-4 h-4" /><span className="text-xs font-semibold text-white">{t('dashboard.rules.decision_model', 'منطق القرار')}</span></div>
-          <div className="mt-4 flex items-end gap-2"><span className="text-3xl font-bold text-white">{draft.review_threshold}</span><span className="pb-1 text-xs text-[#64748B]">REVIEW</span><span className="mx-1 pb-1 text-[#334155]">→</span><span className="text-3xl font-bold text-white">{draft.reject_threshold}</span><span className="pb-1 text-xs text-[#64748B]">REJECT</span></div>
-          {!thresholdValid && <div className="mt-3 text-[11px] text-red-300 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" />{t('dashboard.rules.threshold_invalid', 'يجب أن تكون REVIEW أقل من REJECT.')}</div>}
+          <div className="flex items-center gap-2 text-[var(--ordium-signal)]"><Gauge className="w-4 h-4" /><span className="text-xs font-semibold text-white">{t('dashboard.rules.decision_model', 'منطق القرار')}</span></div>
+          <div className="mt-4 flex items-end gap-2"><span className="text-3xl font-bold text-white">{draft.review_threshold}</span><span className="pb-1 text-xs text-[var(--ordium-subtle)]">REVIEW</span><span className="mx-1 pb-1 text-[#334155]">→</span><span className="text-3xl font-bold text-white">{draft.reject_threshold}</span><span className="pb-1 text-xs text-[var(--ordium-subtle)]">REJECT</span></div>
+          {!thresholdValid && <div className="mt-3 text-xs text-red-300 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" />{t('dashboard.rules.threshold_invalid', 'يجب أن تكون REVIEW أقل من REJECT.')}</div>}
         </div>
-        <div className="rounded-2xl border border-white/10 bg-[#0D1320] p-5">
+        <div className="rounded-2xl border border-white/10 bg-[var(--ordium-surface)] p-5">
           <div className="flex items-center gap-2 text-emerald-300"><ShieldCheck className="w-4 h-4" /><span className="text-xs font-semibold text-white">{t('dashboard.rules.active_signals', 'الإشارات المفعلة')}</span></div>
-          <div className="mt-3 text-3xl font-bold text-white">{enabledSignals}<span className="text-sm font-medium text-[#64748B]"> / {signalCount}</span></div>
-          <p className="mt-1 text-[11px] text-[#64748B]">{t('dashboard.rules.zero_note', 'القيمة 0 تعطل مساهمة الإشارة.')}</p>
+          <div className="mt-3 text-3xl font-bold text-white">{enabledSignals}<span className="text-sm font-medium text-[var(--ordium-subtle)]"> / {signalCount}</span></div>
+          <p className="mt-1 text-xs text-[var(--ordium-subtle)]">{t('dashboard.rules.zero_note', 'القيمة 0 تعطل مساهمة الإشارة.')}</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-[#0D1320] p-5">
+        <div className="rounded-2xl border border-white/10 bg-[var(--ordium-surface)] p-5">
           <div className="text-xs font-semibold text-white">{t('dashboard.rules.max_score', 'الحد الأقصى للدرجة')}</div>
-          <div className="mt-3 text-3xl font-bold text-[#22D3EE]">{draft.max_score}<span className="text-sm text-[#64748B]"> / 100</span></div>
-          <p className="mt-1 text-[11px] text-[#64748B]">{t('dashboard.rules.max_score_note', 'يتم قص الدرجة النهائية عند هذا الحد.')}</p>
+          <div className="mt-3 text-3xl font-bold text-[var(--ordium-signal)]">{draft.max_score}<span className="text-sm text-[var(--ordium-subtle)]"> / 100</span></div>
+          <p className="mt-1 text-xs text-[var(--ordium-subtle)]">{t('dashboard.rules.max_score_note', 'يتم قص الدرجة النهائية عند هذا الحد.')}</p>
         </div>
       </section>
 
       <section className="dashboard-panel overflow-hidden">
         <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between gap-4">
-          <div><h3 className="text-sm font-semibold text-white">{t('dashboard.rules.signal_weights', 'أوزان إشارات المخاطر')}</h3><p className="mt-1 text-[11px] text-[#64748B]">{t('dashboard.rules.signal_weights_desc', 'كل قيمة تمثل مقدار مساهمة الإشارة في درجة المخاطر عند تحققها.')}</p></div>
-          <span className="hidden sm:inline text-[10px] text-[#64748B] font-mono">0 — 100</span>
+          <div><h3 className="text-sm font-semibold text-white">{t('dashboard.rules.signal_weights', 'أوزان إشارات المخاطر')}</h3><p className="mt-1 text-xs text-[var(--ordium-subtle)]">{t('dashboard.rules.signal_weights_desc', 'كل قيمة تمثل مقدار مساهمة الإشارة في درجة المخاطر عند تحققها.')}</p></div>
+          <span className="hidden sm:inline text-xs text-[var(--ordium-subtle)] font-mono">0 — 100</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/5">
           {RULES.map(([key, label, description]) => {
             const value = Number(draft[key] ?? 0);
-            return <div key={key} className="bg-[#101827]/65 p-4 sm:p-5 hover:bg-[#142033] transition-colors">
-              <div className="flex items-start justify-between gap-3"><div><div className="text-xs font-semibold text-white">{label}</div><div className="mt-1 text-[10px] text-[#64748B]">{description}</div></div><span className={`min-w-10 text-center rounded-lg border px-2 py-1 text-xs font-bold ${value === 0 ? 'border-white/10 text-[#64748B]' : 'border-[#22D3EE]/15 bg-[#22D3EE]/5 text-[#67E8F9]'}`}>{value}</span></div>
-              <div className="mt-4 flex items-center gap-3"><input aria-label={label} type="range" min={0} max={100} value={value} onChange={e => setValue(key, Number(e.target.value))} className="flex-1 accent-cyan-400" /><input aria-label={`${label} value`} type="number" min={0} max={100} value={value} onChange={e => setValue(key, Number(e.target.value))} className="w-16 min-h-11 rounded-lg bg-[#080B12] border border-white/[0.12] px-2 py-2 text-center text-sm text-white font-mono focus:outline-none focus:border-[#43D9E8] focus:ring-2 focus:ring-[#43D9E8]/15" /></div>
+            return <div key={key} className="bg-[var(--ordium-surface-raised)]/65 p-4 sm:p-5 hover:bg-[#142033] transition-colors">
+              <div className="flex items-start justify-between gap-3"><div><div className="text-xs font-semibold text-white">{label}</div><div className="mt-1 text-xs text-[var(--ordium-subtle)]">{description}</div></div><span className={`min-w-10 text-center rounded-lg border px-2 py-1 text-xs font-bold ${value === 0 ? 'border-white/10 text-[var(--ordium-subtle)]' : 'border-[var(--ordium-signal)]/15 bg-[var(--ordium-signal)]/5 text-[#67E8F9]'}`}>{value}</span></div>
+              <div className="mt-4 flex items-center gap-3"><input aria-label={label} type="range" min={0} max={100} value={value} onChange={e => setValue(key, Number(e.target.value))} className="flex-1 accent-cyan-400" /><input aria-label={`${label} value`} type="number" min={0} max={100} value={value} onChange={e => setValue(key, Number(e.target.value))} className="w-16 min-h-11 rounded-lg bg-[var(--ordium-canvas)] border border-white/[0.12] px-2 py-2 text-center text-sm text-white font-mono focus:outline-none focus:border-[var(--ordium-signal)] focus:ring-2 focus:ring-[var(--ordium-signal)]/15" /></div>
             </div>;
           })}
         </div>

@@ -17,7 +17,11 @@ export interface IntegrationConnection {
   webhook_url: string;
   created_at: string;
   last_event_at: string | null;
+  /** False for Shopify connections until the merchant pastes the Shopify-issued signing secret. */
+  signing_secret_configured?: boolean;
 }
+
+export type IntegrationPlatform = 'shopify' | 'youcan' | 'woocommerce' | 'custom';
 
 export interface CreatedIntegrationConnection extends IntegrationConnection {
   webhook_secret?: string | null;
@@ -120,9 +124,31 @@ export interface OrderConfirmationAttempt {
   created_at: string;
 }
 
+export type ConfirmationDecision = 'allow' | 'review' | 'reject';
+
+export interface ConfirmationSettings {
+  whatsapp_enabled: boolean;
+  decisions: ConfirmationDecision[];
+  auto_update_status: boolean;
+  provider_configured: boolean;
+}
+
+export interface AutomaticConfirmationStatus {
+  channel: 'whatsapp';
+  status: 'queued' | 'processing' | 'sent' | 'delivered' | 'read' | 'replied' | 'failed' | 'expired' | 'simulated';
+  reply_outcome: 'confirmed' | 'cancelled' | 'needs_review' | 'no_answer' | null;
+  created_at: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+  replied_at: string | null;
+  failed: boolean;
+}
+
 export interface OrderConfirmationHistory {
   status: string;
   data: OrderConfirmationAttempt[];
+  automatic?: AutomaticConfirmationStatus | null;
 }
 
 export interface OrderConfirmationMetrics {

@@ -270,7 +270,7 @@ def test_high_risk_combination():
             current_order,
         )
 
-        assert result.score == 100
+        assert result.score == 95  # identity_reuse group capped at 45 (rules-v5)
         assert result.decision == RiskDecision.REJECT
         assert any(event.event_type.value == "strong_identity_combination" for event in result.events)
 

@@ -4,9 +4,10 @@
  */
 
 import React, { useState } from 'react';
-import { Terminal, Shield, Code, ListTree, Info } from 'lucide-react';
+import { Shield, Code, ListTree, Info } from 'lucide-react';
 import { CodeBlock } from '../common/CodeBlock';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { bidiIsolate } from '../marketing/Bidi';
 
 type Method = 'GET' | 'POST' | 'PATCH';
 interface Endpoint { id: string; method: Method; path: string; title: string; scope?: string }
@@ -18,7 +19,9 @@ const METHOD_STYLE: Record<Method, string> = {
 };
 
 export const DocsPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
+  // /developers shows this reference under the developer section's h1, so the title steps down a level.
+  const PageTitle = typeof window !== 'undefined' && window.location.pathname === '/developers' ? 'h2' : 'h1';
   const [activeEndpoint, setActiveEndpoint] = useState('create_order');
 
   const endpointsList: Endpoint[] = [
@@ -88,10 +91,9 @@ export function verifyOrdiumWebhook(rawBody: Buffer, signatureHeader: string, we
     <div className="py-12 sm:py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-10 border-b border-white/[0.08] pb-8 space-y-4">
-          <span className="ordium-eyebrow"><Terminal aria-hidden="true" className="w-3.5 h-3.5" /><span dir="ltr">ORDIUM REST API v1</span></span>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">{t('pages.docs.title', 'Developer API Reference')}</h1>
-          <p className="text-base text-[#A5B1C3] max-w-3xl leading-relaxed">
-            {t('pages.docs.subtitle', 'Integrate order-risk evaluation and manual order confirmation through an authenticated REST API with store-scoped credentials, auditable contact attempts, confirmation metrics, and signed webhooks.')}
+          <PageTitle className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight rtl:tracking-normal">{t('pages.docs.title', 'Developer API Reference')}</PageTitle>
+          <p className="text-base text-[#A5B1C3] max-w-[68ch] leading-relaxed">
+            {bidiIsolate(t('pages.docs.subtitle', 'Integrate order-risk evaluation and manual order confirmation through an authenticated REST API with store-scoped credentials, auditable contact attempts, confirmation metrics, and signed webhooks.'), isRTL)}
           </p>
         </header>
 
@@ -115,7 +117,7 @@ export function verifyOrdiumWebhook(rawBody: Buffer, signatureHeader: string, we
                           isActive ? 'bg-[#0D1320] text-white border border-[#22D3EE]/40' : 'text-[#A5B1C3] border border-transparent hover:text-white hover:bg-white/5'
                         }`}
                       >
-                        <span className={`shrink-0 w-12 text-center rounded border px-1 py-0.5 text-[10px] font-bold ${METHOD_STYLE[ep.method]}`}>{ep.method}</span>
+                        <span className={`shrink-0 w-12 text-center rounded border px-1 py-0.5 text-xs font-bold ${METHOD_STYLE[ep.method]}`}>{ep.method}</span>
                         <span className="truncate">{ep.path}</span>
                       </button>
                     </li>
@@ -129,7 +131,7 @@ export function verifyOrdiumWebhook(rawBody: Buffer, signatureHeader: string, we
                 <Shield aria-hidden="true" className="w-4 h-4 text-[#52D9E8]" />
                 {t('pages.docs.auth_title', 'Authentication')}
               </h2>
-              <p className="text-sm text-[#A5B1C3] leading-relaxed">{t('pages.docs.auth_desc', 'Send your store API key as a Bearer token in the Authorization header on every request. Keys start with ordium_live_ or ordium_test_.')}</p>
+              <p className="text-sm text-[#A5B1C3] leading-relaxed">{bidiIsolate(t('pages.docs.auth_desc', 'Send your store API key as a Bearer token in the Authorization header on every request. Keys start with ordium_live_ or ordium_test_.'), isRTL)}</p>
               <code dir="ltr" className="block font-mono text-xs p-2.5 rounded-lg bg-black/40 text-[#52D9E8] select-all break-all">Authorization: Bearer ordium_live_...</code>
             </section>
 
@@ -137,7 +139,7 @@ export function verifyOrdiumWebhook(rawBody: Buffer, signatureHeader: string, we
               <h2 id="docs-headers-heading" className="font-semibold text-sm text-white">{t('pages.docs.headers_title', 'Standard headers')}</h2>
               <dl dir="ltr" className="font-mono text-xs space-y-1.5 text-[#A5B1C3]">
                 <div><dt className="inline text-white">Content-Type: </dt><dd className="inline">application/json</dd></div>
-                <div><dt className="inline text-white">Idempotency-Key: </dt><dd className="inline">&lt;uuid&gt; <span className="text-[#718096]">(optional, POST /orders)</span></dd></div>
+                <div><dt className="inline text-white">Idempotency-Key: </dt><dd className="inline">&lt;uuid&gt; <span className="text-[var(--ordium-subtle)]">(optional, POST /orders)</span></dd></div>
                 <div><dt className="inline text-white">Accept: </dt><dd className="inline">application/json</dd></div>
               </dl>
             </section>
@@ -160,7 +162,7 @@ export function verifyOrdiumWebhook(rawBody: Buffer, signatureHeader: string, we
                 )}
                 <p className="flex items-start gap-2 text-sm text-[#A5B1C3] leading-relaxed">
                   <Info aria-hidden="true" className="w-4 h-4 shrink-0 mt-0.5 text-[#52D9E8]" />
-                  <span>{t('pages.docs.general_note', 'All data is scoped to the authenticated merchant, environment and selected store. Rate limits are set by the API configuration. The confirmation workflow records staff actions only; WhatsApp messages and phone calls are never sent automatically.')}</span>
+                  <span className="max-w-[68ch]">{bidiIsolate(t('mkt.docs.general_note', 'كل البيانات محصورة بحسابك وبيئتك والمتجر المحدد. تُضبط حدود الطلبات من إعدادات API. التأكيد اليدوي يسجل ما يقوم به فريقك؛ والتأكيد التلقائي عبر واتساب يُرسل رسالة واحدة من رقم ORDIUM بعد تفعيله.'), isRTL)}</span>
                 </p>
               </div>
 
@@ -168,9 +170,9 @@ export function verifyOrdiumWebhook(rawBody: Buffer, signatureHeader: string, we
                 <h3 className="text-sm font-semibold text-white">{t('pages.docs.status_title', 'Expected response codes')}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
                   {statusCodes.map(item => (
-                    <div key={item.code} className="p-3 rounded-lg bg-black/30 border border-white/[0.06]">
+                    <div key={item.code} className="py-2.5 border-t border-white/[0.06]">
                       <span dir="ltr" className={`font-mono font-bold text-sm ${item.tone}`}>{item.code}</span>
-                      <p className="text-xs text-[#A5B1C3] mt-1 leading-relaxed">{item.desc}</p>
+                      <p className="text-sm text-[#A5B1C3] mt-1 leading-relaxed">{bidiIsolate(item.desc, isRTL)}</p>
                     </div>
                   ))}
                 </div>
@@ -180,10 +182,10 @@ export function verifyOrdiumWebhook(rawBody: Buffer, signatureHeader: string, we
             <section className="ordium-card p-5 sm:p-6 space-y-4" aria-labelledby="docs-webhook-heading">
               <div className="flex items-center gap-2">
                 <Code aria-hidden="true" className="w-4 h-4 text-[#958AFF]" />
-                <h2 id="docs-webhook-heading" className="text-base font-bold text-white">{t('pages.docs.webhook_title', 'Webhook signature verification (HMAC-SHA256)')}</h2>
+                <h2 id="docs-webhook-heading" className="text-base font-bold text-white">{bidiIsolate(t('pages.docs.webhook_title', 'Webhook signature verification (HMAC-SHA256)'), isRTL)}</h2>
               </div>
-              <p className="text-sm text-[#A5B1C3] leading-relaxed">
-                {t('pages.docs.webhook_desc', 'ORDIUM signs every webhook with your endpoint secret and sends the signature in the X-ORDIUM-Signature header as t=<timestamp>,v1=<signature>. The signed string is the timestamp, a dot, and the exact request body. Verify it against the raw body before trusting the event.')}
+              <p className="text-sm text-[#A5B1C3] leading-relaxed max-w-[68ch]">
+                {bidiIsolate(t('pages.docs.webhook_desc', 'ORDIUM signs every webhook with your endpoint secret and sends the signature in the X-ORDIUM-Signature header as t=<timestamp>,v1=<signature>. The signed string is the timestamp, a dot, and the exact request body. Verify it against the raw body before trusting the event.'), isRTL)}
               </p>
               <ul dir="ltr" className="flex flex-wrap gap-2 text-xs font-mono">
                 {['X-ORDIUM-Signature', 'X-ORDIUM-Event', 'X-ORDIUM-Event-ID', 'X-ORDIUM-Delivery-ID'].map(header => (

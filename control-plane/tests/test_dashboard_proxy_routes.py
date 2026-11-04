@@ -17,3 +17,10 @@ def test_dashboard_proxy_allows_store_integrations():
     source = Path("app/api/dashboard_proxy.py").read_text(encoding="utf-8")
     assert 're.compile(r"^/integrations/connections(?:/[0-9a-fA-F-]{36})?$")' in source
 
+
+
+def test_dashboard_proxy_allows_confirmation_settings():
+    from app.api.dashboard_proxy import _allowed
+    assert _allowed("/confirmation-settings")
+    assert not _allowed("/confirmation-settings/x")
+    assert not _allowed("/whatsapp/webhook")  # Meta calls the API directly, never via the dashboard

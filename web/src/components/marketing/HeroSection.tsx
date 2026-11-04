@@ -1,13 +1,15 @@
 /**
- * ORDIUM Hero Section
- * Large cinematic hero with 3D Risk Intelligence Core and real-time signal stream.
+ * ORDIUM home hero: the merchant's problem in words, and the real product moment beside it —
+ * one example cash-on-delivery order, its score and reasons, and the WhatsApp confirmation it triggers.
+ * Everything in the visual is an illustrative example and is labelled as such.
  */
 
-import React, { lazy, Suspense } from 'react';
-import { ArrowRight, ArrowLeft, Terminal, Shield, CheckCircle2, Zap, Lock } from 'lucide-react';
+import React from 'react';
+import { ArrowRight, ArrowLeft, Check, X, MessageCircle, MapPin } from 'lucide-react';
 import { Button } from '../common/Button';
-const RiskCore3D = lazy(() => import('../3d/RiskCore3D').then((module) => ({ default: module.RiskCore3D })));
+import { RiskBadge } from '../common/RiskBadge';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { bidiIsolate } from './Bidi';
 
 interface HeroSectionProps {
   onStart: () => void;
@@ -17,114 +19,108 @@ interface HeroSectionProps {
 export const HeroSection: React.FC<HeroSectionProps> = ({ onStart, onExploreApi }) => {
   const { t, isRTL } = useLanguage();
   const ArrowIcon = isRTL ? ArrowLeft : ArrowRight;
+  const reasons = [
+    { text: t('mkt.hero.reason1', 'رُفض طردان سابقان لهذا الرقم في متجرك'), impact: 30 },
+    { text: t('mkt.hero.reason2', '3 طلبات من الرقم نفسه خلال 24 ساعة'), impact: 20 },
+    { text: t('mkt.hero.reason3', 'الكمية أعلى بكثير من طلباتك المعتادة'), impact: 18 },
+  ];
 
   return (
-    <section className="ordium-hero relative min-h-[92vh] flex items-center justify-center overflow-hidden pt-8 pb-16">
-      {/* Background radial gradients */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#6C5CE7]/15 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/3 left-1/3 w-[450px] h-[450px] bg-[#22D3EE]/10 rounded-full blur-[120px] pointer-events-none" />
-
+    <section className="relative overflow-hidden pt-14 pb-20 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
-          {/* Left Column: Copy & CTAs */}
-          <div className="lg:col-span-6 space-y-6 text-center lg:text-left rtl:lg:text-right">
-            {/* Tagline Pill */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0D1320] border border-white/10 text-xs font-mono text-[#22D3EE] shadow-lg">
-              <span className="w-2 h-2 rounded-full bg-[#22D3EE] animate-pulse" />
-              <span>{t('hero.badge', 'ORDIUM ORDER RISK ENGINE')}</span>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-14 items-center">
 
-            {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.08]">
-              {t('hero.title_p1', 'Stop Fraud Before')} <br />
-              <span className="bg-gradient-to-r from-white via-[#F8FAFC] to-[#94A3B8] bg-clip-text text-transparent">
-                {t('hero.title_p2', 'It Hits Settlement.')}
-              </span>
+          <div className="lg:col-span-6 text-start">
+            <h1 className="text-[2.125rem] leading-[1.15] sm:text-[2.75rem] lg:text-[3.25rem] lg:leading-[1.1] font-extrabold text-white tracking-[-0.02em] rtl:tracking-normal rtl:leading-[1.3] text-balance max-w-[20ch]">
+              {t('mkt.hero.title', 'اعرف أيّ طلب سيُرفض قبل أن تشحنه')}
             </h1>
 
-            {/* Supporting Description */}
-            <p className="text-base sm:text-lg text-[#94A3B8] max-w-xl mx-auto lg:mx-0 font-normal leading-relaxed">
-              {t('brand.metaDescription', 'ORDIUM analyzes identity, behavior, network signals, order history, and connected entities to help e-commerce businesses stop suspicious orders before they become chargeback losses.')}
+            <p className="mt-6 text-base sm:text-lg text-[var(--ordium-muted)] max-w-[60ch] leading-relaxed text-pretty">
+              {bidiIsolate(t('mkt.hero.subtitle', 'الطرود المرفوضة والطلبات الوهمية والمرتجعات وساعات الاتصال للتأكيد تستنزف كل متجر يعمل بالدفع عند الاستلام. تقيّم ORDIUM كل طلب، وتشرح سبب التقييم بكلمات واضحة، ثم تؤكد الطلب مع العميل عبر واتساب قبل الشحن.'), isRTL)}
             </p>
 
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start rtl:lg:justify-start gap-4 pt-2">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={onStart}
-                rightIcon={<ArrowIcon className="w-4 h-4" />}
-                className="w-full sm:w-auto"
-              >
-                {t('hero.cta_launch', 'Launch Console')}
+            <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <Button variant="primary" size="lg" onClick={onStart} rightIcon={<ArrowIcon aria-hidden="true" className="w-4 h-4" />} className="w-full sm:w-auto justify-center">
+                {t('mkt.hero.cta_primary', 'افتح لوحة التحكم')}
               </Button>
-
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={onExploreApi}
-                leftIcon={<Terminal className="w-4 h-4 text-[#22D3EE]" />}
-                className="w-full sm:w-auto"
-              >
-                {t('hero.cta_docs', 'Explore the API')}
+              <Button variant="outline" size="lg" onClick={onExploreApi} className="w-full sm:w-auto justify-center">
+                {t('mkt.hero.cta_secondary', 'دليل الربط التقني')}
               </Button>
-            </div>
-
-            {/* Trust Signal Badges */}
-            <div className="pt-6 border-t border-white/5 flex flex-wrap items-center justify-center lg:justify-start rtl:lg:justify-start gap-6 text-xs text-[#94A3B8] font-mono">
-              <div className="flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-[#22D3EE]" />
-                <span>{t('hero.stat_latency', 'Measured in dashboard')} {t('hero.stat_latency_label', 'Latency')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-[#10B981]" />
-                <span>{t('hero.stat_signals', 'Merchant-scoped')} {t('hero.stat_signals_label', 'risk signals')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Lock className="w-4 h-4 text-[#6C5CE7]" />
-                <span>{t('hero.stat_disruption', 'Outcome-based')} {t('hero.stat_disruption_label', 'feedback')}</span>
-              </div>
             </div>
           </div>
 
-          {/* Right Column: 3D Risk Intelligence Core */}
-          <div className="lg:col-span-6 relative flex items-center justify-center">
-            <div className="ordium-hero-visual w-full h-[460px] sm:h-[540px] relative rounded-2xl bg-[#080B12]/40 border border-white/5 backdrop-blur-sm overflow-hidden shadow-2xl">
-              <Suspense fallback={<div className="w-full h-full min-h-[420px] bg-[#080B12]/40" aria-hidden="true" />}>
-                <RiskCore3D interactive={true} />
-              </Suspense>
+          <figure className="lg:col-span-6 w-full max-w-xl mx-auto lg:max-w-none" aria-label={t('mkt.hero.example', 'مثال توضيحي')}>
+            <div className="relative">
+              <span className="absolute -top-3 start-5 z-10 rounded-md border border-white/15 bg-[var(--ordium-canvas)] px-2.5 py-0.5 text-xs font-medium text-[var(--ordium-muted)]">
+                {t('mkt.hero.example', 'مثال توضيحي')}
+              </span>
 
-              {/* Holographic Decision Pulse Markers */}
-              <div className="absolute top-4 right-4 rtl:right-auto rtl:left-4 z-20 flex flex-col gap-2 pointer-events-none">
-                <span className="self-end text-[10px] text-[#A5B1C3] bg-[#080B12]/80 px-2 py-0.5 rounded">{t('hero.legend_default', 'Default thresholds · configurable per store')}</span>
-                <div className="flex items-center gap-2 bg-[#080B12]/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-xs font-mono">
-                  <span className="w-2 h-2 rounded-full bg-[#10B981]" />
-                  <span className="text-white">{t('dashboard.orders.allow', 'ALLOW')}</span>
-                  <span className="text-[#A5B1C3]" dir="ltr">&lt; 50</span>
+              {/* Order card */}
+              <div className="rounded-2xl border border-white/12 bg-[var(--ordium-surface)] p-5 sm:p-6 shadow-[0_18px_50px_rgba(0,0,0,0.35)] text-start">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold text-white">{t('mkt.hero.order', 'طلب رقم 1042')}</p>
+                    <p className="mt-1 text-sm text-[var(--ordium-muted)]">{t('mkt.hero.customer', 'كريم ب.')}</p>
+                  </div>
+                  <RiskBadge decision="REVIEW" size="md" />
                 </div>
-                <div className="flex items-center gap-2 bg-[#080B12]/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-xs font-mono">
-                  <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
-                  <span className="text-white">{t('dashboard.orders.review', 'REVIEW')}</span>
-                  <span className="text-[#A5B1C3]" dir="ltr">50–79</span>
-                </div>
-                <div className="flex items-center gap-2 bg-[#080B12]/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-xs font-mono">
-                  <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
-                  <span className="text-white">{t('dashboard.orders.reject', 'REJECT')}</span>
-                  <span className="text-[#A5B1C3]" dir="ltr">&ge; 80</span>
-                </div>
+
+                <dl className="mt-5 grid grid-cols-3 gap-3 border-y border-white/[0.07] py-4 text-sm">
+                  <div className="min-w-0">
+                    <dt className="text-xs text-[var(--ordium-subtle)]">{t('mkt.hero.wilaya_label', 'الولاية')}</dt>
+                    <dd className="mt-1 flex items-center gap-1 font-medium text-white"><MapPin aria-hidden="true" className="w-3.5 h-3.5 text-[var(--ordium-subtle)] shrink-0" />{t('mkt.hero.wilaya_value', 'وهران')}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-[var(--ordium-subtle)]">{t('mkt.hero.amount_label', 'المبلغ')}</dt>
+                    <dd className="mt-1 font-medium text-white tabular-nums whitespace-nowrap">{t('mkt.hero.amount_value', '8900 دج')}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-[var(--ordium-subtle)]">{t('mkt.hero.score_label', 'درجة الخطر')}</dt>
+                    <dd className="mt-1 font-semibold text-[var(--ordium-warning)] tabular-nums" dir="ltr"><span className="text-lg">68</span><span className="text-xs text-[var(--ordium-subtle)]"> / 100</span></dd>
+                  </div>
+                </dl>
+                <p className="mt-3 text-xs text-[var(--ordium-subtle)]">{t('mkt.hero.payment', 'الدفع عند الاستلام')}</p>
+
+                <p className="mt-4 text-sm font-semibold text-white">{t('mkt.hero.reasons_title', 'لماذا 68؟')}</p>
+                <ul className="mt-2 space-y-2">
+                  {reasons.map(reason => (
+                    <li key={reason.impact} className="flex items-baseline justify-between gap-4 text-sm">
+                      <span className="text-[#D5DCE6] leading-snug">{reason.text}</span>
+                      <span dir="ltr" className="shrink-0 tabular-nums text-sm font-semibold text-[var(--ordium-warning)]">+{reason.impact}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              {/* Bottom Telemetry HUD */}
-              <div className="absolute bottom-3 left-3 right-3 z-20 flex justify-between items-center text-[10px] font-mono text-[#94A3B8] bg-[#080B12]/85 backdrop-blur-sm border border-white/5 px-3 py-2 rounded-md">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#22D3EE] animate-ping" />
-                  {t('hero.hud_left', 'Risk core · illustrative visualization')}
-                </span>
-                <span className="hidden sm:inline">{t('hero.hud_right', 'Signals: resolving relationships')}</span>
+              {/* Hand-off */}
+              <div className="flex items-center gap-3 ps-8 py-3" aria-hidden="true">
+                <span className="h-8 w-px bg-gradient-to-b from-white/20 to-[var(--ordium-signal)]/60" />
+                <span className="text-xs text-[var(--ordium-muted)]">{t('mkt.hero.sent', 'رسالة تأكيد إلى العميل عبر واتساب')}</span>
+              </div>
+
+              {/* WhatsApp confirmation, as the customer sees it */}
+              <div className="ms-auto w-full sm:w-[88%] rounded-2xl border border-white/10 bg-[#111B21] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.35)] text-start">
+                <p className="flex items-center gap-2 text-xs font-medium text-[#8FD9B6]">
+                  <MessageCircle aria-hidden="true" className="w-4 h-4" />
+                  <span>WhatsApp</span>
+                  <span className="text-[var(--ordium-subtle)]">·</span>
+                  <span className="text-[var(--ordium-muted)]">{bidiIsolate(t('mkt.hero.wa_sender', 'ORDIUM · تأكيد الطلب'), isRTL)}</span>
+                </p>
+                <div className="mt-3 rounded-xl rounded-ss-sm bg-[#202C33] overflow-hidden">
+                  <p className="px-4 py-3 text-sm leading-relaxed text-[#E9EDEF]">{t('mkt.hero.wa_message', 'مرحبًا كريم، استلمنا طلبك رقم 1042 بمبلغ 8900 دج للتوصيل إلى وهران. هل تؤكد الطلب؟')}</p>
+                  <div className="grid grid-cols-2 border-t border-white/[0.08] text-sm font-medium">
+                    <span className="flex min-h-11 items-center justify-center gap-1.5 text-[#53BDEB]"><Check aria-hidden="true" className="w-4 h-4" />{t('mkt.hero.wa_confirm', 'تأكيد الطلب')}</span>
+                    <span className="flex min-h-11 items-center justify-center gap-1.5 border-s border-white/[0.08] text-[#53BDEB]"><X aria-hidden="true" className="w-4 h-4" />{t('mkt.hero.wa_cancel', 'إلغاء الطلب')}</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-[var(--ordium-muted)]">{t('mkt.hero.after', 'يُسجَّل ردّ العميل على الطلب: مؤكَّد أو ملغى.')}</p>
               </div>
             </div>
-          </div>
+
+            <figcaption className="mt-5 text-sm text-[var(--ordium-subtle)] leading-relaxed max-w-[62ch]">
+              {bidiIsolate(t('mkt.hero.note', 'التأكيد التلقائي عبر واتساب جاهز ويُفعَّل عند تفعيل رقم ORDIUM. إلى ذلك الحين، تؤكد من لوحة التحكم عبر واتساب أو الهاتف.'), isRTL)}
+            </figcaption>
+          </figure>
 
         </div>
       </div>

@@ -184,7 +184,10 @@
     "rule_upper": "One uppercase letter",
     "resend_title": "Didn't receive the verification link?",
     "resend_button": "Resend verification link",
-    "verify_request_new": "Request a new link"
+    "verify_request_new": "Request a new link",
+    "session_signed_out": "You signed out in another tab. Sign in again to continue.",
+    "session_expired": "Your session has ended for your security. Sign in again to continue where you left off.",
+    "account_locked": "Too many failed attempts for this account. Wait 15 minutes, then try again."
   },
   "hero": {
     "badge": "ORDIUM ORDER RISK ENGINE",
@@ -464,9 +467,9 @@
       "group_main": "Main",
       "group_orders": "Orders",
       "group_risk": "Risk",
-      "group_store": "Store & integrations",
+      "group_store": "Store",
       "group_usage": "Usage",
-      "overview": "Store summary",
+      "overview": "Overview",
       "orders": "Orders",
       "network": "Risk analysis",
       "simulator": "Test order",
@@ -480,7 +483,9 @@
       "stores": "Stores",
       "store_workspace": "Store workspace",
       "store_workspace_hint": "Send WhatsApp confirmations and record outcomes from the orders page — WhatsApp is an Ordium-managed service.",
-      "integrations": "Connect a store"
+      "integrations": "Store connection",
+      "confirmation": "Confirmation results",
+      "confirmation_page": "Confirmation"
     },
     "header": {
       "sandbox_btn": "SANDBOX",
@@ -540,7 +545,17 @@
       "eyebrow": "ORDIUM · Risk intelligence",
       "page_description": "Follow orders, risk indicators and evaluation decisions from one workspace.",
       "page_heading": "Store overview",
-      "view_orders_cta": "View orders"
+      "view_orders_cta": "View orders",
+      "top_signals_title": "Most frequent risk signals",
+      "top_signals_scope": "In the last {count} orders",
+      "no_signals": "No risk signal fired on these orders.",
+      "no_orders_yet": "Signals appear here once your first order arrives.",
+      "signal_orders": "orders",
+      "open_network": "Open risk analysis",
+      "allow_plain": "Accepted",
+      "review_plain": "Need review",
+      "reject_plain": "Rejected",
+      "no_data_note": "No live orders yet, so the figures below are zero. Connect your store in Settings or try a test order."
     },
     "titles": {
       "overview": "Store summary",
@@ -623,7 +638,33 @@
       "recorded_outcome": "Recorded Outcome",
       "rules_model": "Rules Engine Model",
       "shipping_address": "Shipping Address",
-      "unresolved": "UNRESOLVED"
+      "unresolved": "UNRESOLVED",
+      "drawer_title": "Order",
+      "queue_nav": "Move between orders",
+      "previous_order": "Previous",
+      "next_order": "Next",
+      "decision_label": "Decision",
+      "delivery_outcome": "Delivery outcome",
+      "reasons_title": "Why this decision",
+      "no_reasons": "No risk signal fired on this order.",
+      "go_next": "Next order",
+      "delivery_and_network": "Delivery and network",
+      "rules_version": "Rules version",
+      "delivery_outcome_hint": "Record it once the parcel is delivered or comes back. It measures how accurate decisions are for your store.",
+      "queue_label": "Orders view",
+      "queue_needs_action": "Needs action",
+      "queue_all": "All orders",
+      "decision_filter": "Decision",
+      "status_filter": "Order status",
+      "loading": "Loading orders…",
+      "status": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "shipped": "Shipped",
+        "delivered": "Delivered",
+        "cancelled": "Cancelled",
+        "returned": "Returned"
+      }
     },
     "simulator": {
       "title": "Test an order",
@@ -640,7 +681,7 @@
       "json_mode": "Raw JSON Payload",
       "order_details": "Sample order details",
       "order_number": "Order Number",
-      "amount": "Amount ($)",
+      "amount": "Amount (DZD)",
       "customer_name": "Customer Name",
       "customer_email": "Customer Email",
       "phone": "Phone Number",
@@ -706,7 +747,8 @@
       "threshold_invalid": "REVIEW must be lower than REJECT.",
       "unavailable": "Risk profile unavailable.",
       "unsaved": "Unsaved changes",
-      "zero_note": "A value of 0 disables the signal's contribution."
+      "zero_note": "A value of 0 disables the signal's contribution.",
+      "empty_profile": "Risk settings did not load from the server. Try again shortly."
     },
     "network": {
       "title": "3D Identity Resolution & Entity Relationship Graph",
@@ -723,7 +765,7 @@
     "webhooks": {
       "title": "Webhook Endpoints & Event Dispatch",
       "subtitle": "Manage secure endpoints receiving synchronous risk evaluation events.",
-      "add_endpoint": "+ Add Endpoint",
+      "add_endpoint": "Add Endpoint",
       "test_ping": "Send Test Ping",
       "recent_deliveries": "Recent Dispatch Deliveries",
       "url": "Endpoint URL",
@@ -764,7 +806,7 @@
     "apikeys": {
       "title": "API Credentials & Tokens",
       "subtitle": "Manage API credentials for server-side ingestion and risk evaluation.",
-      "create_key": "+ Generate API Key",
+      "create_key": "Generate API Key",
       "key_name": "Key Name",
       "secret_token": "Secret Token",
       "created": "Created",
@@ -932,9 +974,42 @@
       "name_required": "Enter a store name.",
       "required_desc": "To start receiving orders, create at least one store.",
       "required_title": "Create your store first",
-      "update_error": "Unable to update the store."
+      "update_error": "Unable to update the store.",
+      "count_label": "Your stores",
+      "orders_suffix": "orders"
     },
     "confirmation": {
+      "auto": {
+        "title": "Automatic WhatsApp confirmation",
+        "subtitle": "Automatically send the customer a confirmation message after the order is scored, and record their reply without manual work.",
+        "loading": "Loading settings…",
+        "load_error": "Could not load automatic confirmation settings.",
+        "provider_pending": "The Ordium WhatsApp number is being activated. You can save your settings now, and messages will start automatically once it is live.",
+        "enable": "Enable automatic sending",
+        "decisions_legend": "Send the message when the risk decision is",
+        "decision_allow": "Allow (safe orders)",
+        "decision_review": "Review (suspicious orders)",
+        "decision_reject": "Reject (high-risk orders)",
+        "decisions_required": "Select at least one decision.",
+        "auto_update": "Update order status automatically from the customer's reply",
+        "auto_update_hint": "The order is confirmed or cancelled based on the customer's WhatsApp reply.",
+        "save": "Save settings",
+        "saving": "Saving…",
+        "saved": "Automatic confirmation settings saved",
+        "save_error": "Could not save settings. Please try again.",
+        "step_queued": "Queued",
+        "step_sent": "Sent",
+        "step_delivered": "Delivered",
+        "step_read": "Read",
+        "step_replied": "Replied",
+        "reply_confirmed": "Confirmed the order",
+        "reply_cancelled": "Cancelled the order",
+        "reply_needs_review": "Needs review",
+        "reply_no_answer": "No answer",
+        "failed": "Automatic message failed to send",
+        "expired": "Timed out with no reply from the customer",
+        "simulated": "TEST mode — message was not actually sent"
+      },
       "title": "Order confirmation",
       "products": "Products",
       "buyer": "Buyer",
@@ -989,7 +1064,12 @@
         "no_answer": "No answer",
         "callback_requested": "Callback requested",
         "needs_review": "Needs review"
-      }
+      },
+      "edit_message": "Choose and preview the message",
+      "cancel_question": "Cancelling means the order will not ship, and it cannot be set back to confirmed. Cancel it?",
+      "cancel_yes": "Yes, cancel the order",
+      "cancel_keep": "Keep the order",
+      "saved_line": "Contact result saved."
     },
     "confirmation_metrics": {
       "title": "Order confirmation metrics",
@@ -1007,7 +1087,11 @@
       "average_attempts": "Average attempts per worked order",
       "refresh": "Refresh metrics",
       "loading": "Loading metrics…",
-      "error": "Could not load confirmation metrics. Use Refresh metrics to try again."
+      "error": "Could not load confirmation metrics. Use Refresh metrics to try again.",
+      "rate_short": "confirmation rate",
+      "unstarted_short": "not contacted",
+      "progress_short": "in progress",
+      "open_details": "Confirmation details"
     },
     "common": {
       "cancel": "Cancel",
@@ -1073,7 +1157,49 @@
       "create_error": "Unable to create the store connection.",
       "update_error": "Unable to update connection status.",
       "delete_error": "Unable to delete the connection.",
-      "copy_error": "Automatic copying failed. Select and copy the text manually."
+      "copy_error": "Automatic copying failed. Select and copy the text manually.",
+      "shopify_summary": "Receive new Shopify orders through a webhook you create in your Shopify admin.",
+      "shopify_domain_label": "Shopify store domain",
+      "shopify_domain_hint": "Use the permanent *.myshopify.com domain (Shopify admin > Settings > Domains), not your custom domain.",
+      "shopify_step1": "Create the connection here, then copy the order receiving URL.",
+      "shopify_step2": "In Shopify admin open Settings > Notifications > Webhooks and click \"Create webhook\".",
+      "shopify_step3": "Choose the event \"Order creation\", format JSON, paste the ORDIUM URL and save.",
+      "shopify_step4": "Copy the signing secret Shopify shows in the Webhooks section (\"Your webhooks will be signed with…\").",
+      "shopify_step5": "Back in ORDIUM, click \"Add signing secret\" on the connection, paste it and save. Then place a test order.",
+      "beta": "Beta",
+      "youcan_summary": "Receive YouCan orders through a webhook. Support is in beta: send a test order and confirm it arrives.",
+      "youcan_id_label": "YouCan store address",
+      "youcan_step1": "Create the connection here and copy the receiving URL and the signing secret.",
+      "youcan_step2": "In your YouCan dashboard add a webhook for new orders and paste the ORDIUM URL.",
+      "youcan_step3": "If YouCan shows its own signing secret, paste it here with \"Add signing secret\"; otherwise enter the ORDIUM secret in YouCan.",
+      "youcan_step4": "Place a test order and check that \"Last order received\" updates below.",
+      "woocommerce_domain_label": "Store domain",
+      "custom_name": "Custom store / own hosting",
+      "custom_step1": "Create the connection and copy the receiving URL and signing secret.",
+      "custom_step2": "When an order is created, POST the JSON below to the URL with event \"order.created\".",
+      "custom_step3": "Sign the raw JSON body with HMAC-SHA256 using the secret and send it in the X-ORDIUM-Signature header.",
+      "shopify_domain_invalid": "Enter a domain ending in .myshopify.com",
+      "secret_too_short": "The signing secret looks too short. Copy the full value from your store admin.",
+      "secret_saved": "Signing secret saved. New orders from this store will now be accepted.",
+      "subtitle_all": "Receive new orders automatically from Shopify, YouCan, WooCommerce or a store on your own hosting. Each connection is tied to the selected store and every delivery is signature-checked.",
+      "pending_count": "awaiting signing secret",
+      "choose_platform": "Choose where your store runs. ORDIUM shows the exact steps for that platform.",
+      "create_for": "Create connection",
+      "steps_title": "How to connect",
+      "requirements_short": "Orders must be in DZD and include a customer name, an Algerian phone number and a delivery address.",
+      "awaiting_secret": "Awaiting signing secret",
+      "awaiting_secret_desc": "Orders are rejected until you paste the signing secret your store platform shows after you create the webhook.",
+      "add_secret": "Add signing secret",
+      "replace_secret": "Replace signing secret",
+      "payload_desc_v2": "Each order needs the customer name, an Algerian phone number (0550…, +213…), the delivery city and address, a positive total and the DZD currency. When the platform has no wilaya field, the city is used. Free items are ignored.",
+      "rest_alternative": "Prefer a direct API call? Your server can send each order to POST https://api.ordium.dev/api/v1/orders with a store API key (see API keys and the developer docs) and receive the risk decision in the response.",
+      "created_desc_provider": "Copy the receiving URL into your store platform. Then add the signing secret the platform gives you.",
+      "add_secret_now": "I have the secret, add it now",
+      "secret_dialog_title": "Add the store signing secret",
+      "secret_dialog_shopify": "In Shopify admin open Settings > Notifications > Webhooks and copy the key under \"Your webhooks will be signed with\".",
+      "secret_dialog_generic": "Paste the signing secret your store platform shows for this webhook.",
+      "secret_storage_note": "ORDIUM stores the secret encrypted and never shows it again.",
+      "save_secret": "Save secret"
     },
     "identity": {
       "risk_safe": "Safe",
@@ -1094,7 +1220,31 @@
       "source_note": "Network data is generated by the ORDIUM API for the current merchant and environment, not mock data from the browser.",
       "col_type": "Type",
       "load_error": "Unable to load the identity network.",
-      "load_error_title": "Unable to load the identity network"
+      "load_error_title": "Unable to load the identity network",
+      "empty_title": "No links yet",
+      "empty_desc": "Phones, devices and addresses shared between your orders appear here once orders arrive. Create one from “Test order” to see how it works."
+    },
+    "decision": {
+      "allow": "Accepted",
+      "review": "Review",
+      "reject": "Rejected"
+    },
+    "risk_level": {
+      "low": "Low risk",
+      "elevated": "Elevated risk",
+      "critical": "Critical risk"
+    },
+    "outcome": {
+      "cancelled": "Cancelled",
+      "delivered": "Delivered",
+      "returned": "Returned",
+      "pending": "Not recorded yet",
+      "mark_delivered": "Delivered to customer",
+      "refused": "Refused at delivery",
+      "mark_refused": "Customer refused the parcel",
+      "mark_returned": "Returned for another reason",
+      "saved": "Outcome saved:",
+      "change_hint": "Pick another outcome to change it."
     }
   },
   "onboarding": {
@@ -1301,9 +1451,287 @@
     "session_cookie_note": "Your session is protected by a secure, HttpOnly cookie.",
     "rule_met": "(met)",
     "copied": "Copied",
-    "rule_unmet": "(not met)"
+    "rule_unmet": "(not met)",
+    "error_title": "This section could not be displayed",
+    "error_desc": "An unexpected error occurred. Your data is safe. Try again, and if it keeps happening, reload the page.",
+    "reload_page": "Reload page"
   },
   "language": {
     "select": "Language"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Everything about your store, your account and your connected systems in one place.",
+    "unsaved": "You have unsaved changes.",
+    "group": {
+      "store": "Store",
+      "operations": "Order handling",
+      "account": "Account",
+      "developers": "Developers"
+    },
+    "stores": {
+      "title": "Stores",
+      "desc": "Create stores and turn them on or off. Each store has its own orders, keys and statistics."
+    },
+    "integrations": {
+      "title": "Store connection",
+      "desc": "Receive orders automatically from Shopify, YouCan, WooCommerce or your own store."
+    },
+    "confirmation": {
+      "title": "Order confirmation",
+      "desc": "A WhatsApp message Ordium sends the customer after each order, so they confirm or cancel with one tap.",
+      "load_error": "Confirmation settings did not load. Refresh the page to try again.",
+      "allow": "Accepted orders",
+      "allow_hint": "Orders with no risk signals. Confirming them reduces returns.",
+      "review": "Orders that need review",
+      "review_hint": "The customer's reply settles the doubt instead of a manual call.",
+      "reject": "Rejected orders",
+      "reject_hint": "Usually not worth messaging. Turn on only if you review rejected orders by hand.",
+      "saved": "Confirmation settings saved.",
+      "save_error": "Settings were not saved. Try again.",
+      "provider_pending": "Ordium's WhatsApp number is being activated. Save your settings now; messages start as soon as it is live.",
+      "enable": "Send a confirmation message for every order",
+      "enable_hint": "The customer receives the order number, the amount and two buttons: Confirm and Cancel.",
+      "decisions": "Which orders get the message?",
+      "decisions_required": "Choose at least one type.",
+      "auto_update": "Update the order from the customer's reply",
+      "auto_update_hint": "Confirm marks it confirmed and Cancel marks it cancelled. When off, the reply is only recorded and you decide.",
+      "save": "Save confirmation settings",
+      "open": "Confirmation settings"
+    },
+    "risk": {
+      "title": "Risk rules",
+      "desc": "Set the weight of each signal and the review and reject limits. Changes apply to new orders only."
+    },
+    "account": {
+      "title": "Profile and security",
+      "desc": "Your details, your business details, your password and open sessions.",
+      "saved": "Account details saved.",
+      "save_error": "Details were not saved. Check the fields and try again.",
+      "password_error": "Password was not changed. Check your current password.",
+      "email_locked": "The email address cannot be changed from the dashboard.",
+      "business_title": "Business details",
+      "save": "Save details",
+      "password_title": "Password",
+      "password_hint": "At least 12 characters. Changing it keeps this session signed in.",
+      "sessions_title": "Signed-in devices",
+      "sessions_hint": "Sign out any session you don't recognise.",
+      "exported": "Your data download has started.",
+      "others_closed": "Other sessions were signed out.",
+      "this_device": "This device",
+      "last_active": "Last active",
+      "expires": "expires",
+      "current": "Current",
+      "session_closed": "Session signed out.",
+      "close_session": "Sign out"
+    },
+    "usage": {
+      "title": "Usage and plan",
+      "desc": "Orders evaluated this month compared with your plan's quota."
+    },
+    "api_keys": {
+      "title": "API keys",
+      "desc": "Keys your system uses to send orders to Ordium. Give each key only the access it needs."
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "desc": "We send your system a signed notification when an order is evaluated, confirmed or its outcome changes."
+    },
+    "status": {
+      "connected": "Connected",
+      "not_connected": "Not connected",
+      "on": "On",
+      "off": "Off",
+      "none": "None",
+      "active": "active"
+    }
+  },
+  "mkt": {
+    "brand": {
+      "tagline": "Order risk"
+    },
+    "nav": {
+      "docs": "Docs",
+      "pricing": "Pricing",
+      "more": "More",
+      "cta": "Dashboard"
+    },
+    "hero": {
+      "title": "Spot the orders that will be refused before you ship",
+      "subtitle": "Refused parcels, fake orders, returns and hours of confirmation calls cost every cash-on-delivery store. Ordium scores each order, explains the score in plain words, then confirms it with the customer on WhatsApp before you ship.",
+      "cta_primary": "Open the dashboard",
+      "cta_secondary": "Technical docs",
+      "example": "Example",
+      "order": "Order #1042",
+      "customer": "Karim B.",
+      "wilaya_label": "Wilaya",
+      "wilaya_value": "Oran",
+      "amount_label": "Amount",
+      "amount_value": "8,900 DZD",
+      "payment": "Cash on delivery",
+      "score_label": "Risk score",
+      "reasons_title": "Why 68?",
+      "reason1": "This number refused 2 parcels at your store before",
+      "reason2": "3 orders from the same number in 24 hours",
+      "reason3": "Quantity far above your usual orders",
+      "sent": "Confirmation message to the customer on WhatsApp",
+      "wa_sender": "ORDIUM · Order confirmation",
+      "wa_message": "Hi Karim, we received your order #1042 for 8,900 DZD, to be delivered to Oran. Do you confirm the order?",
+      "wa_confirm": "Confirm",
+      "wa_cancel": "Cancel",
+      "after": "The customer's answer is saved on the order: confirmed or cancelled.",
+      "note": "Automatic WhatsApp confirmation is built and switches on once the Ordium number is activated. Until then, you confirm from the dashboard by WhatsApp or phone."
+    },
+    "identity": {
+      "title": "One order looks normal. The links between orders tell you more",
+      "subtitle": "Ordium compares each order's phone number, address, device and connection with your previous orders, so repeat fake orders and customers who refuse parcels stand out.",
+      "phone_t": "Phone number",
+      "phone_d": "The same number across orders, and what happened to its earlier ones: confirmed, refused or returned.",
+      "address_t": "Delivery address",
+      "address_d": "The same address under different names and phone numbers.",
+      "device_t": "Device",
+      "device_d": "The same phone or computer placing orders under different names.",
+      "network_t": "Connection",
+      "network_d": "VPN, proxy or Tor use, and IP addresses with a poor reputation.",
+      "history_t": "Customer history",
+      "history_d": "How often the customer cancelled, refused or returned an order before.",
+      "size_t": "Order size",
+      "size_d": "Quantity or amount far above what your store usually sees.",
+      "g_caption": "Example: the same number on four orders, two of them refused.",
+      "g_phone": "Same number",
+      "g_delivered": "Delivered",
+      "g_refused": "Refused at delivery",
+      "g_new": "New · to review",
+      "g_order": "Order no."
+    },
+    "pipeline": {
+      "title": "From a new order to a clear decision",
+      "subtitle": "Every order goes through the same checks in the same order, so you know exactly where its score came from.",
+      "s1_t": "The order arrives",
+      "s1_d": "From Shopify, YouCan, WooCommerce or your own store through the API, as soon as the customer orders.",
+      "s2_t": "It is linked to your past orders",
+      "s2_d": "Phone number, address and device are matched against earlier orders.",
+      "s3_t": "Behaviour is checked",
+      "s3_d": "Several orders in a short time, or an unusual quantity or amount.",
+      "s4_t": "The connection is checked",
+      "s4_d": "VPN, proxy, Tor and IP addresses with a poor reputation.",
+      "s5_t": "Your rules apply",
+      "s5_d": "Each signal carries the weight you set in your store's risk profile.",
+      "s6_t": "A score from 0 to 100",
+      "s6_d": "With the reasons that raised it, in plain words.",
+      "s7_t": "A clear decision",
+      "s7_d": "Accept, review or reject using your thresholds (by default: review from 50, reject from 80). You keep the final say."
+    },
+    "explain": {
+      "title": "Every score comes with its reasons",
+      "subtitle": "You see which signals raised the score and by how much, and you can change each signal's weight and the thresholds.",
+      "order_line": "Order #1057 · Constantine · 12,400 DZD · cash on delivery",
+      "verdict_title": "Above the reject threshold",
+      "verdict_desc": "The score is 82 and this store rejects from 80. The order is held; you can still confirm it with the customer and accept it.",
+      "reasons_title": "Why 82?",
+      "r1": "This number refused two parcels before",
+      "r2": "The same device was used under three different names this week",
+      "r3": "4 orders from the same number in two hours",
+      "r4": "Connected through a VPN",
+      "total": "Total",
+      "weights": "Each signal's weight can be changed in the risk settings."
+    },
+    "cluster": {
+      "title": "Fake orders rarely come alone",
+      "subtitle": "A single order can pass every check. When Ordium links phone numbers, addresses and devices across orders, the pattern shows.",
+      "s1_t": "The first order looks normal",
+      "s1_d": "A new name, a valid Algerian number, a complete address. Nothing stands out.",
+      "s2_t": "The next ones share details",
+      "s2_d": "Within two hours, two more orders arrive under other names and numbers, but from the same device and to the same address.",
+      "s3_t": "Ordium groups them and raises the score",
+      "s3_d": "The linked orders show up together with a higher score, so you check with the customer before shipping any of them.",
+      "outcome": "The delivery results you record (delivered, refused, returned) are used to tune your store's scores.",
+      "v_caption": "Example: three orders, three names and numbers, one device and one address within two hours.",
+      "v_group": "Linked group · 3 orders",
+      "v_phone": "Phone",
+      "v_address": "Address",
+      "v_device": "Device",
+      "v_address_value": "Cité 500 logements, block C, Blida",
+      "v_device_value": "Same device"
+    },
+    "confirm": {
+      "title": "Confirm before you ship",
+      "subtitle": "Reach the customer from the order, record the answer, and ship only what is confirmed.",
+      "today_title": "Today: from the dashboard",
+      "today_s1": "Open the order: product, amount, address and risk score in one place.",
+      "today_s2": "Open a prepared WhatsApp message or call the customer yourself.",
+      "today_s3": "Record the result: confirmed, cancelled or no answer.",
+      "auto_title": "Automatic WhatsApp confirmation",
+      "auto_status": "Built · switches on with the Ordium number",
+      "auto_desc": "The customer gets one message from the Ordium number with Confirm and Cancel buttons, and the answer is saved on the order. You don't connect your own number.",
+      "metrics": "The dashboard shows orders waiting for a first contact, orders in progress, and the confirmation rate, counted over orders with at least one contact attempt."
+    },
+    "dev": {
+      "title": "For a custom store: one API call",
+      "subtitle": "Shopify, YouCan and WooCommerce connect from the dashboard. If your store is custom-built, send each order to the API and get the score, decision and reasons back in the response.",
+      "request": "Request",
+      "response": "Response (HTTP 201)",
+      "cta": "Full API reference"
+    },
+    "roadmap": {
+      "title": "What works today, and what comes next",
+      "subtitle": "Rules you can read and adjust, not an opaque AI. Machine learning comes only once there are enough real delivery results to train it on.",
+      "now": "Available now",
+      "rollout": "Rolling out",
+      "later": "Later",
+      "p1_t": "Readable risk rules",
+      "p1_d": "Rules you can read, with review and reject thresholds you set yourself.",
+      "p2_t": "Phone, device and connection signals",
+      "p2_d": "Repeat orders, devices used under several names, VPN, proxy and Tor.",
+      "p3_t": "Links between orders",
+      "p3_d": "Linking phone, address, device and IP to spot groups of fake orders.",
+      "p4_t": "Delivery results",
+      "p4_d": "Linking what really happened (delivered, refused, returned) to the scores to measure and tune them.",
+      "p5_t": "Models that learn from your results",
+      "p5_d": "Trained only on verified delivery results, once there are enough of them."
+    },
+    "platform": {
+      "title": "How Ordium scores and confirms your orders",
+      "subtitle": "Every order gets a score with its reasons, is confirmed with the customer, and has its result recorded. Each step stays on the order for you to review later.",
+      "manual_title": "Manual confirmation, available today",
+      "manual_desc": "From the order, open a prepared WhatsApp message or call the customer yourself, then record the result on the order.",
+      "auto_title": "Automatic WhatsApp confirmation, built",
+      "auto_desc": "One message from the Ordium number with Confirm and Cancel buttons; the customer's answer is saved on the order. It switches on once the Ordium number is activated; you don't connect your own number.",
+      "tl_title": "One order's history, step by step",
+      "tl_example": "Example",
+      "tl1": "Order #1042 received from the Shopify store",
+      "tl2": "Score 68 · to review · 3 reasons",
+      "tl3": "Confirmation message sent on WhatsApp",
+      "tl4": "The customer confirmed",
+      "tl5": "Parcel shipped",
+      "tl6": "Delivered · the result is used to tune the scores",
+      "facts_title": "What you can check"
+    },
+    "docs": {
+      "general_note": "All data is scoped to your account, environment and selected store. Rate limits come from the API configuration. Manual confirmation records what your team does; automatic WhatsApp confirmation sends one message from the Ordium number once it is activated."
+    },
+    "pricing": {
+      "price": "Free",
+      "price_note": "0 DZD during the current beta",
+      "plan": "Beta"
+    },
+    "auth": {
+      "dev_link": "Developers: API documentation",
+      "login_subtitle": "Sign in to follow and confirm your store's orders.",
+      "notice_title": "Your account details",
+      "notice_desc": "Your details are stored securely and used only to run your store on Ordium. You only need API keys if your store is custom-built."
+    },
+    "footer": {
+      "webhooks": "Integrations and webhooks",
+      "platform": "How Ordium works",
+      "intelligence": "Links between orders",
+      "security": "Account and data security"
+    },
+    "model": {
+      "network_caption": "Illustration: linked orders, phones and devices, with the suspicious cluster highlighted.",
+      "scanner_caption": "Illustration: each order passes the risk checks one after another.",
+      "shield_caption": "Illustration: orders tied to a suspicious cluster are stopped before shipping.",
+      "security_caption": "Illustration: each store’s data is isolated, and connections are encrypted and signed."
+    }
   }
 }

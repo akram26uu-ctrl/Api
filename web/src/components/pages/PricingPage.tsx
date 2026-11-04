@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ArrowRight, ArrowLeft, ShieldCheck, Zap, Info } from 'lucide-react';
+import { Check, ArrowRight, ArrowLeft, ShieldCheck, Info } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -21,22 +21,21 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onSelectPlan, onOpenDa
     <div className="py-16 sm:py-20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="text-center max-w-3xl mx-auto mb-12 space-y-5">
-          <span className="ordium-eyebrow"><Zap aria-hidden="true" className="w-3.5 h-3.5" />ORDIUM MVP</span>
           <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight text-balance">{t('pages.pricing.title', 'Free while the platform is in MVP.')}</h1>
-          <p className="text-base text-[#A5B1C3] leading-relaxed">{t('pages.pricing.subtitle', 'The current release has no subscription billing, paid tiers, overage charges, or SLA guarantees. Future commercial plans will be announced separately when billing infrastructure is available.')}</p>
+          <p className="text-base text-[#A5B1C3] leading-relaxed max-w-[68ch] mx-auto">{t('pages.pricing.subtitle', 'The current release has no subscription billing, paid tiers, overage charges, or SLA guarantees. Future commercial plans will be announced separately when billing infrastructure is available.')}</p>
         </header>
 
         <section className="relative max-w-2xl mx-auto ordium-card !border-[#22D3EE]/30 p-6 sm:p-9" aria-labelledby="pricing-plan">
           <div className="flex items-center gap-3 mb-6">
             <span aria-hidden="true" className="p-2.5 rounded-xl bg-[#22D3EE]/10 text-[#52D9E8]"><ShieldCheck className="w-5 h-5" /></span>
             <div>
-              <h2 id="pricing-plan" className="text-xl font-bold text-white">ORDIUM MVP</h2>
+              <h2 id="pricing-plan" className="text-xl font-bold text-white">{t('mkt.pricing.plan', 'النسخة التجريبية')}</h2>
               <p className="text-sm text-[#A5B1C3]">{t('pages.pricing.no_payment', 'No payment required')}</p>
             </div>
           </div>
-          <p className="flex items-baseline gap-2 mb-7">
-            <span dir="ltr" className="text-5xl font-extrabold text-white font-mono">$0</span>
-            <span className="text-sm text-[#A5B1C3]">{t('pages.pricing.period', 'for the current MVP')}</span>
+          <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-7">
+            <span className="text-5xl font-extrabold text-white">{t('mkt.pricing.price', 'مجاني')}</span>
+            <span className="text-sm text-[#A5B1C3]">{t('mkt.pricing.price_note', '0 دج خلال النسخة التجريبية الحالية')}</span>
           </p>
           <ul className="space-y-3 border-t border-white/[0.06] pt-6 mb-8">
             {features.map(feature => (

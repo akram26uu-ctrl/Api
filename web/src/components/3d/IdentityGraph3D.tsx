@@ -267,7 +267,7 @@ export const IdentityGraph3D: React.FC<IdentityGraph3DProps> = ({
           </div>
           <div className="font-medium text-white text-sm mb-1">{selectedNode.label}</div>
           <div className="font-mono text-[#94A3B8] mb-3">{selectedNode.value}</div>
-          <div className="grid grid-cols-2 gap-2 text-[11px] bg-white/5 p-2 rounded">
+          <div className="grid grid-cols-2 gap-2 text-xs bg-white/5 p-2 rounded">
             <div>
               <span className="text-[#94A3B8]">Connected:</span>{' '}
               <span className="font-bold text-white">{selectedNode.connected_count} nodes</span>
@@ -283,8 +283,8 @@ export const IdentityGraph3D: React.FC<IdentityGraph3DProps> = ({
       )}
 
       {/* Legend */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col gap-1 text-[11px] font-mono bg-[#080B12]/80 backdrop-blur-md border border-white/10 p-2.5 rounded-lg text-[#94A3B8]">
-        <div className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Entity Map</div>
+      <div className="absolute top-4 right-4 z-10 flex flex-col gap-1 text-xs font-mono bg-[#080B12]/80 backdrop-blur-md border border-white/10 p-2.5 rounded-lg text-[#94A3B8]">
+        <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Entity Map</div>
         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#22D3EE]" /> Customer</div>
         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#6C5CE7]" /> Order</div>
         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#A855F7]" /> Device</div>

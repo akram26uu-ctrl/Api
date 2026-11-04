@@ -78,18 +78,18 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({ enviro
         onClick={() => setOpen(value => !value)}
         aria-label={t('dashboard.notifications.open', 'فتح الإشعارات')}
         aria-expanded={open}
-        className="relative p-2 rounded-xl text-[#94A3B8] hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 transition-colors"
+        className="relative p-2 rounded-xl text-[var(--ordium-muted)] hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 transition-colors"
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center border-2 border-[#080B12]">
+          <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-[var(--ordium-danger-fill)] text-xs font-bold text-white flex items-center justify-center border-2 border-[var(--ordium-canvas)]">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className={`absolute top-full mt-2 z-[80] ${isRTL ? 'left-0' : 'right-0'} w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-white/10 bg-[#0D1320]/98 shadow-2xl shadow-black/50 backdrop-blur-xl`}>
+        <div className={`absolute top-full mt-2 z-[80] ${isRTL ? 'left-0' : 'right-0'} w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-white/10 bg-[var(--ordium-surface)]/98 shadow-2xl shadow-black/50 backdrop-blur-xl`}>
           <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-white">{t('dashboard.notifications.title', 'الإشعارات')}</h2>
@@ -102,11 +102,11 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({ enviro
 
           <div className="max-h-[28rem] overflow-y-auto">
             {loading && items.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#64748B]">{t('dashboard.notifications.loading', 'جارٍ تحميل الإشعارات…')}</div>
+              <div className="p-8 text-center text-xs text-[var(--ordium-subtle)]">{t('dashboard.notifications.loading', 'جارٍ تحميل الإشعارات…')}</div>
             ) : error && items.length === 0 ? (
               <div className="p-6 text-center"><p className="text-xs text-red-300">{error}</p><Button className="mt-3" variant="outline" size="sm" onClick={() => void load()}>{t('common.retry', 'Retry')}</Button></div>
             ) : items.length === 0 ? (
-              <div className="p-8 text-center"><Bell className="w-7 h-7 mx-auto text-[#334155]" /><p className="mt-3 text-sm text-white">{t('dashboard.notifications.empty', 'You are all caught up.')}</p><p className="mt-1 text-[11px] text-[#64748B]">{t('dashboard.notifications.empty_desc', 'Actionable risk alerts will appear here.')}</p></div>
+              <div className="p-8 text-center"><Bell className="w-7 h-7 mx-auto text-[#334155]" /><p className="mt-3 text-sm text-white">{t('dashboard.notifications.empty', 'You are all caught up.')}</p><p className="mt-1 text-xs text-[var(--ordium-subtle)]">{t('dashboard.notifications.empty_desc', 'Actionable risk alerts will appear here.')}</p></div>
             ) : items.map(item => (
               <button
                 key={item.id}
@@ -118,8 +118,8 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({ enviro
                   <div className="mt-0.5 shrink-0">{iconFor(item.severity)}</div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3"><p className="text-xs font-semibold text-white">{item.title}</p>{!item.read_at && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0" />}</div>
-                    <p className="text-[11px] leading-relaxed text-[#94A3B8] mt-1">{item.message}</p>
-                    <p className="text-[9px] text-[#475569] font-mono mt-2">{new Date(item.created_at).toLocaleString()}</p>
+                    <p className="text-xs leading-relaxed text-[var(--ordium-muted)] mt-1">{item.message}</p>
+                    <p className="text-xs text-[#475569] font-mono mt-2">{new Date(item.created_at).toLocaleString()}</p>
                   </div>
                 </div>
               </button>

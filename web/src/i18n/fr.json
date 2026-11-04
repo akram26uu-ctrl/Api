@@ -185,7 +185,10 @@
     "summary_merchant": "Marchand",
     "verify_request_new": "Demander un nouveau lien",
     "workspace_status_label": "Statut",
-    "workspace_status_ready": "Espace prêt"
+    "workspace_status_ready": "Espace prêt",
+    "session_signed_out": "Vous vous êtes déconnecté dans un autre onglet. Reconnectez-vous pour continuer.",
+    "session_expired": "Votre session a pris fin pour votre sécurité. Reconnectez-vous pour reprendre là où vous en étiez.",
+    "account_locked": "Trop de tentatives échouées pour ce compte. Patientez 15 minutes puis réessayez."
   },
   "hero": {
     "badge": "MOTEUR DE RISQUE DES COMMANDES ORDIUM",
@@ -465,9 +468,9 @@
       "group_main": "Principal",
       "group_orders": "Commandes",
       "group_risk": "Risques",
-      "group_store": "Boutique & intégrations",
+      "group_store": "Boutique",
       "group_usage": "Utilisation",
-      "overview": "Résumé de la boutique",
+      "overview": "Vue d'ensemble",
       "orders": "Commandes",
       "network": "Analyse des risques",
       "simulator": "Commande test",
@@ -481,7 +484,9 @@
       "stores": "Boutiques",
       "store_workspace": "Espace de la boutique",
       "store_workspace_hint": "Envoyez des confirmations WhatsApp et enregistrez les résultats depuis la page des commandes — WhatsApp est un service géré par Ordium.",
-      "integrations": "Connexion boutique"
+      "integrations": "Connexion boutique",
+      "confirmation": "Résultats de confirmation",
+      "confirmation_page": "Confirmation"
     },
     "header": {
       "sandbox_btn": "BAC À SABLE",
@@ -541,7 +546,17 @@
       "eyebrow": "ORDIUM · Intelligence du risque",
       "page_description": "Suivez les commandes, les indicateurs de risque et les décisions d'évaluation depuis un seul espace.",
       "page_heading": "Vue d'ensemble de la boutique",
-      "view_orders_cta": "Voir les commandes"
+      "view_orders_cta": "Voir les commandes",
+      "top_signals_title": "Signaux de risque les plus fréquents",
+      "top_signals_scope": "Sur les {count} dernières commandes",
+      "no_signals": "Aucun signal de risque sur ces commandes.",
+      "no_orders_yet": "Les signaux apparaîtront ici dès la première commande.",
+      "signal_orders": "commandes",
+      "open_network": "Ouvrir l’analyse des risques",
+      "allow_plain": "Acceptées",
+      "review_plain": "À vérifier",
+      "reject_plain": "Refusées",
+      "no_data_note": "Aucune commande réelle pour l’instant : les chiffres ci-dessous sont à zéro. Connectez votre boutique dans les paramètres ou essayez une commande test."
     },
     "titles": {
       "overview": "Résumé de la boutique",
@@ -624,7 +639,33 @@
       "recorded_outcome": "Résultat enregistré",
       "rules_model": "Modèle du moteur de règles",
       "shipping_address": "Adresse de livraison",
-      "unresolved": "NON RÉSOLU"
+      "unresolved": "NON RÉSOLU",
+      "drawer_title": "Commande",
+      "queue_nav": "Naviguer entre les commandes",
+      "previous_order": "Précédente",
+      "next_order": "Suivante",
+      "decision_label": "Décision",
+      "delivery_outcome": "Résultat de livraison",
+      "reasons_title": "Pourquoi cette décision",
+      "no_reasons": "Aucun signal de risque sur cette commande.",
+      "go_next": "Commande suivante",
+      "delivery_and_network": "Livraison et réseau",
+      "rules_version": "Version des règles",
+      "delivery_outcome_hint": "Enregistrez-le une fois le colis livré ou revenu. Il mesure la justesse des décisions pour votre boutique.",
+      "queue_label": "Vue des commandes",
+      "queue_needs_action": "À traiter",
+      "queue_all": "Toutes les commandes",
+      "decision_filter": "Décision",
+      "status_filter": "Statut de la commande",
+      "loading": "Chargement des commandes…",
+      "status": {
+        "pending": "En attente",
+        "confirmed": "Confirmée",
+        "shipped": "Expédiée",
+        "delivered": "Livrée",
+        "cancelled": "Annulée",
+        "returned": "Retournée"
+      }
     },
     "simulator": {
       "title": "Tester une commande",
@@ -641,7 +682,7 @@
       "json_mode": "Données JSON brutes",
       "order_details": "Détails de la commande test",
       "order_number": "Numéro de commande",
-      "amount": "Montant ($)",
+      "amount": "Montant (DZD)",
       "customer_name": "Nom du client",
       "customer_email": "E-mail du client",
       "phone": "Numéro de téléphone",
@@ -707,7 +748,8 @@
       "threshold_invalid": "REVIEW doit être inférieur à REJECT.",
       "unavailable": "Profil de risque indisponible.",
       "unsaved": "Modifications non enregistrées",
-      "zero_note": "La valeur 0 désactive la contribution du signal."
+      "zero_note": "La valeur 0 désactive la contribution du signal.",
+      "empty_profile": "Les paramètres de risque ne se sont pas chargés. Réessayez dans un instant."
     },
     "network": {
       "title": "Graphe 3D de Résolution d'Identité & Relations d'Entités",
@@ -724,7 +766,7 @@
     "webhooks": {
       "title": "Points de Terminaison Webhook & Envoi d'Événements",
       "subtitle": "Gérez les points de terminaison sécurisés recevant les événements d'évaluation des risques.",
-      "add_endpoint": "+ Ajouter un point de terminaison",
+      "add_endpoint": "Ajouter un point de terminaison",
       "test_ping": "Envoyer un ping de test",
       "recent_deliveries": "Envois récents",
       "url": "URL du point de terminaison",
@@ -765,7 +807,7 @@
     "apikeys": {
       "title": "Clés API & Jetons d'Accès",
       "subtitle": "Gérez les identifiants API pour l'ingestion côté serveur et l'évaluation des risques.",
-      "create_key": "+ Générer une clé API",
+      "create_key": "Générer une clé API",
       "key_name": "Nom de la clé",
       "secret_token": "Jeton secret",
       "created": "Créé le",
@@ -933,9 +975,42 @@
       "name_required": "Saisissez le nom de la boutique.",
       "required_desc": "Pour commencer à recevoir des commandes, créez au moins une boutique.",
       "required_title": "Créez d'abord votre boutique",
-      "update_error": "Impossible de mettre à jour la boutique."
+      "update_error": "Impossible de mettre à jour la boutique.",
+      "count_label": "Vos boutiques",
+      "orders_suffix": "commandes"
     },
     "confirmation": {
+      "auto": {
+        "title": "Confirmation automatique par WhatsApp",
+        "subtitle": "Envoyez automatiquement un message de confirmation au client après l'évaluation de la commande et enregistrez sa réponse sans intervention manuelle.",
+        "loading": "Chargement des paramètres…",
+        "load_error": "Impossible de charger les paramètres de confirmation automatique.",
+        "provider_pending": "Le numéro WhatsApp d'Ordium est en cours d'activation. Vous pouvez enregistrer vos paramètres dès maintenant ; les messages partiront automatiquement dès son activation.",
+        "enable": "Activer l'envoi automatique",
+        "decisions_legend": "Envoyer le message lorsque la décision de risque est",
+        "decision_allow": "Autoriser (commandes sûres)",
+        "decision_review": "À examiner (commandes suspectes)",
+        "decision_reject": "Rejeter (commandes à haut risque)",
+        "decisions_required": "Sélectionnez au moins une décision.",
+        "auto_update": "Mettre à jour automatiquement le statut de la commande selon la réponse du client",
+        "auto_update_hint": "La commande est confirmée ou annulée selon la réponse du client sur WhatsApp.",
+        "save": "Enregistrer les paramètres",
+        "saving": "Enregistrement…",
+        "saved": "Paramètres de confirmation automatique enregistrés",
+        "save_error": "Impossible d'enregistrer les paramètres. Veuillez réessayer.",
+        "step_queued": "En attente",
+        "step_sent": "Envoyé",
+        "step_delivered": "Délivré",
+        "step_read": "Lu",
+        "step_replied": "Réponse reçue",
+        "reply_confirmed": "A confirmé la commande",
+        "reply_cancelled": "A annulé la commande",
+        "reply_needs_review": "À examiner",
+        "reply_no_answer": "Sans réponse",
+        "failed": "Échec de l'envoi du message automatique",
+        "expired": "Délai expiré sans réponse du client",
+        "simulated": "Mode TEST — le message n'a pas été réellement envoyé"
+      },
       "title": "Confirmation de commande",
       "products": "Produits",
       "buyer": "Acheteur",
@@ -990,7 +1065,12 @@
         "no_answer": "Sans réponse",
         "callback_requested": "Rappel demandé",
         "needs_review": "À vérifier"
-      }
+      },
+      "edit_message": "Choisir et prévisualiser le message",
+      "cancel_question": "Annuler signifie que la commande ne sera pas expédiée et ne pourra plus être confirmée. L’annuler ?",
+      "cancel_yes": "Oui, annuler la commande",
+      "cancel_keep": "Garder la commande",
+      "saved_line": "Résultat du contact enregistré."
     },
     "confirmation_metrics": {
       "title": "Indicateurs de confirmation des commandes",
@@ -1008,7 +1088,11 @@
       "average_attempts": "Tentatives moyennes par commande suivie",
       "refresh": "Actualiser les indicateurs",
       "loading": "Chargement des indicateurs…",
-      "error": "Impossible de charger les indicateurs. Réessayez avec le bouton Actualiser."
+      "error": "Impossible de charger les indicateurs. Réessayez avec le bouton Actualiser.",
+      "rate_short": "taux de confirmation",
+      "unstarted_short": "non contactées",
+      "progress_short": "en cours",
+      "open_details": "Détails de confirmation"
     },
     "common": {
       "cancel": "Annuler",
@@ -1033,7 +1117,9 @@
       "title": "Résolution d'identité et graphe des relations",
       "risk_safe": "Sûr",
       "risk_warning": "Attention",
-      "risk_danger": "Danger"
+      "risk_danger": "Danger",
+      "empty_title": "Aucun lien pour l’instant",
+      "empty_desc": "Les téléphones, appareils et adresses partagés entre vos commandes apparaissent ici. Créez une commande test pour voir le fonctionnement."
     },
     "integrations": {
       "active": "Actif",
@@ -1094,7 +1180,72 @@
       "woocommerce_step2": "Créez un nouveau webhook et choisissez l'événement Order created.",
       "woocommerce_step3": "Copiez l'adresse de réception et le secret depuis la fenêtre de détails après la création.",
       "woocommerce_step4": "Collez l'adresse et le secret dans WooCommerce, enregistrez puis envoyez une commande de test.",
-      "woocommerce_steps_title": "Configuration WooCommerce"
+      "woocommerce_steps_title": "Configuration WooCommerce",
+      "shopify_summary": "Recevez les nouvelles commandes Shopify via un webhook créé dans votre administration Shopify.",
+      "shopify_domain_label": "Domaine de la boutique Shopify",
+      "shopify_domain_hint": "Utilisez le domaine permanent en .myshopify.com (Paramètres > Domaines dans Shopify), pas votre domaine personnalisé.",
+      "shopify_step1": "Créez la connexion ici, puis copiez l'adresse de réception des commandes.",
+      "shopify_step2": "Dans l'administration Shopify, ouvrez Paramètres > Notifications > Webhooks et cliquez sur « Créer un webhook ».",
+      "shopify_step3": "Choisissez l'événement « Création de commande », le format JSON, collez l'URL ORDIUM et enregistrez.",
+      "shopify_step4": "Copiez le secret de signature affiché par Shopify dans la section Webhooks (« Vos webhooks seront signés avec… »).",
+      "shopify_step5": "De retour dans ORDIUM, cliquez sur « Ajouter le secret de signature » sur la connexion, collez-le et enregistrez. Passez ensuite une commande test.",
+      "beta": "Bêta",
+      "youcan_summary": "Recevez les commandes YouCan via un webhook. Prise en charge en bêta : envoyez une commande test et vérifiez son arrivée.",
+      "youcan_id_label": "Adresse de la boutique YouCan",
+      "youcan_step1": "Créez la connexion ici et copiez l'adresse de réception et le secret de signature.",
+      "youcan_step2": "Dans votre tableau de bord YouCan, ajoutez un webhook pour les nouvelles commandes et collez l'URL ORDIUM.",
+      "youcan_step3": "Si YouCan affiche son propre secret de signature, collez-le ici via « Ajouter le secret de signature » ; sinon saisissez le secret ORDIUM dans YouCan.",
+      "youcan_step4": "Passez une commande test et vérifiez que « Dernière commande reçue » se met à jour ci-dessous.",
+      "woocommerce_domain_label": "Domaine de la boutique",
+      "custom_name": "Boutique sur mesure / hébergement propre",
+      "custom_step1": "Créez la connexion et copiez l'adresse de réception et le secret de signature.",
+      "custom_step2": "À chaque nouvelle commande, envoyez le JSON ci-dessous à l'URL avec event : order.created.",
+      "custom_step3": "Signez le corps JSON brut en HMAC-SHA256 avec le secret et envoyez la signature dans l'en-tête X-ORDIUM-Signature.",
+      "load_error": "Impossible de charger les connexions de la boutique.",
+      "shopify_domain_invalid": "Saisissez un domaine se terminant par .myshopify.com",
+      "secret_too_short": "Le secret de signature semble trop court. Copiez la valeur complète depuis l'administration de votre boutique.",
+      "secret_saved": "Secret de signature enregistré. Les nouvelles commandes de cette boutique seront désormais acceptées.",
+      "subtitle_all": "Recevez automatiquement les nouvelles commandes de Shopify, YouCan, WooCommerce ou d'une boutique sur votre propre hébergement. Chaque connexion est liée à la boutique sélectionnée et chaque envoi est vérifié par signature.",
+      "pending_count": "en attente du secret de signature",
+      "choose_platform": "Choisissez la plateforme de votre boutique : ORDIUM affiche les étapes exactes pour celle-ci.",
+      "create_for": "Créer la connexion",
+      "steps_title": "Comment connecter",
+      "requirements_short": "Les commandes doivent être en DZD et inclure le nom du client, un numéro algérien et une adresse de livraison.",
+      "awaiting_secret": "En attente du secret de signature",
+      "awaiting_secret_desc": "Les commandes sont refusées tant que vous n'avez pas collé le secret de signature affiché par votre plateforme après la création du webhook.",
+      "add_secret": "Ajouter le secret de signature",
+      "replace_secret": "Remplacer le secret de signature",
+      "payload_desc_v2": "Chaque commande doit contenir le nom du client, un numéro algérien (0550…, +213…), la ville et l'adresse de livraison, un total positif et la devise DZD. Sans champ wilaya, la ville est utilisée. Les articles gratuits sont ignorés.",
+      "rest_alternative": "Vous préférez un appel API direct ? Votre serveur peut envoyer chaque commande à POST https://api.ordium.dev/api/v1/orders avec une clé API de boutique (voir Clés API et la documentation développeur) et recevoir la décision de risque dans la réponse.",
+      "created_desc_provider": "Copiez l'adresse de réception dans votre plateforme, puis ajoutez le secret de signature qu'elle vous fournit.",
+      "add_secret_now": "J'ai le secret, l'ajouter maintenant",
+      "secret_dialog_title": "Ajouter le secret de signature de la boutique",
+      "secret_dialog_shopify": "Dans l'administration Shopify, ouvrez Paramètres > Notifications > Webhooks et copiez la clé indiquée après « Vos webhooks seront signés avec ».",
+      "secret_dialog_generic": "Collez le secret de signature affiché par votre plateforme pour ce webhook.",
+      "secret_storage_note": "ORDIUM conserve le secret chiffré et ne l'affiche plus jamais.",
+      "save_secret": "Enregistrer le secret"
+    },
+    "decision": {
+      "allow": "Acceptée",
+      "review": "À vérifier",
+      "reject": "Refusée"
+    },
+    "risk_level": {
+      "low": "Risque faible",
+      "elevated": "Risque modéré",
+      "critical": "Risque critique"
+    },
+    "outcome": {
+      "cancelled": "Annulée",
+      "delivered": "Livrée",
+      "returned": "Retournée",
+      "pending": "Pas encore enregistré",
+      "mark_delivered": "Livrée au client",
+      "refused": "Refusée à la livraison",
+      "mark_refused": "Le client a refusé le colis",
+      "mark_returned": "Retournée pour une autre raison",
+      "saved": "Résultat enregistré :",
+      "change_hint": "Choisissez un autre résultat pour le modifier."
     }
   },
   "onboarding": {
@@ -1304,6 +1455,284 @@
     "rule_unmet": "(non respecté)",
     "session_cookie_note": "Votre session est protégée par un cookie sécurisé HttpOnly.",
     "session_lost": "Votre session n'a pas pu être restaurée. Veuillez vous reconnecter.",
-    "skip_to_content": "Aller au contenu principal"
+    "skip_to_content": "Aller au contenu principal",
+    "error_title": "Cette section n'a pas pu s'afficher",
+    "error_desc": "Une erreur inattendue s'est produite. Vos données sont intactes. Réessayez et, si le problème persiste, rechargez la page.",
+    "reload_page": "Recharger la page"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Tout ce qui concerne votre boutique, votre compte et vos systèmes connectés, au même endroit.",
+    "unsaved": "Vous avez des modifications non enregistrées.",
+    "group": {
+      "store": "Boutique",
+      "operations": "Traitement des commandes",
+      "account": "Compte",
+      "developers": "Développeurs"
+    },
+    "stores": {
+      "title": "Boutiques",
+      "desc": "Créez vos boutiques et activez-les ou désactivez-les. Chacune a ses commandes, clés et statistiques."
+    },
+    "integrations": {
+      "title": "Connexion de la boutique",
+      "desc": "Recevez les commandes automatiquement depuis Shopify, YouCan, WooCommerce ou votre propre boutique."
+    },
+    "confirmation": {
+      "title": "Confirmation des commandes",
+      "desc": "Un message WhatsApp envoyé par Ordium après chaque commande, pour confirmer ou annuler en un clic.",
+      "load_error": "Les paramètres de confirmation ne se sont pas chargés. Actualisez la page.",
+      "allow": "Commandes acceptées",
+      "allow_hint": "Commandes sans signal de risque. Les confirmer réduit les retours.",
+      "review": "Commandes à vérifier",
+      "review_hint": "La réponse du client lève le doute, sans appel manuel.",
+      "reject": "Commandes refusées",
+      "reject_hint": "Rarement utile. Activez-le seulement si vous revoyez les refus à la main.",
+      "saved": "Paramètres de confirmation enregistrés.",
+      "save_error": "Les paramètres n'ont pas été enregistrés. Réessayez.",
+      "provider_pending": "Le numéro WhatsApp d'Ordium est en cours d'activation. Enregistrez vos paramètres ; les messages partiront dès son activation.",
+      "enable": "Envoyer un message de confirmation pour chaque commande",
+      "enable_hint": "Le client reçoit le numéro de commande, le montant et deux boutons : Confirmer et Annuler.",
+      "decisions": "Quelles commandes reçoivent le message ?",
+      "decisions_required": "Choisissez au moins un type.",
+      "auto_update": "Mettre à jour la commande selon la réponse",
+      "auto_update_hint": "Confirmer la passe en confirmée, Annuler en annulée. Désactivé, la réponse est seulement enregistrée et vous décidez.",
+      "save": "Enregistrer la confirmation",
+      "open": "Paramètres de confirmation"
+    },
+    "risk": {
+      "title": "Règles de risque",
+      "desc": "Réglez le poids de chaque signal et les seuils de revue et de refus. Les changements s'appliquent aux nouvelles commandes."
+    },
+    "account": {
+      "title": "Profil et sécurité",
+      "desc": "Vos informations, celles de votre activité, le mot de passe et les sessions ouvertes.",
+      "saved": "Informations du compte enregistrées.",
+      "save_error": "Non enregistré. Vérifiez les champs et réessayez.",
+      "password_error": "Mot de passe inchangé. Vérifiez le mot de passe actuel.",
+      "email_locked": "L'adresse e-mail ne peut pas être modifiée depuis le tableau de bord.",
+      "business_title": "Informations de l'activité",
+      "save": "Enregistrer",
+      "password_title": "Mot de passe",
+      "password_hint": "Au moins 12 caractères. La session actuelle reste ouverte.",
+      "sessions_title": "Appareils connectés",
+      "sessions_hint": "Déconnectez toute session que vous ne reconnaissez pas.",
+      "exported": "Le téléchargement de vos données a commencé.",
+      "others_closed": "Les autres sessions ont été déconnectées.",
+      "this_device": "Cet appareil",
+      "last_active": "Dernière activité",
+      "expires": "expire",
+      "current": "Actuelle",
+      "session_closed": "Session déconnectée.",
+      "close_session": "Déconnecter"
+    },
+    "usage": {
+      "title": "Utilisation et forfait",
+      "desc": "Commandes évaluées ce mois-ci par rapport au quota de votre forfait."
+    },
+    "api_keys": {
+      "title": "Clés API",
+      "desc": "Les clés que votre système utilise pour envoyer les commandes à Ordium. Donnez à chaque clé le minimum d'accès."
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "desc": "Nous envoyons à votre système une notification signée quand une commande est évaluée, confirmée ou son résultat change."
+    },
+    "status": {
+      "connected": "Connectée",
+      "not_connected": "Non connectée",
+      "on": "Activé",
+      "off": "Désactivé",
+      "none": "Aucun",
+      "active": "active(s)"
+    }
+  },
+  "mkt": {
+    "brand": {
+      "tagline": "Risque des commandes"
+    },
+    "nav": {
+      "docs": "Docs",
+      "pricing": "Tarifs",
+      "more": "Plus",
+      "cta": "Tableau de bord"
+    },
+    "hero": {
+      "title": "Repérez les commandes à risque avant l'expédition",
+      "subtitle": "Colis refusés, fausses commandes, retours, heures passées au téléphone : le paiement à la livraison coûte cher. Ordium évalue chaque commande, explique la note en mots simples, puis la confirme avec le client sur WhatsApp avant l'expédition.",
+      "cta_primary": "Ouvrir le tableau de bord",
+      "cta_secondary": "Documentation technique",
+      "example": "Exemple",
+      "order": "Commande n° 1042",
+      "customer": "Karim B.",
+      "wilaya_label": "Wilaya",
+      "wilaya_value": "Oran",
+      "amount_label": "Montant",
+      "amount_value": "8 900 DZD",
+      "payment": "Paiement à la livraison",
+      "score_label": "Note de risque",
+      "reasons_title": "Pourquoi 68 ?",
+      "reason1": "Ce numéro a déjà refusé 2 colis dans votre boutique",
+      "reason2": "3 commandes du même numéro en 24 heures",
+      "reason3": "Quantité bien au-dessus de vos commandes habituelles",
+      "sent": "Message de confirmation envoyé au client sur WhatsApp",
+      "wa_sender": "ORDIUM · Confirmation de commande",
+      "wa_message": "Bonjour Karim, nous avons reçu votre commande n° 1042 de 8 900 DZD, à livrer à Oran. Confirmez-vous la commande ?",
+      "wa_confirm": "Confirmer",
+      "wa_cancel": "Annuler",
+      "after": "La réponse du client est enregistrée sur la commande : confirmée ou annulée.",
+      "note": "La confirmation WhatsApp automatique est prête et s'active dès que le numéro Ordium est activé. D'ici là, vous confirmez depuis le tableau de bord, par WhatsApp ou par téléphone."
+    },
+    "identity": {
+      "title": "Une commande seule paraît normale, les liens entre commandes en disent plus",
+      "subtitle": "Ordium compare le téléphone, l'adresse, l'appareil et la connexion de chaque commande avec vos commandes précédentes : les fausses commandes répétées et les clients qui refusent les colis ressortent.",
+      "phone_t": "Numéro de téléphone",
+      "phone_d": "Le même numéro sur plusieurs commandes, et ce qu'il s'est passé avant : confirmées, refusées ou retournées.",
+      "address_t": "Adresse de livraison",
+      "address_d": "La même adresse sous des noms et des numéros différents.",
+      "device_t": "Appareil",
+      "device_d": "Le même téléphone ou ordinateur qui passe des commandes sous plusieurs noms.",
+      "network_t": "Connexion",
+      "network_d": "Utilisation d'un VPN, d'un proxy ou de Tor, et adresses IP à mauvaise réputation.",
+      "history_t": "Historique du client",
+      "history_d": "Combien de fois le client a annulé, refusé ou retourné une commande.",
+      "size_t": "Taille de la commande",
+      "size_d": "Quantité ou montant bien au-dessus de l'habitude de votre boutique.",
+      "g_caption": "Exemple : le même numéro sur quatre commandes, dont deux colis refusés.",
+      "g_phone": "Même numéro",
+      "g_delivered": "Livrée",
+      "g_refused": "Refusée à la livraison",
+      "g_new": "Nouvelle · à vérifier",
+      "g_order": "Commande n°"
+    },
+    "pipeline": {
+      "title": "D'une nouvelle commande à une décision claire",
+      "subtitle": "Chaque commande passe par les mêmes contrôles, dans le même ordre : vous savez exactement d'où vient sa note.",
+      "s1_t": "La commande arrive",
+      "s1_d": "Depuis Shopify, YouCan, WooCommerce ou votre boutique via l'API, dès que le client commande.",
+      "s2_t": "Elle est reliée à vos commandes passées",
+      "s2_d": "Le téléphone, l'adresse et l'appareil sont comparés aux commandes précédentes.",
+      "s3_t": "Le comportement est vérifié",
+      "s3_d": "Plusieurs commandes en peu de temps, quantité ou montant inhabituel.",
+      "s4_t": "La connexion est vérifiée",
+      "s4_d": "VPN, proxy, Tor et adresses IP à mauvaise réputation.",
+      "s5_t": "Vos règles s'appliquent",
+      "s5_d": "Chaque signal pèse le poids que vous avez fixé dans le profil de risque de votre boutique.",
+      "s6_t": "Une note de 0 à 100",
+      "s6_d": "Avec les raisons qui l'ont fait monter, en mots simples.",
+      "s7_t": "Une décision claire",
+      "s7_d": "Accepter, vérifier ou refuser selon vos seuils (par défaut : vérification dès 50, refus dès 80). Le dernier mot vous revient."
+    },
+    "explain": {
+      "title": "Chaque note arrive avec ses raisons",
+      "subtitle": "Vous voyez quels signaux ont fait monter la note et de combien, et vous pouvez changer le poids de chacun et les seuils.",
+      "order_line": "Commande n° 1057 · Constantine · 12 400 DZD · paiement à la livraison",
+      "verdict_title": "Au-dessus du seuil de refus",
+      "verdict_desc": "La note est de 82 et le seuil de refus de cette boutique est de 80. La commande reste en attente ; vous pouvez la confirmer avec le client et l'accepter.",
+      "reasons_title": "Pourquoi 82 ?",
+      "r1": "Ce numéro a déjà refusé deux colis",
+      "r2": "Le même appareil a servi sous trois noms différents cette semaine",
+      "r3": "4 commandes du même numéro en deux heures",
+      "r4": "Connexion via un VPN",
+      "total": "Total",
+      "weights": "Le poids de chaque signal se règle dans les paramètres de risque."
+    },
+    "cluster": {
+      "title": "Les fausses commandes arrivent rarement seules",
+      "subtitle": "Une commande seule peut passer tous les contrôles. Quand Ordium relie téléphones, adresses et appareils entre les commandes, le schéma apparaît.",
+      "s1_t": "La première commande paraît normale",
+      "s1_d": "Un nouveau nom, un numéro algérien valide, une adresse complète. Rien d'anormal.",
+      "s2_t": "Les suivantes partagent des détails",
+      "s2_d": "En deux heures, deux autres commandes arrivent sous d'autres noms et numéros, mais depuis le même appareil et vers la même adresse.",
+      "s3_t": "Ordium les regroupe et relève leur note",
+      "s3_d": "Les commandes liées s'affichent ensemble et leur note monte : vous vérifiez avec le client avant d'en expédier une seule.",
+      "outcome": "Les résultats de livraison que vous enregistrez (livrée, refusée, retournée) servent à ajuster les notes de votre boutique.",
+      "v_caption": "Exemple : trois commandes, trois noms et numéros, un seul appareil et une seule adresse en deux heures.",
+      "v_group": "Groupe lié · 3 commandes",
+      "v_phone": "Téléphone",
+      "v_address": "Adresse",
+      "v_device": "Appareil",
+      "v_address_value": "Cité 500 logements, bloc C, Blida",
+      "v_device_value": "Même appareil"
+    },
+    "confirm": {
+      "title": "Confirmez avant d'expédier",
+      "subtitle": "Contactez le client depuis la commande, enregistrez sa réponse et n'expédiez que ce qui est confirmé.",
+      "today_title": "Aujourd'hui : depuis le tableau de bord",
+      "today_s1": "Ouvrez la commande : produit, montant, adresse et note de risque au même endroit.",
+      "today_s2": "Ouvrez un message WhatsApp prérempli ou appelez le client vous-même.",
+      "today_s3": "Enregistrez le résultat : confirmée, annulée ou sans réponse.",
+      "auto_title": "Confirmation WhatsApp automatique",
+      "auto_status": "Prête · s'active avec le numéro Ordium",
+      "auto_desc": "Le client reçoit un seul message depuis le numéro Ordium, avec les boutons « Confirmer » et « Annuler » ; sa réponse est enregistrée sur la commande. Pas besoin de connecter votre propre numéro.",
+      "metrics": "Le tableau de bord montre les commandes en attente d'un premier contact, celles en cours et le taux de confirmation, calculé sur les commandes avec au moins une tentative de contact."
+    },
+    "dev": {
+      "title": "Pour une boutique sur mesure : un seul appel d'API",
+      "subtitle": "Shopify, YouCan et WooCommerce se connectent depuis le tableau de bord. Si votre boutique est développée sur mesure, envoyez chaque commande à l'API : la note, la décision et les raisons reviennent dans la réponse.",
+      "request": "Requête",
+      "response": "Réponse (HTTP 201)",
+      "cta": "Référence complète de l'API"
+    },
+    "roadmap": {
+      "title": "Ce qui fonctionne aujourd'hui, et la suite",
+      "subtitle": "Des règles lisibles et réglables, pas une IA opaque. L'apprentissage automatique viendra seulement quand il y aura assez de vrais résultats de livraison pour l'entraîner.",
+      "now": "Disponible",
+      "rollout": "En déploiement",
+      "later": "Plus tard",
+      "p1_t": "Des règles de risque lisibles",
+      "p1_d": "Des règles lisibles, avec des seuils de vérification et de refus que vous réglez.",
+      "p2_t": "Signaux téléphone, appareil et connexion",
+      "p2_d": "Commandes répétées, appareils sous plusieurs noms, VPN, proxy et Tor.",
+      "p3_t": "Liens entre commandes",
+      "p3_d": "Relier téléphone, adresse, appareil et IP pour repérer les groupes de fausses commandes.",
+      "p4_t": "Résultats de livraison",
+      "p4_d": "Relier ce qui s'est vraiment passé (livrée, refusée, retournée) aux notes pour mesurer et ajuster leur précision.",
+      "p5_t": "Des modèles qui apprennent de vos résultats",
+      "p5_d": "Entraînés uniquement sur des résultats de livraison vérifiés, quand il y en aura assez."
+    },
+    "platform": {
+      "title": "Comment Ordium évalue et confirme vos commandes",
+      "subtitle": "Chaque commande reçoit une note et ses raisons, puis elle est confirmée avec le client et son résultat est enregistré. Chaque étape reste visible sur la commande.",
+      "manual_title": "Confirmation manuelle, disponible aujourd'hui",
+      "manual_desc": "Depuis la commande, ouvrez un message WhatsApp prérempli ou appelez le client vous-même, puis enregistrez le résultat.",
+      "auto_title": "Confirmation WhatsApp automatique, prête",
+      "auto_desc": "Un seul message depuis le numéro Ordium, avec les boutons « Confirmer » et « Annuler » ; la réponse du client est enregistrée sur la commande. Elle s'active dès que le numéro Ordium est activé ; vous n'avez pas à connecter votre numéro.",
+      "tl_title": "L'historique d'une commande, étape par étape",
+      "tl_example": "Exemple",
+      "tl1": "Commande n° 1042 reçue depuis la boutique Shopify",
+      "tl2": "Note 68 · à vérifier · 3 raisons",
+      "tl3": "Message de confirmation envoyé sur WhatsApp",
+      "tl4": "Le client a confirmé",
+      "tl5": "Colis expédié",
+      "tl6": "Livrée · le résultat sert à ajuster les notes",
+      "facts_title": "Ce que vous pouvez vérifier"
+    },
+    "docs": {
+      "general_note": "Toutes les données sont limitées à votre compte, à l'environnement et à la boutique sélectionnée. Les limites de requêtes dépendent de la configuration de l'API. La confirmation manuelle enregistre les actions de votre équipe ; la confirmation WhatsApp automatique envoie un seul message depuis le numéro Ordium une fois celui-ci activé."
+    },
+    "pricing": {
+      "price": "Gratuit",
+      "price_note": "0 DZD pendant la bêta actuelle",
+      "plan": "Version bêta"
+    },
+    "auth": {
+      "dev_link": "Développeurs : documentation de l'API",
+      "login_subtitle": "Connectez-vous pour suivre et confirmer les commandes de votre boutique.",
+      "notice_title": "Vos informations",
+      "notice_desc": "Vos informations sont enregistrées de façon sécurisée et servent uniquement à faire fonctionner votre boutique sur Ordium. Les clés API ne sont utiles que pour une boutique développée sur mesure."
+    },
+    "footer": {
+      "webhooks": "Intégrations et webhooks",
+      "platform": "Fonctionnement d'Ordium",
+      "intelligence": "Liens entre commandes",
+      "security": "Sécurité des comptes et des données"
+    },
+    "model": {
+      "network_caption": "Illustration : commandes, téléphones et appareils liés, le groupe suspect mis en évidence.",
+      "scanner_caption": "Illustration : chaque commande passe les contrôles de risque l’un après l’autre.",
+      "shield_caption": "Illustration : les commandes liées à un groupe suspect sont arrêtées avant l’expédition.",
+      "security_caption": "Illustration : les données de chaque boutique sont isolées, les échanges chiffrés et signés."
+    }
   }
 }

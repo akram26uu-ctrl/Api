@@ -6,7 +6,7 @@
  */
 
 import React, { useId, useState } from 'react';
-import { Lock, Mail, Eye, EyeOff, ArrowRight, ArrowLeft, Key, Terminal, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { BrandLogo } from '../common/BrandLogo';
@@ -42,6 +42,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitCount, setSubmitCount] = useState(0);
   const [showForgotModal, setShowForgotModal] = useState(false);
+  // Why the user landed here: set by the app when a session expires or ends in another tab.
+  const [sessionNotice] = useState<string | null>(() => {
+    try { return new URLSearchParams(window.location.search).get('session'); } catch { return null; }
+  });
 
   const validate = (): FieldErrors => {
     const errors: FieldErrors = {};
@@ -98,6 +102,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
         if (apiError.statusCode === 401) setErrorMessage(t('auth.errors.invalid_credentials', 'Invalid email or password.'));
         // 403 covers several cases (inactive account, blocked origin); only the inactive case gets the localized hint.
         else if (apiError.statusCode === 403 && /not active|verify your email/i.test(apiError.message)) setErrorMessage(t('auth.errors.account_inactive', 'Your account is not active yet. Verify your email address first.'));
+        else if (apiError.statusCode === 429 && /this account/i.test(apiError.message)) setErrorMessage(t('auth.account_locked', 'Too many failed attempts for this account. Wait 15 minutes, then try again.'));
         else if (apiError.statusCode === 429) setErrorMessage(t('auth.errors.rate_limited', 'Too many attempts. Please try again later.'));
         else if (apiError.statusCode === 0) setErrorMessage(t('auth.errors.network', 'Unable to reach ORDIUM. Check your connection and try again.'));
         else setErrorMessage(apiError.message || t('auth.errors.server_error', 'Something went wrong. Please try again.'));
@@ -141,10 +146,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-white">{t('auth.login_title', 'Sign in to ORDIUM')}</h1>
               <p className="text-sm text-[#A5B1C3] leading-relaxed">
-                {t('auth.login_subtitle', 'Access your fraud intelligence cluster, live order streams, and API keys.')}
+                {t('mkt.auth.login_subtitle', 'سجّل الدخول لمتابعة طلبات متجرك وتأكيدها.')}
               </p>
             </div>
 
+            {sessionNotice && !errorMessage && (
+              <p role="status" className="mb-5 rounded-xl border border-[#52D9E8]/25 bg-[#52D9E8]/[0.06] p-3.5 text-sm leading-relaxed text-[#CFF6FA]">
+                {sessionNotice === 'signed_out'
+                  ? t('auth.session_signed_out', 'You signed out in another tab. Sign in again to continue.')
+                  : t('auth.session_expired', 'Your session has ended for your security. Sign in again to continue where you left off.')}
+              </p>
+            )}
             <div className="mb-5">
               <FormAlert message={errorMessage} requestId={requestId} focusKey={submitCount} />
             </div>
@@ -167,7 +179,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
                     spellCheck={false}
                     aria-invalid={fieldErrors.email ? true : undefined}
                     aria-describedby={fieldErrors.email ? `${emailId}-error` : undefined}
-                    className="ordium-input has-leading-icon"
+                    className="ordium-input has-leading-icon placeholder:!text-[var(--ordium-subtle)]"
                   />
                 </div>
                 {fieldErrors.email && <p id={`${emailId}-error`} className="ordium-field-error">{fieldErrors.email}</p>}
@@ -192,7 +204,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
                     autoComplete="current-password"
                     aria-invalid={fieldErrors.password ? true : undefined}
                     aria-describedby={fieldErrors.password ? `${passwordId}-error` : undefined}
-                    className="ordium-input has-leading-icon has-trailing-action"
+                    className="ordium-input has-leading-icon has-trailing-action placeholder:!text-[var(--ordium-subtle)]"
                   />
                   <button
                     type="button"
@@ -219,36 +231,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
               </Button>
             </form>
 
-            <div className="my-6 flex items-center gap-3" aria-hidden="true">
-              <span className="h-px flex-1 bg-white/10" />
-              <span className="text-xs text-[#718096]">{t('ui.or', 'or')}</span>
-              <span className="h-px flex-1 bg-white/10" />
-            </div>
-
-            <div className="p-4 rounded-xl bg-black/30 border border-white/[0.08] space-y-2.5">
-              <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                <Key aria-hidden="true" className="w-4 h-4 text-[#22D3EE]" />
-                <span>{t('auth.api_key_access', 'Merchant API Key Access')}</span>
-              </div>
-              <p className="text-xs text-[#A5B1C3] leading-relaxed">
-                {t('auth.api_key_access_desc', 'For programmatic integrations, use the store API keys from your dashboard.')}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onLaunchConsole}
-                  className="w-full justify-center"
-                  leftIcon={<Terminal aria-hidden="true" className="w-3.5 h-3.5 text-[#22D3EE]" />}
-                >
-                  {t('auth.launch_sandbox_direct', 'Open simulator')}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => onNavigate('/docs')} className="w-full justify-center">
-                  {t('nav.api_docs', 'API Docs')}
-                </Button>
-              </div>
-            </div>
-
             <p className="mt-6 text-center text-sm text-[#A5B1C3]">
               {t('auth.no_account', "Don't have an account?")}{' '}
               <button type="button" onClick={() => onNavigate('/register')} className="text-[#52D9E8] font-semibold hover:underline">
@@ -257,14 +239,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
             </p>
           </div>
 
-          <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-[#718096]">
-            <ShieldCheck aria-hidden="true" className="w-3.5 h-3.5 text-[#48D6A0]" />
-            {t('ui.session_cookie_note', 'Your session is protected by a secure, HttpOnly cookie.')}
+          {/* Developer access is documentation only; merchants always sign in with email and password. */}
+          <p className="mt-5 text-center">
+            <button type="button" onClick={() => onNavigate('/docs')} className="min-h-10 text-sm text-[var(--ordium-subtle)] hover:text-white hover:underline">
+              {t('mkt.auth.dev_link', 'للمطورين: توثيق API')}
+            </button>
           </p>
         </div>
       </main>
 
-      <footer className="max-w-md w-full mx-auto text-center text-xs text-[#64748B] z-10">
+      <footer className="max-w-md w-full mx-auto text-center text-xs text-[var(--ordium-subtle)] z-10">
         © {new Date().getFullYear()} ORDIUM. {t('footer.all_rights', 'All rights reserved.')}
       </footer>
 

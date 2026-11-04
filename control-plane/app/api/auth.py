@@ -13,6 +13,8 @@ from app.models.organization import Organization
 from app.schemas.auth import LoginRequest, RegisterRequest, RegisterResponse, SessionResponse, AccountSettingsUpdateRequest, ChangePasswordRequest, SessionInfo, VerifyEmailRequest, ResendVerificationRequest
 from app.services.ordium_api import OrdiumProvisioningClient, OrdiumApiError
 from app.services.passwords import hash_password, verify_password
+from app.client_ip import client_ip
+import secrets
 from app.services.verification import VerificationService
 from app.services.email import send_verification_email, EmailDeliveryError
 from collections import defaultdict, deque
@@ -32,8 +34,8 @@ def _rate_limit(request: Request, bucket: str, limit: int, window_seconds: int =
     global _rate_limit_calls
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(seconds=window_seconds)
-    client_host = request.client.host if request.client else "unknown"
-    key = f"{bucket}:{client_host}"
+    # The TCP peer is always the Web proxy; use the browser IP it reports (trusted peers only).
+    key = f"{bucket}:{client_ip(request)}"
     with _RATE_LIMIT_LOCK:
         _rate_limit_calls += 1
         q = _RATE_BUCKETS.get(key)
@@ -54,6 +56,42 @@ def _rate_limit(request: Request, bucket: str, limit: int, window_seconds: int =
         if len(q) >= limit:
             raise HTTPException(status_code=429, detail="Too many account requests; retry later")
         q.append(now)
+
+# Per-account brute-force protection, independent of the caller's IP address.
+_FAILED_LOGINS: dict[str, deque[datetime]] = defaultdict(deque)
+_FAILED_LOGIN_LIMIT = 10
+_FAILED_LOGIN_WINDOW = timedelta(minutes=15)
+# Verifying against a dummy hash when the email is unknown keeps response time the same, so
+# timing does not reveal which emails have accounts.
+_DUMMY_PASSWORD_HASH = hash_password(secrets.token_urlsafe(24))
+
+
+def _account_locked(email: str) -> bool:
+    cutoff = datetime.now(timezone.utc) - _FAILED_LOGIN_WINDOW
+    with _RATE_LIMIT_LOCK:
+        q = _FAILED_LOGINS.get(email)
+        if not q:
+            return False
+        while q and q[0] <= cutoff:
+            q.popleft()
+        if not q:
+            _FAILED_LOGINS.pop(email, None)
+            return False
+        return len(q) >= _FAILED_LOGIN_LIMIT
+
+
+def _record_failed_login(email: str) -> None:
+    with _RATE_LIMIT_LOCK:
+        if len(_FAILED_LOGINS) >= _RATE_BUCKET_MAX and email not in _FAILED_LOGINS:
+            for old_key in list(_FAILED_LOGINS)[: max(1, _RATE_BUCKET_MAX // 20)]:
+                _FAILED_LOGINS.pop(old_key, None)
+        _FAILED_LOGINS[email].append(datetime.now(timezone.utc))
+
+
+def _clear_failed_logins(email: str) -> None:
+    with _RATE_LIMIT_LOCK:
+        _FAILED_LOGINS.pop(email, None)
+
 
 def _registration_response(user, membership, *, verification_required=False, verification_token=None, initial_test_api_key=None):
     org = membership.organization
@@ -283,9 +321,14 @@ def resend_verification(data: ResendVerificationRequest, request: Request, db: S
 def login(data: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     _rate_limit(request, "login", 20)
     email = str(data.email).strip().lower()
+    if _account_locked(email):
+        raise HTTPException(status_code=429, detail="Too many failed sign-in attempts for this account; try again in 15 minutes")
     user = db.scalar(select(User).where(User.email == email))
-    if user is None or not verify_password(data.password, user.password_hash):
+    password_ok = verify_password(data.password, user.password_hash if user is not None else _DUMMY_PASSWORD_HASH)
+    if user is None or not password_ok:
+        _record_failed_login(email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    _clear_failed_logins(email)
     if user.status != "active":
         raise HTTPException(status_code=403, detail="Account is not active; verify your email first")
     membership = db.scalar(select(Membership).where(Membership.user_id == user.id).order_by(Membership.created_at.asc()))
@@ -417,7 +460,12 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
 @router.get("/sessions", response_model=list[SessionInfo])
 def list_sessions(request: Request, session_data=Depends(get_current_session), db: Session = Depends(get_db)):
     current, user, _membership = session_data
-    rows = db.scalars(select(DbSession).where(DbSession.user_id == user.id, DbSession.revoked_at.is_(None)).order_by(DbSession.last_seen_at.desc())).all()
+    # Expired sessions can no longer be used, so they are not "active" sessions to the user.
+    rows = db.scalars(select(DbSession).where(
+        DbSession.user_id == user.id,
+        DbSession.revoked_at.is_(None),
+        DbSession.expires_at > datetime.now(timezone.utc),
+    ).order_by(DbSession.last_seen_at.desc())).all()
     return [SessionInfo(id=row.id, created_at=row.created_at, last_seen_at=row.last_seen_at, expires_at=row.expires_at, current=row.id == current.id) for row in rows]
 
 @router.post("/sessions/revoke-others", status_code=204)

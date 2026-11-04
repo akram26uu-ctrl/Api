@@ -5,7 +5,7 @@ from sqlalchemy import or_
 from app.api.client_ip import get_client_ip
 from app.api.dependencies import get_database, require_api_scope
 from app.models.api_key import ApiKey
-from app.schemas.order import OrderCreate, OrderResponse, OrderListPage, OrderListResponse
+from app.schemas.order import OrderCreate, OrderResponse, OrderListPage, OrderListResponse, normalize_customer_ip
 from app.services.order_service import OrderService
 from app.models.order import Order
 from app.models.order_item import OrderItem
@@ -82,6 +82,7 @@ def list_orders(
     status_filter: str | None = Query(default=None, alias="status"),
     search: str | None = Query(default=None, max_length=255),
     store_id: str | None = Query(default=None),
+    sort: str = Query(default="newest", pattern="^(newest|risk)$"),
     db: Session = Depends(get_database),
     api_key: ApiKey = Depends(require_api_scope("orders:read")),
 ):
@@ -111,7 +112,19 @@ def list_orders(
         pattern = f"%{search.strip()}%"
         query = query.filter(or_(Order.external_order_id.ilike(pattern), Order.first_name.ilike(pattern), Order.last_name.ilike(pattern), Order.ip_address.ilike(pattern), Order.items.any(OrderItem.product_name.ilike(pattern))))
     total = query.count()
-    orders = query.order_by(Order.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    if sort == "risk":
+        # Work queue: riskiest first, then oldest waiting first so nothing ages unseen.
+        from sqlalchemy import func, select
+        top_score = (
+            select(func.max(RiskAssessment.score))
+            .where(RiskAssessment.order_id == Order.id)
+            .correlate(Order)
+            .scalar_subquery()
+        )
+        query = query.order_by(top_score.desc().nulls_last(), Order.created_at.asc())
+    else:
+        query = query.order_by(Order.created_at.desc())
+    orders = query.offset((page - 1) * limit).limit(limit).all()
     return OrderListPage(data=[_order_list_response(order) for order in orders], pagination={"total": total, "page": page, "limit": limit, "total_pages": (total + limit - 1) // limit if total else 1})
 
 @router.get("/{order_id}", response_model=OrderListResponse)
@@ -141,12 +154,24 @@ def create_order(
     x_ordium_store_id: str | None = Header(default=None, alias="X-Ordium-Store-ID", max_length=64),
     store_id: str | None = Query(default=None, max_length=64),
     x_simulation_ip: str | None = Header(default=None, alias="X-Simulation-IP", max_length=64),
+    x_customer_ip: str | None = Header(default=None, alias="X-Customer-IP", max_length=64),
     db: Session = Depends(get_database),
     api_key: ApiKey = Depends(require_api_scope("orders:write")),
 ):
-    client_ip = get_client_ip(request)
+    # Risk IP = the shopper's IP supplied by the merchant (body `customer_ip`
+    # or `X-Customer-IP`). The transport peer is the merchant's server and is
+    # not a customer signal. Test keys may still simulate an IP.
+    if data.customer_ip is None and x_customer_ip:
+        try:
+            data.customer_ip = normalize_customer_ip(x_customer_ip)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    client_ip = data.customer_ip
     if api_key.environment == "test" and x_simulation_ip:
         client_ip = x_simulation_ip.strip()
+    elif api_key.environment == "test" and client_ip is None:
+        # Simulation/dashboard flows in test mode keep the previous behaviour.
+        client_ip = get_client_ip(request)
     user_agent = request.headers.get("User-Agent")
     if user_agent is not None:
         user_agent = user_agent[:1000]
@@ -208,7 +233,15 @@ def list_confirmation_attempts(
         OrderConfirmationAttempt.environment == api_key.environment,
     ).order_by(OrderConfirmationAttempt.created_at.desc()).limit(50).all()
     latest = order.status.value if order.status.value in {"confirmed", "cancelled"} else (attempts[0].outcome if attempts else "pending")
-    return {"status": latest, "data": [{
+    from app.models.whatsapp_message import WhatsAppMessage
+    auto = db.query(WhatsAppMessage).filter(WhatsAppMessage.order_id == order.id).one_or_none()
+    automatic = None if auto is None else {
+        "channel": "whatsapp", "status": auto.status, "reply_outcome": auto.reply_outcome,
+        "created_at": auto.created_at, "sent_at": auto.sent_at, "delivered_at": auto.delivered_at,
+        "read_at": auto.read_at, "replied_at": auto.replied_at,
+        "failed": auto.status == "failed",
+    }
+    return {"status": latest, "automatic": automatic, "data": [{
         "id": str(item.id), "order_id": str(item.order_id), "channel": item.channel,
         "outcome": item.outcome, "notes": item.notes, "created_at": item.created_at,
     } for item in attempts]}
@@ -240,26 +273,14 @@ def create_confirmation_attempt(
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if data.outcome == "confirmed":
-        if order.status not in {OrderStatus.PENDING, OrderStatus.CONFIRMED}:
-            raise HTTPException(status_code=409, detail="This order can no longer be confirmed")
-        order.status = OrderStatus.CONFIRMED
-    elif data.outcome == "cancelled":
-        if order.status not in {OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.CANCELLED}:
-            raise HTTPException(status_code=409, detail="A fulfilled order cannot be cancelled through confirmation")
-        order.status = OrderStatus.CANCELLED
-
-    attempt = OrderConfirmationAttempt(
-        order_id=order.id,
-        merchant_id=api_key.merchant_id,
-        store_id=order.store_id,
-        api_key_id=api_key.id,
-        environment=api_key.environment,
-        channel=data.channel,
-        outcome=data.outcome,
-        notes=data.notes.strip() if data.notes else None,
-    )
-    db.add(attempt)
+    from app.services.confirmation_service import ConfirmationConflict, apply_confirmation
+    try:
+        attempt = apply_confirmation(
+            db, order, channel=data.channel, outcome=data.outcome,
+            notes=data.notes, api_key_id=api_key.id,
+        )
+    except ConfirmationConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     db.commit()
     db.refresh(attempt)
     return {

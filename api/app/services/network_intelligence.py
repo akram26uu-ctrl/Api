@@ -48,6 +48,10 @@ class MockNetworkIntelligenceProvider:
 
 
 class IPQualityScoreProvider:
+    # During a provider outage every order would otherwise wait for the full
+    # timeout again. Cache unavailable results briefly.
+    NEGATIVE_CACHE_TTL_SECONDS = 60
+
     # Keep the API key out of URLs and access logs by sending it in IPQS-KEY.
     BASE_URL = "https://www.ipqualityscore.com/api/json/ip"
 
@@ -71,7 +75,8 @@ class IPQualityScoreProvider:
         now = time.monotonic()
         with self._lock:
             cached = self._cache.get(ip_address)
-            if cached is not None and self.cache_ttl_seconds > 0 and now - cached[0] < self.cache_ttl_seconds:
+            ttl = self.cache_ttl_seconds if cached is None or cached[1].available else min(self.cache_ttl_seconds, self.NEGATIVE_CACHE_TTL_SECONDS)
+            if cached is not None and ttl > 0 and now - cached[0] < ttl:
                 self._cache.move_to_end(ip_address)
                 return cached[1]
             if self.cache_ttl_seconds == 0 and cached is not None:
@@ -103,6 +108,10 @@ class IPQualityScoreProvider:
             )
             response.raise_for_status()
             data = response.json()
+            if not isinstance(data, dict) or data.get("success") is False:
+                # IPQS reports quota/key errors with HTTP 200; treat as
+                # unavailable instead of as a clean IP.
+                raise ValueError("ipqs lookup unsuccessful")
             result = NetworkIntelResult(
                 ip_address=ip_address,
                 vpn=bool(data.get("vpn")),
@@ -118,7 +127,7 @@ class IPQualityScoreProvider:
                 available=True,
             )
         except (httpx.HTTPError, ValueError, TypeError, KeyError):
-            return NetworkIntelResult(
+            result = NetworkIntelResult(
                 ip_address=ip_address,
                 provider="ipqs",
                 available=False,

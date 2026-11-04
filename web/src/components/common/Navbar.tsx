@@ -2,8 +2,8 @@
  * ORDIUM Public Website Navbar
  */
 
-import React, { useEffect, useState } from 'react';
-import { ChevronRight, ChevronLeft, Menu, X, Terminal } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ChevronRight, ChevronLeft, ChevronDown, Menu, X } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { Button } from './Button';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -19,20 +19,34 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { t, isRTL } = useLanguage();
 
-  const navLinks = [
-    { label: t('nav.platform', 'Platform'), path: '/platform' },
-    { label: t('nav.intelligence', 'Intelligence'), path: '/intelligence' },
-    { label: t('nav.security', 'Security'), path: '/security' },
-    { label: t('nav.developers', 'Developers'), path: '/developers' },
-    { label: t('nav.pricing', 'Pricing'), path: '/pricing' },
-    { label: t('nav.docs', 'Docs'), path: '/docs' },
-    { label: t('nav.company', 'Company'), path: '/company' }
+  const primaryLinks = [
+    { label: t('nav.platform', 'المنصة'), path: '/platform' },
+    { label: t('nav.intelligence', 'ذكاء المخاطر'), path: '/intelligence' },
+    { label: t('mkt.nav.pricing', 'الأسعار'), path: '/pricing' },
+    { label: t('mkt.nav.docs', 'التوثيق'), path: '/docs' },
   ];
+  const moreLinks = [
+    { label: t('nav.developers', 'المطورون'), path: '/developers' },
+    { label: t('nav.security', 'الأمان والحماية'), path: '/security' },
+    { label: t('nav.company', 'عن الشركة'), path: '/company' },
+  ];
+  const navLinks = [...primaryLinks, ...moreLinks];
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  const moreActive = moreLinks.some(link => link.path === currentPath);
 
   const ChevronIcon = isRTL ? ChevronLeft : ChevronRight;
 
   // Close the mobile menu with Escape and whenever the route changes.
-  useEffect(() => { setMobileMenuOpen(false); }, [currentPath]);
+  useEffect(() => { setMobileMenuOpen(false); setMoreOpen(false); }, [currentPath]);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMoreOpen(false); };
+    const onPointer = (event: PointerEvent) => { if (!moreRef.current?.contains(event.target as Node)) setMoreOpen(false); };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('pointerdown', onPointer); };
+  }, [moreOpen]);
   useEffect(() => {
     if (!mobileMenuOpen) return;
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMobileMenuOpen(false); };
@@ -41,14 +55,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
   }, [mobileMenuOpen]);
 
   return (
-    <header className="ordium-navbar sticky top-0 z-40 w-full border-b border-white/5 bg-[#080B12]/85 backdrop-blur-xl transition-all">
+    <header className="ordium-navbar sticky top-0 z-40 w-full border-b border-white/5 bg-[var(--ordium-canvas)]/85 backdrop-blur-xl transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         <BrandLogo onClick={() => { onNavigate('/'); setMobileMenuOpen(false); }} />
 
-        {/* Desktop Nav Links */}
-        <nav aria-label={t('ui.main_navigation', 'Main navigation')} className="hidden xl:flex items-center gap-0.5 2xl:gap-2 px-3 min-w-0">
-          {navLinks.map(link => {
+        {/* Desktop nav: four primary links inline, the rest in a "More" menu so ar/fr/en all fit from 1280px. */}
+        <nav aria-label={t('ui.main_navigation', 'Main navigation')} className="hidden xl:flex items-center gap-1 px-3 min-w-0">
+          {primaryLinks.map(link => {
             const isActive = currentPath === link.path;
             return (
               <button
@@ -56,52 +70,60 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
                 type="button"
                 onClick={() => onNavigate(link.path)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`px-2.5 text-[13px] font-medium transition-colors whitespace-nowrap rounded-lg ${
-                  isActive ? 'text-[#22D3EE] font-semibold' : 'text-[#94A3B8] hover:text-white'
+                className={`px-2.5 text-sm font-medium transition-colors whitespace-nowrap rounded-lg ${
+                  isActive ? 'text-[var(--ordium-signal)] font-semibold' : 'text-[var(--ordium-muted)] hover:text-white'
                 }`}
               >
                 {link.label}
               </button>
             );
           })}
+          <div ref={moreRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setMoreOpen(open => !open)}
+              aria-expanded={moreOpen}
+              aria-controls="ordium-more-nav"
+              aria-current={moreActive ? 'page' : undefined}
+              className={`inline-flex items-center gap-1 px-2.5 text-sm font-medium transition-colors whitespace-nowrap rounded-lg ${
+                moreActive ? 'text-[var(--ordium-signal)] font-semibold' : 'text-[var(--ordium-muted)] hover:text-white'
+              }`}
+            >
+              {t('mkt.nav.more', 'المزيد')}
+              <ChevronDown aria-hidden="true" className={`w-3.5 h-3.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {moreOpen && (
+              <ul id="ordium-more-nav" className="absolute top-full mt-2 start-0 min-w-[12rem] rounded-xl border border-white/10 bg-[var(--ordium-surface)] p-1.5 shadow-[0_18px_50px_rgba(0,0,0,0.4)]">
+                {moreLinks.map(link => (
+                  <li key={link.path}>
+                    <button
+                      type="button"
+                      onClick={() => { setMoreOpen(false); onNavigate(link.path); }}
+                      aria-current={currentPath === link.path ? 'page' : undefined}
+                      className={`w-full min-h-10 px-3 rounded-lg text-start text-sm whitespace-nowrap transition-colors ${
+                        currentPath === link.path ? 'text-[var(--ordium-signal)] bg-white/5' : 'text-[#C7D0DD] hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {link.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </nav>
 
-        {/* Desktop Action CTAs & Language Switcher */}
+        {/* Desktop actions */}
         <div className="hidden xl:flex items-center gap-2 shrink-0">
-          {/* Auth Sign In Link */}
           <button
             type="button"
             onClick={() => onNavigate('/login')}
-            className={`min-h-10 text-[13px] font-medium px-3 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap ${
-              currentPath === '/login' ? 'text-[#22D3EE] font-semibold bg-white/5' : ''
+            className={`min-h-10 text-sm font-medium px-3 rounded-lg text-[var(--ordium-muted)] hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap ${
+              currentPath === '/login' ? 'text-[var(--ordium-signal)] font-semibold bg-white/5' : ''
             }`}
           >
             {t('nav.sign_in', 'Sign In')}
           </button>
-
-          {/* Register Link */}
-          <button
-            type="button"
-            onClick={() => onNavigate('/register')}
-            className={`hidden 2xl:inline-flex items-center min-h-10 text-[13px] font-medium px-3 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap ${
-              currentPath === '/register' ? 'text-[#22D3EE] font-semibold bg-white/5' : ''
-            }`}
-          >
-            {t('nav.register', 'Register')}
-          </button>
-
-          {/* Wrapper controls visibility: Button's own inline-flex would override a `hidden` class on it. */}
-          <span className="hidden 2xl:inline-flex">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onNavigate('/docs')}
-              leftIcon={<Terminal aria-hidden="true" className="w-3.5 h-3.5 text-[#22D3EE]" />}
-              className="whitespace-nowrap"
-            >
-              {t('nav.api_docs', 'API Docs')}
-            </Button>
-          </span>
 
           <Button
             variant="primary"
@@ -110,10 +132,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
             rightIcon={<ChevronIcon className="w-3.5 h-3.5" />}
             className="whitespace-nowrap"
           >
-            {t('nav.launch_console', 'Launch Console')}
+            {t('mkt.nav.cta', 'لوحة التحكم')}
           </Button>
 
-          {/* Distinct Separator & Language Switcher with clear spacing */}
           <div className="flex items-center ps-3 ms-1 border-s border-white/10 shrink-0">
             <LanguageSwitcher variant="dropdown" align="end" />
           </div>
@@ -136,7 +157,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
           <button
             type="button"
             onClick={() => setMobileMenuOpen(open => !open)}
-            className="p-2.5 text-[#94A3B8] hover:text-white rounded-xl hover:bg-white/5 min-w-[44px] min-h-[44px] flex items-center justify-center border border-white/5"
+            className="p-2.5 text-[var(--ordium-muted)] hover:text-white rounded-xl hover:bg-white/5 min-w-[44px] min-h-[44px] flex items-center justify-center border border-white/5"
             aria-label={mobileMenuOpen ? t('ui.close_menu', 'Close menu') : t('ui.open_menu', 'Open menu')}
             aria-expanded={mobileMenuOpen}
             aria-controls="ordium-mobile-nav"
@@ -148,10 +169,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <nav id="ordium-mobile-nav" aria-label={t('ui.main_navigation', 'Main navigation')} className="xl:hidden border-b border-white/10 bg-[#0D1320] px-4 py-4 space-y-3 animate-in slide-in-from-top-2 max-h-[calc(100dvh-4rem)] overflow-y-auto">
+        <nav id="ordium-mobile-nav" aria-label={t('ui.main_navigation', 'Main navigation')} className="xl:hidden border-b border-white/10 bg-[var(--ordium-surface)] px-4 py-4 space-y-3 animate-in slide-in-from-top-2 max-h-[calc(100dvh-4rem)] overflow-y-auto">
           {/* Mobile Language Switcher Bar */}
           <div className="py-2.5 px-3 rounded-xl bg-white/[0.03] border border-white/10">
-            <span className="text-xs text-[#A5B1C3] block mb-2">
+            <span className="text-xs text-[var(--ordium-muted)] block mb-2">
               {t('language.select', 'Language')}
             </span>
             <LanguageSwitcher variant="segmented" className="w-full justify-center" />
@@ -167,7 +188,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
                   onNavigate(link.path);
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full min-h-11 px-3 rounded-lg text-start text-[15px] font-medium transition-colors ${currentPath === link.path ? 'bg-[#22D3EE]/10 text-[#52D9E8]' : 'text-[#C7D0DD] hover:text-white hover:bg-white/5'}`}
+                className={`w-full min-h-11 px-3 rounded-lg text-start text-[15px] font-medium transition-colors ${currentPath === link.path ? 'bg-[var(--ordium-signal)]/10 text-[var(--ordium-signal)]' : 'text-[#C7D0DD] hover:text-white hover:bg-white/5'}`}
               >
                 {link.label}
               </button>
@@ -182,7 +203,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
                   setMobileMenuOpen(false);
                 }}
                 type="button"
-                className="min-h-11 text-sm text-center font-medium text-[#22D3EE] bg-[#22D3EE]/10 rounded-lg hover:bg-[#22D3EE]/20 transition-colors"
+                className="min-h-11 text-sm text-center font-medium text-[var(--ordium-signal)] bg-[var(--ordium-signal)]/10 rounded-lg hover:bg-[var(--ordium-signal)]/20 transition-colors"
               >
                 {t('nav.sign_in', 'Sign In')}
               </button>
@@ -217,7 +238,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, onOpenD
               }}
               className="w-full justify-center"
             >
-              {t('nav.launch_console', 'Launch Console')}
+              {t('mkt.nav.cta', 'لوحة التحكم')}
             </Button>
           </div>
         </nav>

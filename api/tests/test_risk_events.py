@@ -162,13 +162,13 @@ def test_risk_assessment_and_events():
         # High frequency = 0 because historical orders
         # are outside the 10-minute window.
         # =========================================================
-        assert result.score == 100
+        assert result.score == 95  # identity_reuse group capped at 45 (rules-v5)
         assert result.decision == RiskDecision.REJECT
 
         assert result.assessment.order_id == current_order.id
         assert (
             result.assessment.model_version
-            == "rules-v4"
+            == "rules-v5"
         )
 
         # =========================================================

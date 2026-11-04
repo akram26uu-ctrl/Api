@@ -173,7 +173,7 @@ def test_global_phone_reputation_requires_evaluated_orders_and_multiple_merchant
     try:
         merchants = []
         for i in range(2):
-            merchant = Merchant(name=f"Global-{i}", email=f"global-{i}-{uuid4()}@ordium.local", status=MerchantStatus.ACTIVE)
+            merchant = Merchant(name=f"Global-{i}", email=f"global-{i}-{uuid4()}@ordium.local", status=MerchantStatus.ACTIVE, created_at=datetime.now(timezone.utc) - timedelta(days=30))
             db.add(merchant)
             db.flush()
             merchants.append(merchant)

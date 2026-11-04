@@ -11,13 +11,14 @@
 import React, { useId, useMemo, useState } from 'react';
 import {
   Shield, Lock, Mail, Building2, User, Phone, Globe, ShoppingBag,
-  CheckCircle2, ArrowRight, ArrowLeft, Eye, EyeOff, Key, Info, RefreshCw, MapPin, Check, X
+  CheckCircle2, ArrowRight, ArrowLeft, Eye, EyeOff, Info, RefreshCw, MapPin, Check, X
 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { BrandLogo } from '../common/BrandLogo';
 import { FormAlert } from '../common/FormAlert';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { bidiIsolate } from '../marketing/Bidi';
 import { authApi } from '../../lib/api/auth';
 import { OrdiumApiError } from '../../lib/api/client';
 import { ALGERIAN_WILAYAS, ECOMMERCE_PLATFORMS, MONTHLY_VOLUME_OPTIONS, BUSINESS_TYPES } from '../../lib/algeriaData';
@@ -304,24 +305,24 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                     <FieldLabel htmlFor={fid('firstName')} required>{t('auth.first_name_label', 'First Name')}</FieldLabel>
                     <input id={fid('firstName')} type="text" required autoComplete="given-name" value={firstName}
                       onChange={e => { setFirstName(e.target.value); clearErrorFor('firstName'); }}
-                      placeholder={t('auth.first_name_placeholder', 'Karim')} aria-invalid={invalid('firstName')} className="ordium-input" />
+                      placeholder={t('auth.first_name_placeholder', 'Karim')} aria-invalid={invalid('firstName')} className="ordium-input placeholder:!text-[var(--ordium-subtle)]" />
                   </div>
                   <div>
                     <FieldLabel htmlFor={fid('lastName')} required>{t('auth.last_name_label', 'Last Name')}</FieldLabel>
                     <input id={fid('lastName')} type="text" required autoComplete="family-name" value={lastName}
                       onChange={e => { setLastName(e.target.value); clearErrorFor('lastName'); }}
-                      placeholder={t('auth.last_name_placeholder', 'Bensalem')} aria-invalid={invalid('lastName')} className="ordium-input" />
+                      placeholder={t('auth.last_name_placeholder', 'Bensalem')} aria-invalid={invalid('lastName')} className="ordium-input placeholder:!text-[var(--ordium-subtle)]" />
                   </div>
                 </div>
 
                 <div>
                   <FieldLabel htmlFor={fid('email')} required>{t('auth.email_label', 'Work Email')}</FieldLabel>
                   <div className="relative" dir="ltr">
-                    <span className="ordium-input-icon"><Mail aria-hidden="true" className="w-4 h-4" /></span>
+                    <span className="ordium-input-icon placeholder:!text-[var(--ordium-subtle)]"><Mail aria-hidden="true" className="w-4 h-4" /></span>
                     <input id={fid('email')} type="email" inputMode="email" required autoComplete="email" autoCapitalize="none" spellCheck={false}
                       value={email} onChange={e => { setEmail(e.target.value); clearErrorFor('email'); }}
                       placeholder={t('auth.email_placeholder', 'karim@store.dz')} aria-invalid={invalid('email')}
-                      className="ordium-input has-leading-icon font-mono" />
+                      className="ordium-input has-leading-icon font-mono placeholder:!text-[var(--ordium-subtle)]" />
                   </div>
                 </div>
 
@@ -329,12 +330,12 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                   <div>
                     <FieldLabel htmlFor={fid('password')} required>{t('auth.password_label', 'Password')}</FieldLabel>
                     <div className="relative" dir="ltr">
-                      <span className="ordium-input-icon"><Lock aria-hidden="true" className="w-4 h-4" /></span>
+                      <span className="ordium-input-icon placeholder:!text-[var(--ordium-subtle)]"><Lock aria-hidden="true" className="w-4 h-4" /></span>
                       <input id={fid('password')} type={showPassword ? 'text' : 'password'} required autoComplete="new-password"
                         value={password} onChange={e => { setPassword(e.target.value); clearErrorFor('password'); }}
                         placeholder="••••••••••••" aria-invalid={invalid('password')} aria-describedby={fid('password-rules')}
-                        className="ordium-input has-leading-icon has-trailing-action font-mono" />
-                      <button type="button" onClick={() => setShowPassword(value => !value)} className="ordium-input-action"
+                        className="ordium-input has-leading-icon has-trailing-action font-mono placeholder:!text-[var(--ordium-subtle)]" />
+                      <button type="button" onClick={() => setShowPassword(value => !value)} className="ordium-input-action placeholder:!text-[var(--ordium-subtle)]"
                         aria-label={showPassword ? t('auth.hide_password', 'Hide password') : t('auth.show_password', 'Show password')} aria-pressed={showPassword}>
                         {showPassword ? <EyeOff aria-hidden="true" className="w-4 h-4" /> : <Eye aria-hidden="true" className="w-4 h-4" />}
                       </button>
@@ -343,11 +344,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                   <div>
                     <FieldLabel htmlFor={fid('confirmPassword')} required>{t('auth.confirm_password_label', 'Confirm Password')}</FieldLabel>
                     <div className="relative" dir="ltr">
-                      <span className="ordium-input-icon"><Lock aria-hidden="true" className="w-4 h-4" /></span>
+                      <span className="ordium-input-icon placeholder:!text-[var(--ordium-subtle)]"><Lock aria-hidden="true" className="w-4 h-4" /></span>
                       <input id={fid('confirmPassword')} type={showPassword ? 'text' : 'password'} required autoComplete="new-password"
                         value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); clearErrorFor('confirmPassword'); }}
                         placeholder="••••••••••••" aria-invalid={invalid('confirmPassword')}
-                        className="ordium-input has-leading-icon font-mono" />
+                        className="ordium-input has-leading-icon font-mono placeholder:!text-[var(--ordium-subtle)]" />
                     </div>
                     {confirmPassword && password !== confirmPassword && (
                       <p className="ordium-field-error">{t('auth.errors.password_mismatch', 'Passwords do not match.')}</p>
@@ -388,11 +389,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                     <FieldLabel htmlFor={fid('organization')} required>{t('auth.organization_label', 'Company / Store Name')}</FieldLabel>
                     <input id={fid('organization')} type="text" required autoComplete="organization" value={organization}
                       onChange={e => { setOrganization(e.target.value); clearErrorFor('organization'); }}
-                      placeholder={t('auth.organization_placeholder', 'Atlas Retail Store')} aria-invalid={invalid('organization')} className="ordium-input" />
+                      placeholder={t('auth.organization_placeholder', 'Atlas Retail Store')} aria-invalid={invalid('organization')} className="ordium-input placeholder:!text-[var(--ordium-subtle)]" />
                   </div>
                   <div>
                     <FieldLabel htmlFor={fid('businessType')}>{t('auth.business_type_label', 'Business Type')}</FieldLabel>
-                    <select id={fid('businessType')} value={businessType} onChange={e => setBusinessType(e.target.value)} className="ordium-input">
+                    <select id={fid('businessType')} value={businessType} onChange={e => setBusinessType(e.target.value)} className="ordium-input placeholder:!text-[var(--ordium-subtle)]">
                       {BUSINESS_TYPES.map(bt => (
                         <option key={bt.id} value={bt.id}>{language === 'ar' ? bt.labelAr : language === 'fr' ? bt.labelFr : bt.labelEn}</option>
                       ))}
@@ -403,14 +404,14 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <span className="ordium-label">{t('auth.country_label', 'Country')}</span>
-                    <div className="ordium-input flex items-center gap-2 text-[#A5B1C3]" aria-readonly="true">
+                    <div className="ordium-input flex items-center gap-2 text-[#A5B1C3] placeholder:!text-[var(--ordium-subtle)]" aria-readonly="true">
                       <MapPin aria-hidden="true" className="w-4 h-4 text-[#22D3EE] shrink-0" />
                       <span>{t('auth.country_algeria', 'Algeria (الجزائر)')}</span>
                     </div>
                   </div>
                   <div>
                     <FieldLabel htmlFor={fid('wilaya')}>{t('auth.wilaya_label', 'Wilaya / Province')}</FieldLabel>
-                    <select id={fid('wilaya')} value={wilaya} onChange={e => setWilaya(e.target.value)} className="ordium-input">
+                    <select id={fid('wilaya')} value={wilaya} onChange={e => setWilaya(e.target.value)} className="ordium-input placeholder:!text-[var(--ordium-subtle)]">
                       <option value="">{t('auth.wilaya_placeholder', 'Select your Wilaya')}</option>
                       {ALGERIAN_WILAYAS.map(w => (
                         <option key={w.code} value={`${w.code} - ${w.nameEn}`}>
@@ -422,16 +423,16 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                   <div>
                     <FieldLabel htmlFor={fid('city')}>{t('auth.city_label', 'City / Commune')}</FieldLabel>
                     <input id={fid('city')} type="text" autoComplete="address-level2" value={city} onChange={e => setCity(e.target.value)}
-                      placeholder={t('auth.city_placeholder', "e.g. Sidi M'Hamed, Oran")} className="ordium-input" />
+                      placeholder={t('auth.city_placeholder', "e.g. Sidi M'Hamed, Oran")} className="ordium-input placeholder:!text-[var(--ordium-subtle)]" />
                   </div>
                 </div>
 
                 <div>
                   <FieldLabel htmlFor={fid('website')}>{t('auth.website_label', 'Store Website / URL')}</FieldLabel>
                   <div className="relative" dir="ltr">
-                    <span className="ordium-input-icon"><Globe aria-hidden="true" className="w-4 h-4" /></span>
+                    <span className="ordium-input-icon placeholder:!text-[var(--ordium-subtle)]"><Globe aria-hidden="true" className="w-4 h-4" /></span>
                     <input id={fid('website')} type="url" inputMode="url" autoComplete="url" value={websiteUrl} onChange={e => setWebsiteUrl(e.target.value)}
-                      placeholder={t('auth.website_placeholder', 'https://www.yourstore.dz')} className="ordium-input has-leading-icon font-mono" />
+                      placeholder={t('auth.website_placeholder', 'https://www.yourstore.dz')} className="ordium-input has-leading-icon font-mono placeholder:!text-[var(--ordium-subtle)]" />
                   </div>
                 </div>
               </Section>
@@ -441,13 +442,13 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <FieldLabel htmlFor={fid('platform')}>{t('auth.platform_label', 'Primary E-Commerce Platform')}</FieldLabel>
-                    <select id={fid('platform')} value={platform} onChange={e => setPlatform(e.target.value)} className="ordium-input">
+                    <select id={fid('platform')} value={platform} onChange={e => setPlatform(e.target.value)} className="ordium-input placeholder:!text-[var(--ordium-subtle)]">
                       {ECOMMERCE_PLATFORMS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
                     </select>
                   </div>
                   <div>
                     <FieldLabel htmlFor={fid('volume')}>{t('auth.volume_label', 'Monthly Order Volume')}</FieldLabel>
-                    <select id={fid('volume')} value={monthlyVolume} onChange={e => setMonthlyVolume(e.target.value)} className="ordium-input">
+                    <select id={fid('volume')} value={monthlyVolume} onChange={e => setMonthlyVolume(e.target.value)} className="ordium-input placeholder:!text-[var(--ordium-subtle)]">
                       {MONTHLY_VOLUME_OPTIONS.map(v => (
                         <option key={v.id} value={v.id}>{language === 'ar' ? v.labelAr : language === 'fr' ? v.labelFr : v.labelEn}</option>
                       ))}
@@ -494,7 +495,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                     <span className="px-3.5 flex items-center text-sm font-mono text-[#22D3EE] bg-white/[0.05] border-e border-white/10 select-none">+213</span>
                     <input id={fid('phone')} type="tel" inputMode="tel" autoComplete="tel-national" value={phone} onChange={e => setPhone(e.target.value)}
                       placeholder={t('auth.phone_placeholder', '550 12 34 56')}
-                      className="ordium-input !border-0 !shadow-none !rounded-none !bg-transparent font-mono" />
+                      className="ordium-input !border-0 !shadow-none !rounded-none !bg-transparent font-mono placeholder:!text-[var(--ordium-subtle)]" />
                   </div>
                 </div>
 
@@ -520,9 +521,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
               <div className="p-4 rounded-xl bg-[#22D3EE]/5 border border-[#22D3EE]/15 flex items-start gap-3 text-start">
                 <Info aria-hidden="true" className="w-4 h-4 text-[#22D3EE] shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <span className="font-semibold text-sm text-white block">{t('auth.registration_notice_title', 'API Contract Transparency')}</span>
+                  <span className="font-semibold text-sm text-white block">{t('mkt.auth.notice_title', 'معلومات حسابك')}</span>
                   <p className="text-[#A5B1C3] text-xs leading-relaxed">
-                    {t('auth.registration_notice_desc', 'ORDIUM clusters authenticate primarily via Merchant API Keys. Profile fields are stored securely and mapped directly to your tenant metadata.')}
+                    {bidiIsolate(t('mkt.auth.notice_desc', 'نحفظ معلومات حسابك بأمان ونستعملها لتشغيل متجرك على ORDIUM فقط. لا تحتاج إلى مفاتيح API إلا إذا كان متجرك مبنيًا خصيصًا.'), isRTL)}
                   </p>
                 </div>
               </div>
@@ -538,17 +539,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                     {t('auth.sign_in_btn', 'Sign In')}
                   </button>
                 </p>
-                <div className="pt-4 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => (onLaunchConsole ? onLaunchConsole() : onNavigate('/'))}
-                    className="inline-flex min-h-10 items-center gap-1.5 text-sm text-[#A5B1C3] hover:text-white transition-colors"
-                  >
-                    <Key aria-hidden="true" className="w-4 h-4 text-[#22D3EE]" />
-                    <span>{t('auth.api_key_access', 'Merchant API Key Access')}</span>
-                    <ArrowIcon aria-hidden="true" className="w-3.5 h-3.5 text-[#22D3EE]" />
+                <p>
+                  <button type="button" onClick={() => onNavigate('/docs')} className="min-h-10 text-sm text-[var(--ordium-subtle)] hover:text-white hover:underline">
+                    {t('mkt.auth.dev_link', 'للمطورين: توثيق API')}
                   </button>
-                </div>
+                </p>
               </div>
             </form>
           )}
@@ -556,7 +551,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
       </main>
 
       <footer className="max-w-5xl w-full mx-auto text-center z-10 pt-4">
-        <p className="text-xs text-[#64748B]">© {new Date().getFullYear()} ORDIUM. {t('footer.all_rights', 'All rights reserved.')}</p>
+        <p className="text-xs text-[var(--ordium-subtle)]">© {new Date().getFullYear()} ORDIUM. {t('footer.all_rights', 'All rights reserved.')}</p>
       </footer>
     </div>
   );

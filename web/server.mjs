@@ -94,6 +94,11 @@ async function proxyRequest(req, res, mode, directAccountRoute = false) {
   ];
   const hasBody = !["GET", "HEAD"].includes(req.method) && Buffer.isBuffer(req.body) && req.body.length > 0;
   const headers = copyRequestHeaders(req, mode === "account" ? accountHeaders : dashboardHeaders, hasBody);
+  // nginx sets X-Real-IP to the browser address. Forward it so the Control Plane rate-limits per
+  // visitor instead of treating every user as this proxy. Client-sent copies are never forwarded:
+  // copyRequestHeaders only copies the allow-listed names above.
+  const realIp = typeof req.headers["x-real-ip"] === "string" ? req.headers["x-real-ip"].trim() : "";
+  if (realIp && /^[0-9a-fA-F:.]{2,45}$/.test(realIp)) headers.set("x-ordium-client-ip", realIp);
 
   try {
     const upstream = await fetch(target, {

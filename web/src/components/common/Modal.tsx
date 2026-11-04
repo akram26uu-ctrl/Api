@@ -97,13 +97,13 @@ export const Modal: React.FC<ModalProps> = ({
       }}
     >
       <div
-        className="fixed inset-0 bg-[#080B12]/85 backdrop-blur-md"
+        className="fixed inset-0 bg-[var(--ordium-canvas)]/85 backdrop-blur-md"
         aria-hidden="true"
         onMouseDown={() => onCloseRef.current()}
       />
       <div
         ref={dialogRef}
-        className={`relative z-10 my-auto w-full ${widthMap[maxWidth]} max-h-[calc(100dvh-24px)] sm:max-h-[calc(100dvh-32px)] overflow-y-auto overscroll-contain bg-[#0D1320] border border-white/10 rounded-2xl shadow-2xl p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-150`}
+        className={`relative z-10 my-auto w-full ${widthMap[maxWidth]} max-h-[calc(100dvh-24px)] sm:max-h-[calc(100dvh-32px)] overflow-y-auto overscroll-contain bg-[var(--ordium-surface)] border border-white/10 rounded-2xl shadow-2xl p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-150`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -115,14 +115,14 @@ export const Modal: React.FC<ModalProps> = ({
               {title}
             </h3>
             {description && (
-              <p id={descriptionId} className="text-sm leading-relaxed text-[#A5B1C3] mt-1.5">{description}</p>
+              <p id={descriptionId} className="text-sm leading-relaxed text-[var(--ordium-muted)] mt-1.5">{description}</p>
             )}
           </div>
           <button
             type="button"
             onClick={() => onCloseRef.current()}
             aria-label={t('common.close', 'Close')}
-            className="inline-flex items-center justify-center min-w-10 min-h-10 text-[#A5B1C3] hover:text-white transition-colors rounded-xl hover:bg-white/5 shrink-0"
+            className="inline-flex items-center justify-center min-w-10 min-h-10 text-[var(--ordium-muted)] hover:text-white transition-colors rounded-xl hover:bg-white/5 shrink-0"
           >
             <X aria-hidden="true" className="w-5 h-5" />
           </button>

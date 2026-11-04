@@ -1,4 +1,5 @@
 import { AuthSession, RegisterPayload, LoginCredentials } from './types';
+import { notifySessionExpired } from './sessionEvents';
 
 const configuredControlPlaneUrl =
   typeof import.meta !== 'undefined'
@@ -76,6 +77,11 @@ export async function controlPlaneFetch<T>(endpoint: string, options: RequestIni
 
   // Only surface a reference ID the server actually issued; a locally invented one cannot be traced.
   const requestId = response.headers.get('X-Request-ID') || '';
+  // A 401 on any authenticated account route means the session ended (expired or revoked).
+  // Sign-in itself answers 401 for wrong credentials, so it is excluded.
+  if (response.status === 401 && !endpoint.startsWith('/api/v1/auth/login') && !endpoint.startsWith('/api/v1/auth/me')) {
+    notifySessionExpired();
+  }
   if (!response.ok) {
     const payload = await readErrorPayload(response);
     const detail =

@@ -28,7 +28,7 @@ export const FormAlert: React.FC<FormAlertProps> = ({ message, requestId, tone =
       ref={ref}
       tabIndex={-1}
       role={isError ? 'alert' : 'status'}
-      className={`animate-in flex items-start gap-3 rounded-xl border p-3.5 text-start outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D1320] ${
+      className={`animate-in flex items-start gap-3 rounded-xl border p-3.5 text-start outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ordium-surface)] ${
         isError
           ? 'border-rose-400/30 bg-rose-500/10 text-rose-100 focus-visible:ring-rose-300'
           : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100 focus-visible:ring-emerald-300'
@@ -38,7 +38,7 @@ export const FormAlert: React.FC<FormAlertProps> = ({ message, requestId, tone =
       <div className="min-w-0 space-y-1 text-sm leading-relaxed">
         <p>{message}</p>
         {requestId && (
-          <p className="font-mono text-[11px] opacity-75">
+          <p className="font-mono text-xs opacity-75">
             {t('common.reference_id', 'Reference ID')}: <span dir="ltr">{requestId}</span>
           </p>
         )}

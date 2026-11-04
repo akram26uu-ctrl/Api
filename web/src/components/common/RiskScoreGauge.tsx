@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface RiskScoreGaugeProps {
   score: number;
@@ -16,17 +17,17 @@ export const RiskScoreGauge: React.FC<RiskScoreGaugeProps> = ({
   size = 'md',
   showLabel = true
 }) => {
+  const { t } = useLanguage();
   const normalized = Math.min(100, Math.max(0, score));
 
-  // Color logic
-  let color = '#10B981'; // Green
-  let label = 'Low Risk';
+  let color = 'var(--ordium-success)';
+  let label = t('dashboard.risk_level.low', 'خطر منخفض');
   if (normalized >= 75) {
-    color = '#EF4444'; // Red
-    label = 'Critical Risk';
+    color = 'var(--ordium-danger)';
+    label = t('dashboard.risk_level.critical', 'خطر مرتفع جدًا');
   } else if (normalized >= 35) {
-    color = '#F59E0B'; // Amber
-    label = 'Elevated Risk';
+    color = 'var(--ordium-warning)';
+    label = t('dashboard.risk_level.elevated', 'خطر متوسط');
   }
 
   const radius = 38;
@@ -56,11 +57,10 @@ export const RiskScoreGauge: React.FC<RiskScoreGaugeProps> = ({
           />
           {/* Active Fill */}
           <circle
-            stroke={color}
             fill="transparent"
             strokeWidth={stroke}
             strokeDasharray={`${circumference} ${circumference}`}
-            style={{ strokeDashoffset, transition: 'stroke-dashoffset 0.6s ease' }}
+            style={{ stroke: color, strokeDashoffset, transition: 'stroke-dashoffset 0.6s ease' }}
             strokeLinecap="round"
             r={normalizedRadius}
             cx="38"
@@ -69,7 +69,7 @@ export const RiskScoreGauge: React.FC<RiskScoreGaugeProps> = ({
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-mono font-bold text-white tracking-tighter">{normalized}</span>
-          {size !== 'sm' && <span className="text-[9px] font-mono text-[#94A3B8]">/ 100</span>}
+          {size !== 'sm' && <span className="text-xs font-mono text-[var(--ordium-muted)]">/ 100</span>}
         </div>
       </div>
       {showLabel && size !== 'sm' && (

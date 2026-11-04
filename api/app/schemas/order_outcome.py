@@ -2,6 +2,19 @@ from datetime import datetime, timedelta, timezone
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.core.outcomes import OUTCOME_REASONS
+
+
+def _validate_reason(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.lower().strip()
+    if not value:
+        return None
+    if value not in OUTCOME_REASONS:
+        raise ValueError("reason must be one of: " + ", ".join(sorted(OUTCOME_REASONS)))
+    return value
+
 
 class OrderOutcomeCreate(BaseModel):
     outcome_status: str
@@ -11,6 +24,12 @@ class OrderOutcomeCreate(BaseModel):
         max_length=1000,
     )
     occurred_at: datetime | None = None
+    reason: str | None = None
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, value: str | None) -> str | None:
+        return _validate_reason(value)
 
     @field_validator("occurred_at")
     @classmethod
@@ -50,6 +69,7 @@ class OrderOutcomeResponse(BaseModel):
     outcome_status: str
     source: str
     note: str | None
+    reason: str | None = None
     occurred_at: datetime
     created_at: datetime
 
@@ -58,6 +78,12 @@ class OrderOutcomeUpdate(BaseModel):
     source: str | None = Field(default=None, max_length=50)
     note: str | None = Field(default=None, max_length=1000)
     occurred_at: datetime | None = None
+    reason: str | None = None
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, value: str | None) -> str | None:
+        return _validate_reason(value)
 
     @field_validator("occurred_at")
     @classmethod

@@ -14,15 +14,15 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ onClick, subtitle, compact
   const { t } = useLanguage();
   const content = (
     <>
-      <span className={`ordium-brand-mark relative ${compact ? 'w-7 h-7' : 'w-8 h-8'} rounded-lg bg-[#0D1320] border border-white/10 flex items-center justify-center overflow-hidden shrink-0 transition-colors group-hover:border-[#22D3EE]/50`}>
-        <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-[#6C5CE7]/30 to-[#22D3EE]/20 opacity-60 group-hover:opacity-100 transition-opacity" />
-        <Cpu aria-hidden="true" className="w-4 h-4 text-[#22D3EE] relative z-10" />
+      <span className={`ordium-brand-mark relative ${compact ? 'w-7 h-7' : 'w-8 h-8'} rounded-lg bg-[var(--ordium-surface)] border border-white/10 flex items-center justify-center overflow-hidden shrink-0 transition-colors group-hover:border-[var(--ordium-signal)]/50`}>
+        <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-[var(--ordium-accent)]/30 to-[var(--ordium-signal)]/20 opacity-60 group-hover:opacity-100 transition-opacity" />
+        <Cpu aria-hidden="true" className="w-4 h-4 text-[var(--ordium-signal)] relative z-10" />
       </span>
       <span className="flex flex-col text-start leading-none">
         <span dir="ltr" className="font-mono text-base font-extrabold tracking-wider text-white">ORDIUM</span>
         {!compact && (
-          <span className="mt-1 text-[10px] font-semibold tracking-widest text-[#22D3EE] uppercase">
-            {subtitle ?? t('brand.tagline', 'Risk Intelligence')}
+          <span className="mt-1 text-xs font-semibold tracking-wider rtl:tracking-normal text-[var(--ordium-signal)] uppercase whitespace-nowrap">
+            {subtitle ?? t('mkt.brand.tagline', 'ذكاء المخاطر')}
           </span>
         )}
       </span>
