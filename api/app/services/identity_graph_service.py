@@ -11,9 +11,6 @@ from app.models.order import Order
 class IdentityGraphService:
     """Relational identity graph over the existing PostgreSQL schema."""
 
-    # Shared-IP links go stale fast (CGNAT, dynamic home IPs).
-    IP_LINK_WINDOW_DAYS = SHARED_IP_WINDOW_DAYS
-
     def __init__(self, db: Session):
         self.db = db
 
@@ -53,7 +50,7 @@ class IdentityGraphService:
             # relationship counts. This avoids inflating clusters when the
             # same customer appears through several identifiers.
             # The buyer's own past orders are history, not other identities.
-            "identity_cluster_size": len({UUID(str(c)) for c in connected_customers} - ({UUID(str(order.customer_id))} if order.customer_id else set())),
+            "identity_cluster_size": len(connected_customers),
         }
 
     def _customer_ids(self, column_name: str, value, order: Order) -> set[UUID]:
@@ -64,6 +61,8 @@ class IdentityGraphService:
             column == value,
             Order.customer_id.is_not(None),
             Order.id != order.id,
+            # The buyer's own past orders are history, not other identities.
+            Order.customer_id.is_distinct_from(order.customer_id),
         )
         return {customer_id for customer_id in self.db.scalars(statement).all() if customer_id is not None}
 
@@ -74,8 +73,9 @@ class IdentityGraphService:
             Order.ip_address == order.ip_address,
             Order.customer_id.is_not(None),
             Order.id != order.id,
+            Order.customer_id.is_distinct_from(order.customer_id),
         )
         created_at = getattr(order, "created_at", None)
         if created_at is not None:
-            statement = statement.where(Order.created_at >= created_at - timedelta(days=self.IP_LINK_WINDOW_DAYS))
+            statement = statement.where(Order.created_at >= created_at - timedelta(days=SHARED_IP_WINDOW_DAYS))
         return {customer_id for customer_id in self.db.scalars(statement).all() if customer_id is not None}

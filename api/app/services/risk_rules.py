@@ -33,7 +33,6 @@ class RiskRules:
     # most anomalous, not least: fire on a large absolute burst instead.
     COLD_START_BURST_MULTIPLIER = 3
 
-    SHARED_IP_WINDOW_DAYS = SHARED_IP_WINDOW_DAYS
 
     # A phone that already paid for several delivered COD orders at this
     # merchant is a proven buyer: its repeat usage is loyalty, not risk.
@@ -334,19 +333,18 @@ class RiskRules:
                 for day in range(1, self.TRAFFIC_BASELINE_DAYS + 1)
             ],
         )
+        count = self.profile.high_order_frequency_count
         expected_per_window = baseline_orders / self.TRAFFIC_BASELINE_DAYS
-        if baseline_orders < self.profile.high_order_frequency_count:
-            # Too little history to tell a launch/promo from an attack at the
-            # normal bar; require a much larger absolute burst.
-            baseline_status = "insufficient"
-            spike_threshold = self.profile.high_order_frequency_count * self.COLD_START_BURST_MULTIPLIER
-            if order_count < spike_threshold:
-                return RiskRuleResult(score=0)
-        else:
-            baseline_status = "available"
-            spike_threshold = expected_per_window * self.TRAFFIC_SPIKE_MULTIPLIER
-            if order_count <= spike_threshold:
-                return RiskRuleResult(score=0)
+        # With little comparable history a launch/promo cannot be told from
+        # an attack at the normal bar, so demand a larger absolute burst. The
+        # extra margin shrinks linearly to zero as history reaches `count`,
+        # so one more historical order never moves the bar by a jump.
+        history_gap = max(0.0, 1.0 - baseline_orders / count) if count else 0.0
+        cold_start_floor = count * self.COLD_START_BURST_MULTIPLIER * history_gap
+        spike_threshold = max(expected_per_window * self.TRAFFIC_SPIKE_MULTIPLIER, cold_start_floor, count - 1)
+        baseline_status = "available" if history_gap == 0 else "insufficient"
+        if order_count <= spike_threshold:
+            return RiskRuleResult(score=0)
 
         event = RiskEvent(
             event_type=RiskEventType.HIGH_ORDER_FREQUENCY,
@@ -448,7 +446,7 @@ class RiskRules:
                 ip_address=order.ip_address,
                 exclude_order_id=order.id,
                 exclude_customer_id=order.customer_id,
-                since=order.created_at - timedelta(days=self.SHARED_IP_WINDOW_DAYS),
+                since=order.created_at - timedelta(days=SHARED_IP_WINDOW_DAYS),
             )
         ) + self._self_count(order.customer_id)
 
@@ -466,7 +464,7 @@ class RiskRules:
                 "threshold": (
                     self.profile.multiple_customers_same_ip_threshold
                 ),
-                "window_days": self.SHARED_IP_WINDOW_DAYS,
+                "window_days": SHARED_IP_WINDOW_DAYS,
             },
         )
 

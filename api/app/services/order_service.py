@@ -29,7 +29,6 @@ from app.services.identity_service import IdentityService
 from app.services.risk_service import RiskResult, RiskService
 from app.services.audit_service import AuditService
 from app.services.webhook_service import WebhookService
-from app.services.identity_graph_service import IdentityGraphService
 from app.core.business_context import normalize_category
 from app.core.config import settings
 from app.services.usage_service import enforce_live_quota
@@ -55,7 +54,6 @@ class OrderService:
         self.assessment_repository = RiskAssessmentRepository(db)
         self.audit_service = AuditService(db)
         self.webhook_service = WebhookService(db)
-        self.graph_service = IdentityGraphService(db)
 
     def create_order(
         self,
@@ -88,33 +86,30 @@ class OrderService:
             if not idempotency_key or len(idempotency_key) > 255:
                 raise ValueError("Invalid Idempotency-Key")
 
-        # Cheap read-only checks first: a replay, a duplicate order number or
-        # an exhausted quota must not wait for (or pay for) the external IP
-        # lookup. The authoritative checks run again inside the transaction.
-        if idempotency_key is not None:
-            pending = self.idempotency_repository.get(merchant_id, environment, idempotency_key)
-            if (
-                pending is not None
-                and pending.order_id is not None
-                and pending.expires_at is not None
-                and self._aware(pending.expires_at) > datetime.now(timezone.utc)
-            ):
-                return self._replay_or_reject(pending, request_hash)
-        if self.order_repository.get_by_external_id(
-            merchant_id=merchant_id,
-            external_order_id=data.external_order_id,
-            environment=environment,
-            store_id=store_id,
-        ) is not None:
-            raise ValueError("An order with this external order number already exists")
-        if environment == "live":
-            from app.services.usage_service import live_quota_exhausted
-            if live_quota_exhausted(self.db, merchant_id):
-                raise ValueError("usage_quota_exceeded")
-
-        # External IP intelligence runs before any write so a slow provider
-        # never holds row locks / an open write transaction.
         if ip_address:
+            # Only when a paid external lookup is about to run: a replay, a
+            # duplicate order number or an exhausted quota must not wait for
+            # (or pay for) it. Read-only; the authoritative checks run again
+            # inside the transaction.
+            if idempotency_key is not None:
+                # get() already drops expired records.
+                pending = self.idempotency_repository.get(merchant_id, environment, idempotency_key)
+                if pending is not None and pending.order_id is not None:
+                    return self._replay_or_reject(pending, request_hash)
+            if self.order_repository.get_by_external_id(
+                merchant_id=merchant_id,
+                external_order_id=data.external_order_id,
+                environment=environment,
+                store_id=store_id,
+            ) is not None:
+                raise ValueError("An order with this external order number already exists")
+            if environment == "live":
+                from app.services.usage_service import live_quota_exhausted
+                if live_quota_exhausted(self.db, merchant_id):
+                    raise ValueError("usage_quota_exceeded")
+
+            # External IP intelligence runs before any write so a slow
+            # provider never holds row locks / an open write transaction.
             self.db.commit()
         network_result = self.risk_service.lookup_network(ip_address)
 
@@ -425,10 +420,6 @@ class OrderService:
                 for item in order.items
             ],
         }
-
-    @staticmethod
-    def _aware(value: datetime) -> datetime:
-        return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
     @staticmethod
     def _request_hash(data: OrderCreate, device_fingerprint: str | None) -> str:

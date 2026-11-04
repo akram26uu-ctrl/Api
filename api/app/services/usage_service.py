@@ -58,8 +58,20 @@ def live_quota_exhausted(db: Session, merchant_id) -> bool:
     merchant = db.get(Merchant, merchant_id)
     if merchant is None:
         return False
-    usage = get_live_usage(db, merchant)
-    return bool(usage["evaluations_limit"] and usage["evaluations_used"] >= usage["evaluations_limit"])
+    limit = max(0, int(merchant.monthly_order_limit))
+    if not limit:
+        return False
+    # Same period as get_live_usage, computed without writing the rollover.
+    period_start = merchant.quota_period_start
+    if period_start.tzinfo is None:
+        period_start = period_start.replace(tzinfo=timezone.utc)
+    period_start = max(period_start, current_cycle_start())
+    used = db.query(func.count(Order.id)).filter(
+        Order.merchant_id == merchant.id,
+        Order.environment == "live",
+        Order.created_at >= period_start,
+    ).scalar() or 0
+    return int(used) >= limit
 
 
 def enforce_live_quota(db: Session, merchant_id) -> dict:

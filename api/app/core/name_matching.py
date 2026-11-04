@@ -87,7 +87,8 @@ def _is_arabic(token: str) -> bool:
     return any("\u0600" <= ch <= "\u06ff" for ch in token)
 
 
-_ARABIC_LOOSE = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ة": "ه", "ى": "ي", "ؤ": "و", "ئ": "ي"})
+# Hamza seats (أ إ آ ؤ ئ) are already folded by NFKD in _tokens.
+_ARABIC_LOOSE = str.maketrans({"ة": "ه", "ى": "ي"})
 
 
 def _loose(token: str) -> str:
@@ -96,15 +97,31 @@ def _loose(token: str) -> str:
         value = token.translate(_ARABIC_LOOSE)
     else:
         value = token
-        for a, b in (("dj", "j"), ("ph", "f"), ("ou", "u"), ("ee", "i"), ("y", "i"), ("sch", "sh"), ("ch", "sh")):
+        for a, b in (("dj", "j"), ("ph", "f"), ("ou", "u"), ("oo", "u"), ("ee", "i"), ("ei", "i"),
+                     ("y", "i"), ("sch", "sh"), ("ch", "sh")):
             value = value.replace(a, b)
     return re.sub(r"(.)\1+", r"\1", value)
 
 
-def _a_ending(token: str) -> bool:
+def _a_ending(token: str) -> bool | None:
+    """True for a final "a" sound, False for none, None when the spelling
+    does not tell (Arabic final ه: طه = Taha but عبده = Abdou)."""
     if _is_arabic(token):
-        return token.endswith(("ة", "ا", "اء", "ى", "ه"))
+        if token.endswith(("ة", "ا", "اء", "ى")):
+            return True
+        return None if token.endswith("ه") else False
     return token.endswith(("a", "ah"))
+
+
+def _endings_agree(a: bool | None, b: bool | None) -> bool:
+    return a is None or b is None or a == b
+
+
+_VOWEL_CLASS = {"a": "a", "e": "a", "i": "i", "o": "u", "u": "u"}
+
+
+def _first_vowel_class(loose: str) -> str | None:
+    return next((_VOWEL_CLASS[ch] for ch in loose if ch in _VOWEL_CLASS), None)
 
 
 def _skeleton(token: str) -> str:
@@ -145,20 +162,41 @@ def _one_edit(a: str, b: str) -> bool:
 
 
 def _token_match(a: _Token, b: _Token) -> bool:
-    if a.a_ending != b.a_ending:
+    if not _endings_agree(a.a_ending, b.a_ending):
         return False
     if a.arabic == b.arabic:
         if a.loose == b.loose:
             return True
-        return min(len(a.loose), len(b.loose)) >= 5 and _one_edit(a.loose, b.loose)
-    if a.skeleton == b.skeleton:
+        if min(len(a.loose), len(b.loose)) >= 5 and _one_edit(a.loose, b.loose):
+            return True
+        # Latin vowel spellings vary (Omar/Omer, Tarek/Tariq, Zineb/Zeinab);
+        # same consonants plus the same leading vowel sound is the same name,
+        # while Hocine/Hassan (o vs a) stays apart.
+        return (
+            not a.arabic
+            and a.skeleton == b.skeleton
+            and _first_vowel_class(a.loose) == _first_vowel_class(b.loose)
+        )
+    if _skeleton_forms(a) & _skeleton_forms(b):
         return True
     return min(len(a.skeleton), len(b.skeleton)) >= 4 and _one_edit(a.skeleton, b.skeleton)
 
 
+def _skeleton_forms(t: _Token) -> set[str]:
+    # A final Arabic ه is sometimes pronounced (طه = Taha) and sometimes a
+    # silent vowel marker (عبده = Abdou): accept the skeleton with or without it.
+    if t.a_ending is None and t.skeleton.endswith("h") and len(t.skeleton) > 1:
+        return {t.skeleton, t.skeleton[:-1]}
+    return {t.skeleton}
+
+
 def _concat_match(a: list[_Token], b: list[_Token]) -> bool:
-    # Every word's ending must agree, whatever the word boundaries.
-    if sum(t.a_ending for t in a) != sum(t.a_ending for t in b):
+    # Every word's ending must agree, whatever the word boundaries; an
+    # undetermined ending (Arabic final ه) can stand for either.
+    known_a = sum(1 for t in a if t.a_ending is True)
+    known_b = sum(1 for t in b if t.a_ending is True)
+    unknown = sum(1 for t in a + b if t.a_ending is None)
+    if abs(known_a - known_b) > unknown:
         return False
     same_script = all(t.arabic for t in a + b) or not any(t.arabic for t in a + b)
     key = (lambda ts: "".join(t.loose for t in ts)) if same_script else (lambda ts: "".join(t.skeleton for t in ts))

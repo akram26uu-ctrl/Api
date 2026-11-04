@@ -69,3 +69,20 @@ def test_duplicate_order_number_does_not_pay_for_a_lookup():
         assert provider.calls == 1
     finally:
         db.close()
+
+
+def test_replay_of_record_without_expiry_returns_saved_response():
+    db = SessionLocal()
+    try:
+        merchant, api_key, service, provider = _setup(db)
+        data, key = _data(f"lk-{uuid4()}"), f"idem-{uuid4()}"
+        first = service.create_order(merchant_id=merchant.id, data=data, api_key=api_key,
+                                     store_id=api_key.store_id, idempotency_key=key, ip_address="41.100.1.3")
+        record = service.idempotency_repository.get(merchant.id, "live", key)
+        record.expires_at = None
+        db.commit()
+        replay = service.create_order(merchant_id=merchant.id, data=data, api_key=api_key,
+                                      store_id=api_key.store_id, idempotency_key=key, ip_address="41.100.1.3")
+        assert replay.replayed and replay.order.id == first.order.id
+    finally:
+        db.close()

@@ -244,7 +244,9 @@ def test_own_past_orders_do_not_count_as_cluster_members():
         db.add(current)
         db.flush()
         result = RiskService(db).assess_order(current)
-        assert result.assessment.feature_snapshot.features["identity_graph"]["identity_cluster_size"] == 0
+        graph = result.assessment.feature_snapshot.features["identity_graph"]
+        assert graph["identity_cluster_size"] == 0
+        assert graph["counts"]["phone_customers"] == 0
     finally:
         db.rollback()
         db.close()
