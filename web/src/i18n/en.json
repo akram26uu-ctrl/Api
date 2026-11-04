@@ -1733,5 +1733,8 @@
       "shield_caption": "Illustration: orders tied to a suspicious cluster are stopped before shipping.",
       "security_caption": "Illustration: each store’s data is isolated, and connections are encrypted and signed."
     }
+  },
+  "legal": {
+    "effective": "Effective date"
   }
 }

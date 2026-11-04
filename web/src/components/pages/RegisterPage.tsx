@@ -511,9 +511,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                   />
                   <label htmlFor={fid('terms')} className="text-sm text-[#A5B1C3] leading-relaxed cursor-pointer select-none">
                     {t('auth.terms_prefix', 'I agree to the')}{' '}
-                    <span className="text-[#52D9E8]">{t('auth.terms_link', 'Terms of Service')}</span>{' '}
+                    <a href="/terms" target="_blank" rel="noopener" className="text-[#52D9E8] underline underline-offset-2 hover:text-[#67E8F9]">{t('auth.terms_link', 'Terms of Service')}</a>{' '}
                     {t('auth.terms_and', 'and')}{' '}
-                    <span className="text-[#52D9E8]">{t('auth.privacy_link', 'Privacy Policy')}</span>.
+                    <a href="/privacy" target="_blank" rel="noopener" className="text-[#52D9E8] underline underline-offset-2 hover:text-[#67E8F9]">{t('auth.privacy_link', 'Privacy Policy')}</a>.
                   </label>
                 </div>
               </Section>

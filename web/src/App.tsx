@@ -21,13 +21,14 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 declare const __ORDIUM_VERCEL_ANALYTICS__: boolean;
 const VERCEL_ANALYTICS_ENABLED = typeof __ORDIUM_VERCEL_ANALYTICS__ !== 'undefined' && __ORDIUM_VERCEL_ANALYTICS__;
 
-const PUBLIC_ROUTES = ['/', '/platform', '/intelligence', '/security', '/developers', '/pricing', '/docs', '/company'];
+const PUBLIC_ROUTES = ['/', '/platform', '/intelligence', '/security', '/developers', '/pricing', '/docs', '/company', '/terms', '/privacy'];
 
 const PricingPage = lazy(() => import('./components/pages/PricingPage').then(m => ({ default: m.PricingPage })));
 const DocsPage = lazy(() => import('./components/pages/DocsPage').then(m => ({ default: m.DocsPage })));
 const SecurityPage = lazy(() => import('./components/pages/SecurityPage').then(m => ({ default: m.SecurityPage })));
 const PlatformPage = lazy(() => import('./components/pages/PlatformPage').then(m => ({ default: m.PlatformPage })));
 const CompanyPage = lazy(() => import('./components/pages/CompanyPage').then(m => ({ default: m.CompanyPage })));
+const LegalPage = lazy(() => import('./components/pages/LegalPage').then(m => ({ default: m.LegalPage })));
 const LoginPage = lazy(() => import('./components/pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./components/pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
 const VerifyEmailPage = lazy(() => import('./components/pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
@@ -119,6 +120,8 @@ export function AppContent() {
       {currentPath === '/pricing' && <PricingPage onSelectPlan={() => handleLaunchDashboard()} onOpenDashboard={handleLaunchDashboard} />}
       {currentPath === '/docs' && <DocsPage />}
       {currentPath === '/company' && <CompanyPage />}
+      {currentPath === '/terms' && <LegalPage doc="terms" onNavigate={navigateTo} />}
+      {currentPath === '/privacy' && <LegalPage doc="privacy" onNavigate={navigateTo} />}
       {!PUBLIC_ROUTES.includes(currentPath) && <ErrorPage statusCode={404} onNavigate={navigateTo} embedded />}
     </main>
     <Footer onNavigate={navigateTo} />

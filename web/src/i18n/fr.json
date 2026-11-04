@@ -1734,5 +1734,8 @@
       "shield_caption": "Illustration : les commandes liées à un groupe suspect sont arrêtées avant l’expédition.",
       "security_caption": "Illustration : les données de chaque boutique sont isolées, les échanges chiffrés et signés."
     }
+  },
+  "legal": {
+    "effective": "Date d'entrée en vigueur"
   }
 }

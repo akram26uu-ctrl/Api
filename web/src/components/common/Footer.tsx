@@ -66,6 +66,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li><button onClick={() => onNavigate('/company')} type="button" className="min-h-9 text-start text-sm text-[var(--ordium-muted)] hover:text-white transition-colors">{t('footer.about_us', 'About Us')}</button></li>
               <li><button onClick={() => onNavigate('/security')} type="button" className="min-h-9 text-start text-sm text-[var(--ordium-muted)] hover:text-white transition-colors">{t('footer.security_arch', 'Security Architecture')}</button></li>
               <li><button onClick={() => onNavigate('/docs')} type="button" className="min-h-9 text-start text-sm text-[var(--ordium-muted)] hover:text-white transition-colors">{bidiIsolate(t('footer.api_status', 'API Status'), isRTL)}</button></li>
+              <li><button onClick={() => onNavigate('/terms')} type="button" className="min-h-9 text-start text-sm text-[var(--ordium-muted)] hover:text-white transition-colors">{t('auth.terms_link', 'Terms of Service')}</button></li>
+              <li><button onClick={() => onNavigate('/privacy')} type="button" className="min-h-9 text-start text-sm text-[var(--ordium-muted)] hover:text-white transition-colors">{t('auth.privacy_link', 'Privacy Policy')}</button></li>
             </ul>
           </div>
         </div>
