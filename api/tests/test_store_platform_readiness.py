@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import json
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
@@ -193,9 +193,53 @@ def test_rejected_order_names_the_failing_field():
     signature = base64.b64encode(hmac.new(connection["webhook_secret"].encode(), raw, hashlib.sha256).digest()).decode()
     path = connection["webhook_url"].split("testserver", 1)[-1]
     response = client.post(path, content=raw, headers={"X-WC-Webhook-Signature": signature, "X-WC-Webhook-Topic": "order.created"})
-    assert response.status_code == 422
-    assert "phone" in response.json()["detail"]
-    assert "12345" not in response.json()["detail"]
+    # A signed delivery is acknowledged (stores disable webhooks after
+    # repeated failures); the rejection is reported to the merchant instead.
+    assert response.status_code == 200
+    body = response.json()
+    assert body["accepted"] is False
+    assert "phone" in body["reason"]
+    assert "12345" not in body["reason"]
+    db = SessionLocal()
+    try:
+        from app.models.notification import Notification
+        alerts = db.query(Notification).filter(
+            Notification.store_id == UUID(store_id),
+            Notification.notification_type == "integration.order_rejected",
+        ).all()
+        assert len(alerts) == 1
+        assert "501" in alerts[0].message and "phone" in alerts[0].message
+        assert "12345" not in alerts[0].message
+        # The store retries the same delivery: no second alert.
+        assert client.post(path, content=raw, headers={"X-WC-Webhook-Signature": signature, "X-WC-Webhook-Topic": "order.created"}).status_code == 200
+        db.expire_all()
+        assert db.query(Notification).filter(
+            Notification.store_id == UUID(store_id),
+            Notification.notification_type == "integration.order_rejected",
+        ).count() == 1
+    finally:
+        db.close()
+
+
+def test_other_store_events_are_acknowledged_not_failed():
+    """Merchants often subscribe to "order updated" too; a 400 there would
+    make WooCommerce disable the webhook after 5 deliveries."""
+    (_, store_id), raw_key = _merchant_with_key()
+    connection = _create(raw_key, store_id, platform="woocommerce", external_store_id=f"wc-{uuid4().hex}").json()
+    raw = json.dumps({"id": 502, "status": "processing"}).encode()
+    signature = base64.b64encode(hmac.new(connection["webhook_secret"].encode(), raw, hashlib.sha256).digest()).decode()
+    path = connection["webhook_url"].split("testserver", 1)[-1]
+    response = client.post(path, content=raw, headers={"X-WC-Webhook-Signature": signature, "X-WC-Webhook-Topic": "order.updated"})
+    assert response.status_code == 200
+    assert response.json() == {"accepted": True, "ignored": True, "reason": "unsupported_topic"}
+
+
+def test_unsigned_delivery_is_still_rejected():
+    (_, store_id), raw_key = _merchant_with_key()
+    connection = _create(raw_key, store_id, platform="woocommerce", external_store_id=f"wc-{uuid4().hex}").json()
+    path = connection["webhook_url"].split("testserver", 1)[-1]
+    response = client.post(path, content=b'{"id": 1}', headers={"X-WC-Webhook-Signature": "bad", "X-WC-Webhook-Topic": "order.created"})
+    assert response.status_code == 401
 
 
 def _wc_send(connection, payload, delivery_id="same-second-hash"):

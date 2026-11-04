@@ -1018,7 +1018,40 @@
       "empty_desc": "ستظهر هنا تنبيهات المخاطر المهمة.",
       "load_error": "تعذر تحميل الإشعارات.",
       "read_error": "تعذر تحديث الإشعارات.",
-      "subtitle": "مساحة عمل التاجر"
+      "subtitle": "مساحة عمل التاجر",
+      "types": {
+        "risk_review": {
+          "title": "طلب يحتاج مراجعة",
+          "message": "الطلب {order} حصل على درجة خطر {score} ويحتاج مراجعتك."
+        },
+        "risk_reject": {
+          "title": "طلب أوقفه محرك المخاطر",
+          "message": "الطلب {order} حصل على درجة خطر {score} وصُنّف للرفض."
+        },
+        "confirmation": {
+          "title": "نتيجة تأكيد الطلب",
+          "message": "الطلب {order}: {outcome} ({channel})."
+        },
+        "store_rejected": {
+          "title": "طلب من المتجر لم يُعالَج",
+          "message": "الطلب {order} من {platform} لم يُسجَّل: {reason}. صحّح الحقل في المتجر أو أدخل الطلب يدوياً."
+        }
+      },
+      "outcomes": {
+        "contact_started": "بدأ التواصل مع الزبون",
+        "confirmed": "أكّد الزبون",
+        "cancelled": "ألغى الزبون",
+        "no_answer": "لم يرد الزبون",
+        "callback_requested": "طلب الزبون معاودة الاتصال",
+        "needs_review": "يحتاج مراجعة"
+      },
+      "channels": {
+        "whatsapp": "واتساب",
+        "manual_call": "اتصال هاتفي"
+      },
+      "reasons": {
+        "usage_quota_exceeded": "تم بلوغ حد الطلبات الشهري لحسابك"
+      }
     },
     "stores": {
       "title": "المتاجر",

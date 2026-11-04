@@ -1014,7 +1014,40 @@
       "empty_desc": "Les alertes de risque apparaîtront ici.",
       "load_error": "Impossible de charger les notifications.",
       "read_error": "Impossible de mettre à jour les notifications.",
-      "subtitle": "Espace marchand"
+      "subtitle": "Espace marchand",
+      "types": {
+        "risk_review": {
+          "title": "Commande à vérifier",
+          "message": "La commande {order} a un score de risque de {score} et doit être vérifiée."
+        },
+        "risk_reject": {
+          "title": "Commande bloquée par le moteur de risque",
+          "message": "La commande {order} a un score de risque de {score} et est classée à rejeter."
+        },
+        "confirmation": {
+          "title": "Résultat de la confirmation",
+          "message": "Commande {order} : {outcome} ({channel})."
+        },
+        "store_rejected": {
+          "title": "Commande de la boutique non traitée",
+          "message": "La commande {order} de {platform} n’a pas été enregistrée : {reason}. Corrigez le champ dans la boutique ou saisissez la commande manuellement."
+        }
+      },
+      "outcomes": {
+        "contact_started": "contact engagé",
+        "confirmed": "confirmée par le client",
+        "cancelled": "annulée par le client",
+        "no_answer": "pas de réponse",
+        "callback_requested": "rappel demandé",
+        "needs_review": "à vérifier"
+      },
+      "channels": {
+        "whatsapp": "WhatsApp",
+        "manual_call": "appel téléphonique"
+      },
+      "reasons": {
+        "usage_quota_exceeded": "le quota mensuel de commandes est atteint"
+      }
     },
     "stores": {
       "title": "Boutiques",

@@ -16,6 +16,50 @@ const iconFor = (severity: DashboardNotification['severity']) => {
   return <Info className="w-4 h-4 text-cyan-400" />;
 };
 
+
+type Translate = (key: string, fallback?: string) => string;
+
+const fill = (template: string, values: Record<string, unknown>) =>
+  template.replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? '—'));
+
+/** Alerts are stored with English text; show them in the merchant's language
+ *  from their type and metadata, falling back to the stored text. */
+export function localizeNotification(item: DashboardNotification, t: Translate): { title: string; message: string } {
+  const meta = item.metadata ?? {};
+  const order = meta.external_order_id ?? '—';
+  const type = item.notification_type || '';
+  if (type === 'order.risk.review' || type === 'order.risk.reject') {
+    const kind = type.endsWith('reject') ? 'reject' : 'review';
+    return {
+      title: t(`dashboard.notifications.types.risk_${kind}.title`, item.title),
+      message: fill(t(`dashboard.notifications.types.risk_${kind}.message`, item.message), { order, score: meta.score }),
+    };
+  }
+  if (type.startsWith('order.confirmation.')) {
+    const outcome = String(meta.outcome ?? type.split('.').pop() ?? '');
+    return {
+      title: t(`dashboard.notifications.types.confirmation.title`, item.title),
+      message: fill(t('dashboard.notifications.types.confirmation.message', item.message), {
+        order,
+        outcome: t(`dashboard.notifications.outcomes.${outcome}`, outcome),
+        channel: t(`dashboard.notifications.channels.${meta.channel}`, String(meta.channel ?? '')),
+      }),
+    };
+  }
+  if (type === 'integration.order_rejected') {
+    const reason = String(meta.reason ?? '');
+    return {
+      title: t('dashboard.notifications.types.store_rejected.title', item.title),
+      message: fill(t('dashboard.notifications.types.store_rejected.message', item.message), {
+        order,
+        platform: meta.platform,
+        reason: t(`dashboard.notifications.reasons.${reason}`, reason),
+      }),
+    };
+  }
+  return { title: item.title, message: item.message };
+}
+
 export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({ environment }) => {
   const { t, isRTL } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -117,8 +161,8 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({ enviro
                 <div className="flex gap-3">
                   <div className="mt-0.5 shrink-0">{iconFor(item.severity)}</div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3"><p className="text-xs font-semibold text-white">{item.title}</p>{!item.read_at && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0" />}</div>
-                    <p className="text-xs leading-relaxed text-[var(--ordium-muted)] mt-1">{item.message}</p>
+                    <div className="flex items-start justify-between gap-3"><p className="text-xs font-semibold text-white">{localizeNotification(item, t).title}</p>{!item.read_at && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0" />}</div>
+                    <p className="text-xs leading-relaxed text-[var(--ordium-muted)] mt-1">{localizeNotification(item, t).message}</p>
                     <p className="text-xs text-[#475569] font-mono mt-2">{new Date(item.created_at).toLocaleString()}</p>
                   </div>
                 </div>

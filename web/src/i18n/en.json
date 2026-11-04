@@ -1013,7 +1013,40 @@
       "empty_desc": "Actionable risk alerts will appear here.",
       "load_error": "Unable to load notifications.",
       "read_error": "Unable to update notifications.",
-      "subtitle": "Merchant workspace"
+      "subtitle": "Merchant workspace",
+      "types": {
+        "risk_review": {
+          "title": "Order requires review",
+          "message": "Order {order} received a risk score of {score} and needs your review."
+        },
+        "risk_reject": {
+          "title": "Order blocked by the risk engine",
+          "message": "Order {order} received a risk score of {score} and was marked to reject."
+        },
+        "confirmation": {
+          "title": "Order confirmation result",
+          "message": "Order {order}: {outcome} ({channel})."
+        },
+        "store_rejected": {
+          "title": "A store order was not processed",
+          "message": "Order {order} from {platform} was not recorded: {reason}. Fix the field in your store or enter the order manually."
+        }
+      },
+      "outcomes": {
+        "contact_started": "contact started",
+        "confirmed": "confirmed by the customer",
+        "cancelled": "cancelled by the customer",
+        "no_answer": "no answer",
+        "callback_requested": "callback requested",
+        "needs_review": "needs review"
+      },
+      "channels": {
+        "whatsapp": "WhatsApp",
+        "manual_call": "phone call"
+      },
+      "reasons": {
+        "usage_quota_exceeded": "the monthly order quota has been reached"
+      }
     },
     "stores": {
       "title": "Stores",
