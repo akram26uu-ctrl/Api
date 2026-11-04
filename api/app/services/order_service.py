@@ -243,6 +243,7 @@ class OrderService:
                     decision=RiskDecision.REVIEW,
                     assessment=risk_result.assessment,
                     events=risk_result.events,
+                    graph_summary=risk_result.graph_summary,
                 )
 
             # Automatic WhatsApp confirmation: outbox row in this same transaction;
@@ -250,7 +251,8 @@ class OrderService:
             from app.services.whatsapp_service import enqueue_for_order
             enqueue_for_order(self.db, order, merchant, risk_result.decision, data.phone)
 
-            graph_summary = self.graph_service.summarize_order(order)
+            # Same summary the score was computed from.
+            graph_summary = risk_result.graph_summary or {}
 
             response_body = to_json_safe(self._build_response_body(order, risk_result, graph_summary))
             response_body["risk"]["engine_decision"] = engine_decision.value

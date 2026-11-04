@@ -85,4 +85,5 @@ def test_identity_cluster_counts_unique_customers():
         "address_customers": 1,
         "ip_customers": 1,
     }
-    assert summary["identity_cluster_size"] == 1
+    # Only the buyer's own history: no other identity is connected.
+    assert summary["identity_cluster_size"] == 0

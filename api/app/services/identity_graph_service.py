@@ -1,3 +1,4 @@
+from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -9,10 +10,14 @@ from app.models.order import Order
 class IdentityGraphService:
     """Relational identity graph over the existing PostgreSQL schema."""
 
+    # Shared-IP links go stale fast (CGNAT, dynamic home IPs); same window as
+    # RiskRules.SHARED_IP_WINDOW_DAYS.
+    IP_LINK_WINDOW_DAYS = 7
+
     def __init__(self, db: Session):
         self.db = db
 
-    def summarize_order(self, order: Order) -> dict:
+    def summarize_order(self, order: Order, network_result=None) -> dict:
         nodes = {
             "customer": bool(order.customer_id),
             "phone": bool(order.phone_identifier_id),
@@ -33,7 +38,10 @@ class IdentityGraphService:
                 counts[key] = len(customer_ids)
                 connected_customers.update(customer_ids)
 
-        if order.ip_address:
+        # A mobile-carrier IP joins unrelated subscribers; it is not an
+        # identity link.
+        ip_is_link = bool(order.ip_address) and not (network_result is not None and getattr(network_result, "mobile", False))
+        if ip_is_link:
             customer_ids = self._ip_customer_ids(order)
             counts["ip_customers"] = len(customer_ids)
             connected_customers.update(customer_ids)
@@ -44,7 +52,8 @@ class IdentityGraphService:
             # Count unique connected customers, not the sum of overlapping
             # relationship counts. This avoids inflating clusters when the
             # same customer appears through several identifiers.
-            "identity_cluster_size": len(connected_customers),
+            # The buyer's own past orders are history, not other identities.
+            "identity_cluster_size": len({UUID(str(c)) for c in connected_customers} - ({UUID(str(order.customer_id))} if order.customer_id else set())),
         }
 
     def _customer_ids(self, column_name: str, value, order: Order) -> set[UUID]:
@@ -66,4 +75,7 @@ class IdentityGraphService:
             Order.customer_id.is_not(None),
             Order.id != order.id,
         )
+        created_at = getattr(order, "created_at", None)
+        if created_at is not None:
+            statement = statement.where(Order.created_at >= created_at - timedelta(days=self.IP_LINK_WINDOW_DAYS))
         return {customer_id for customer_id in self.db.scalars(statement).all() if customer_id is not None}

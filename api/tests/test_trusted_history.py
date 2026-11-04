@@ -201,3 +201,50 @@ def test_shared_mobile_ip_is_not_a_signal():
     finally:
         db.rollback()
         db.close()
+
+
+def _cluster_case(db, mobile, days_ago=1):
+    m = _merchant(db)
+    ip = "198.51.100.88"
+    for i in range(7):
+        db.add(_order(m, _customer(db, f"n{i}"), ip_address=ip,
+                      created_at=datetime.now(timezone.utc) - timedelta(days=days_ago, minutes=i)))
+    current = _order(m, _customer(db, "me"), ip_address=ip, created_at=datetime.now(timezone.utc))
+    db.add(current)
+    db.flush()
+    net = NetworkIntelResult(ip_address=ip, mobile=mobile, provider="test")
+    return RiskService(db, network_provider=_StaticProvider(net)).assess_order(current)
+
+
+def test_mobile_ip_neighbours_do_not_form_an_identity_cluster():
+    db = SessionLocal()
+    try:
+        assert RiskEventType.IDENTITY_CLUSTER_RISK not in _types(_cluster_case(db, mobile=True))
+        assert RiskEventType.IDENTITY_CLUSTER_RISK in _types(_cluster_case(db, mobile=False))
+    finally:
+        db.rollback()
+        db.close()
+
+
+def test_old_ip_neighbours_do_not_form_an_identity_cluster():
+    db = SessionLocal()
+    try:
+        assert RiskEventType.IDENTITY_CLUSTER_RISK not in _types(_cluster_case(db, mobile=False, days_ago=30))
+    finally:
+        db.rollback()
+        db.close()
+
+
+def test_own_past_orders_do_not_count_as_cluster_members():
+    db = SessionLocal()
+    try:
+        m, c, phone = _merchant(db), _customer(db), _phone(db)
+        db.add(_order(m, c, phone_identifier_id=phone.id))
+        current = _order(m, c, phone_identifier_id=phone.id, created_at=datetime.now(timezone.utc))
+        db.add(current)
+        db.flush()
+        result = RiskService(db).assess_order(current)
+        assert result.assessment.feature_snapshot.features["identity_graph"]["identity_cluster_size"] == 0
+    finally:
+        db.rollback()
+        db.close()

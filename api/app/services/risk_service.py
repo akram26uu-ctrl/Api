@@ -38,6 +38,7 @@ class RiskResult:
     decision: RiskDecision
     assessment: RiskAssessment
     events: list[RiskEvent]
+    graph_summary: dict | None = None
 
 
 # Signals that describe the *same* underlying fact are capped as a group so
@@ -353,7 +354,7 @@ class RiskService:
             business_context=business_context,
         )
 
-        graph_summary = self.graph_service.summarize_order(order)
+        graph_summary = self.graph_service.summarize_order(order, network_result)
 
         for result in rule_results:
             if result.event is not None:
@@ -459,6 +460,7 @@ class RiskService:
             decision=decision,
             assessment=assessment,
             events=events,
+            graph_summary=graph_summary,
         )
 
     @staticmethod
