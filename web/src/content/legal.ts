@@ -9,7 +9,7 @@ import type { Language } from '../i18n/LanguageContext';
 
 export const LEGAL_META = {
   operator: 'ORDIUM',
-  contactEmail: 'support@ordium.dev',
+  contactEmail: 'hello@ordium.dev',
   effectiveDate: '2026-11-04',
 };
 
