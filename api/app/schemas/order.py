@@ -91,12 +91,14 @@ class OrderCreate(BaseModel):
     )
 
     commune: str = Field(
-        min_length=2,
+        min_length=1,
         max_length=100,
     )
 
+    # A terse address is accepted and scored (LOW_QUALITY_IDENTITY) rather
+    # than losing the order.
     address: str = Field(
-        min_length=3,
+        min_length=1,
         max_length=500,
     )
 

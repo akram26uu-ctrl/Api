@@ -78,3 +78,17 @@ def test_woocommerce_state_code_order_is_ingested_with_readable_wilaya():
     assert order.wilaya == "Alger"
     assert order.phone == "0661234567"
     assert order.total_amount == Decimal("3200.00")
+
+
+def test_terse_address_is_accepted_and_scored_instead_of_lost():
+    assert _order(address="5", commune="X").address == "5"
+
+
+@pytest.mark.parametrize("currency", ["DZD", "dzd", "DA", "دج", " DZD "])
+def test_local_currency_labels_are_accepted(currency):
+    payload = {
+        "id": 77, "currency": currency, "total": "1200",
+        "billing": {"first_name": "Ali", "last_name": "Bena", "phone": "0550123456",
+                    "address_1": "5 Rue X", "city": "Oran", "state": "DZ-31"},
+    }
+    assert _normalize_order(payload, "77").currency == "DZD"

@@ -153,7 +153,10 @@ def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
     if address2:
         street = f"{street}, {address2}" if street else address2
 
-    currency = str(payload.get("currency") or payload.get("currency_code") or "DZD").upper()
+    currency = str(payload.get("currency") or payload.get("currency_code") or "DZD").strip().upper()
+    # Stores configured with a local label instead of the ISO code.
+    if currency in {"DA", "DZ", "دج", "د.ج", "DINAR", "DINARS"}:
+        currency = "DZD"
     if currency != "DZD":
         raise HTTPException(422, "ORDIUM currently accepts DZD orders only")
 
@@ -284,7 +287,7 @@ async def shopify_webhook(
     if not isinstance(payload, dict):
         raise HTTPException(400, "Invalid Shopify order payload")
     event_id = f"shopify:{domain}:{webhook_id or payload.get('id') or hashlib.sha256(raw_body).hexdigest()}"
-    return await run_in_threadpool(_ingest, payload, merchant_id, store_id, event_id)
+    return await run_in_threadpool(_ingest_acknowledged, payload, merchant_id, store_id, event_id)
 
 
 @router.post("/omniterra/webhook")
@@ -343,7 +346,20 @@ async def omniterra_webhook(
     stable_event_id = event_id_header or payload.get("id") or payload.get("webhook_id") or external_id
     if not stable_event_id:
         stable_event_id = hashlib.sha256(raw_body).hexdigest()
-    return await run_in_threadpool(_ingest, order_payload, merchant_id, store_id, f"omniterra:{external_store}:{stable_event_id}")
+    return await run_in_threadpool(_ingest_acknowledged, order_payload, merchant_id, store_id, f"omniterra:{external_store}:{stable_event_id}")
+
+
+def _ingest_acknowledged(payload: dict, merchant_id: UUID, store_id: UUID, event_id: str) -> dict:
+    """_ingest for authenticated store deliveries: an unprocessable order is
+    acknowledged (2xx) so the platform does not disable the webhook after
+    repeated failures; transient server errors still raise."""
+    try:
+        return _ingest(payload, merchant_id, store_id, event_id)
+    except HTTPException as exc:
+        if exc.status_code >= 500:
+            raise
+        logger.warning("legacy store webhook rejected event=%s status=%s reason=%s", event_id[:80], exc.status_code, exc.detail)
+        return {"accepted": False, "reason": str(exc.detail)}
 
 
 @router.get("/status")
