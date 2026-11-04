@@ -128,6 +128,63 @@ class OrderRepository:
 
         return self.db.scalar(statement) or 0
 
+    def count_customer_finalized_orders(
+        self,
+        merchant_id: UUID,
+        customer_id: UUID,
+        exclude_order_id: UUID | None = None,
+        environment: str = "live",
+    ) -> int:
+        """Orders whose outcome is known (delivered, or a *bad* cancel/return).
+
+        Denominator of the cancel/return rate. Pending or in-transit orders say
+        nothing about the buyer yet; counting them let a fraudster dilute their
+        own rate by placing more orders. Cancellations explained by stock or by
+        Ordium's own decision are excluded, as in the numerator.
+        """
+        non_bad = exists().where(
+            OrderOutcome.order_id == Order.id,
+            OrderOutcome.reason.in_(tuple(NON_BAD_REASONS)),
+        )
+        statement = select(func.count(Order.id)).where(
+            Order.merchant_id == merchant_id,
+            Order.environment == environment,
+            Order.customer_id == customer_id,
+            or_(
+                Order.status == OrderStatus.DELIVERED,
+                and_(Order.status.in_((OrderStatus.CANCELLED, OrderStatus.RETURNED)), ~non_bad),
+            ),
+        )
+        if exclude_order_id is not None:
+            statement = statement.where(Order.id != exclude_order_id)
+        return self.db.scalar(statement) or 0
+
+    def phone_outcome_history(
+        self,
+        merchant_id: UUID,
+        phone_identifier_id: UUID,
+        exclude_order_id: UUID | None = None,
+        environment: str = "live",
+    ) -> tuple[int, int]:
+        """(delivered, bad) order counts for a phone at this merchant."""
+        non_bad = exists().where(
+            OrderOutcome.order_id == Order.id,
+            OrderOutcome.reason.in_(tuple(NON_BAD_REASONS)),
+        )
+        is_bad = and_(Order.status.in_((OrderStatus.CANCELLED, OrderStatus.RETURNED)), ~non_bad)
+        statement = select(
+            func.count(Order.id).filter(Order.status == OrderStatus.DELIVERED),
+            func.count(Order.id).filter(is_bad),
+        ).where(
+            Order.merchant_id == merchant_id,
+            Order.environment == environment,
+            Order.phone_identifier_id == phone_identifier_id,
+        )
+        if exclude_order_id is not None:
+            statement = statement.where(Order.id != exclude_order_id)
+        delivered, bad = self.db.execute(statement).one()
+        return int(delivered or 0), int(bad or 0)
+
     def count_phone_orders(
         self,
         merchant_id: UUID,

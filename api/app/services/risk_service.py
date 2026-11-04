@@ -60,15 +60,37 @@ SCORE_GROUPS: dict[str, frozenset[RiskEventType]] = {
         RiskEventType.MULTIPLE_CUSTOMERS_SAME_ADDRESS,
         RiskEventType.MULTIPLE_CUSTOMERS_SAME_DEVICE,
     }),
+    # One person placing orders quickly trips customer, phone and device
+    # velocity at once: it is one burst, not three independent facts.
+    "velocity": frozenset({
+        RiskEventType.HIGH_CUSTOMER_VELOCITY,
+        RiskEventType.HIGH_PHONE_VELOCITY,
+        RiskEventType.HIGH_DEVICE_VELOCITY,
+    }),
+    # Three views of "this IP is shared/busy".
+    "shared_ip": frozenset({
+        RiskEventType.MULTIPLE_CUSTOMERS_SAME_IP,
+        RiskEventType.HIGH_IP_FREQUENCY,
+        RiskEventType.BURST_NETWORK_ACTIVITY,
+    }),
 }
+
+# Signals that only measure "this identity placed many orders". For a proven
+# buyer (TRUSTED_CUSTOMER_HISTORY) that is loyalty, so they are dropped.
+TRUST_SUPPRESSED: frozenset[RiskEventType] = frozenset({
+    RiskEventType.PHONE_REUSED,
+    RiskEventType.DEVICE_REUSED,
+    RiskEventType.ADDRESS_REUSED,
+    RiskEventType.NEW_DEVICE,
+})
 
 _UNSET = object()
 
 
 class RiskService:
-    MODEL_VERSION = "rules-v5"
-    RULES_VERSION = "2026-11-logic-fixes-v5"
-    SCORE_GROUP_CAPS: dict[str, int] = {"network": 35, "identity_reuse": 45}
+    MODEL_VERSION = "rules-v6"
+    RULES_VERSION = "2026-11-trust-and-groups-v6"
+    SCORE_GROUP_CAPS: dict[str, int] = {"network": 35, "identity_reuse": 45, "velocity": 22, "shared_ip": 30}
 
     def __init__(
         self,
@@ -337,6 +359,13 @@ class RiskService:
             if result.event is not None:
                 events.append(result.event)
 
+        if any(event.event_type is RiskEventType.TRUSTED_CUSTOMER_HISTORY for event in events):
+            suppressed = sorted(e.event_type.value for e in events if e.event_type in TRUST_SUPPRESSED)
+            events = [e for e in events if e.event_type not in TRUST_SUPPRESSED]
+            for event in events:
+                if event.event_type is RiskEventType.TRUSTED_CUSTOMER_HISTORY:
+                    event.event_data = {**(event.event_data or {}), "suppressed_signals": suppressed}
+
         event_types = {event.event_type for event in events}
 
         if {
@@ -456,6 +485,7 @@ class RiskService:
                 "recent_abuse": network_result.recent_abuse,
                 "fraud_score": network_result.fraud_score,
                 "usage_type": network_result.usage_type,
+                "mobile": network_result.mobile,
             }
 
         snapshot = {

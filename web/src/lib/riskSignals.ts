@@ -37,6 +37,7 @@ const SIGNALS: Record<string, Labels> = {
   identity_cluster_risk: { ar: 'هوية مرتبطة بشبكة كبيرة', fr: 'Identité liée à un large réseau', en: 'Identity linked to a large cluster' },
   unusual_order_quantity: { ar: 'كمية أكبر من المعتاد', fr: 'Quantité inhabituelle', en: 'Unusual quantity' },
   unusual_order_value: { ar: 'قيمة أكبر من المعتاد', fr: 'Montant inhabituel', en: 'Unusual order value' },
+  trusted_customer_history: { ar: 'زبون موثوق: طلبات سابقة سُلّمت', fr: 'Client fiable : commandes déjà livrées', en: 'Trusted buyer: past orders delivered' },
 };
 
 export function riskSignalLabel(code: string, language: Language | string): string {

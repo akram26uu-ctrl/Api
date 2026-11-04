@@ -69,3 +69,4 @@ class RiskEventType(str, Enum):
     IDENTITY_CLUSTER_RISK = "identity_cluster_risk"
     UNUSUAL_ORDER_QUANTITY = "unusual_order_quantity"
     UNUSUAL_ORDER_VALUE = "unusual_order_value"
+    TRUSTED_CUSTOMER_HISTORY = "trusted_customer_history"

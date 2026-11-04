@@ -255,7 +255,7 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
                 {[...(order.risk?.events ?? [])].sort((a, b) => b.scoreImpact - a.scoreImpact).slice(0, 4).map(event => (
                   <li key={event.id} className="flex items-center justify-between gap-3 text-sm">
                     <span className="text-[var(--ordium-text)]">{riskSignalLabel(event.type, language)}</span>
-                    <span className="shrink-0 tabular-nums text-[var(--ordium-warning)]" dir="ltr">+{event.scoreImpact}</span>
+                    <span className={`shrink-0 tabular-nums ${event.scoreImpact < 0 ? 'text-[var(--ordium-success)]' : 'text-[var(--ordium-warning)]'}`} dir="ltr">{event.scoreImpact < 0 ? `−${Math.abs(event.scoreImpact)}` : `+${event.scoreImpact}`}</span>
                   </li>
                 ))}
               </ul>

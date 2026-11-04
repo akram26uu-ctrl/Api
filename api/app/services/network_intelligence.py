@@ -24,6 +24,9 @@ class NetworkIntelResult:
     active_tor: bool = False
     fraud_score: int | None = None
     usage_type: str | None = None
+    # Mobile carrier IP. Algerian carriers use CGNAT: many unrelated shoppers
+    # share one address, so "several customers on this IP" means little.
+    mobile: bool = False
     provider: str = "unknown"
     available: bool = True
 
@@ -123,6 +126,7 @@ class IPQualityScoreProvider:
                 active_tor=bool(data.get("active_tor")),
                 fraud_score=(int(data["fraud_score"]) if data.get("fraud_score") is not None else None),
                 usage_type=data.get("usage_type"),
+                mobile=bool(data.get("mobile")),
                 provider="ipqs",
                 available=True,
             )

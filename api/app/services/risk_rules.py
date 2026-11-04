@@ -33,6 +33,40 @@ class RiskRules:
     # CGNAT and rotate addresses, so unrelated shoppers share IPs over time.
     SHARED_IP_WINDOW_DAYS = 7
 
+    # A phone that already paid for several delivered COD orders at this
+    # merchant is a proven buyer: its repeat usage is loyalty, not risk.
+    TRUSTED_MIN_DELIVERED = 3
+    TRUSTED_MAX_BAD_RATE = 0.20
+    TRUSTED_HISTORY_SCORE = -10
+
+    def evaluate_trusted_history(self, order: Order) -> RiskRuleResult:
+        if order.phone_identifier_id is None:
+            return RiskRuleResult(score=0)
+        delivered, bad = self.order_repository.phone_outcome_history(
+            merchant_id=order.merchant_id,
+            environment=order.environment,
+            phone_identifier_id=order.phone_identifier_id,
+            exclude_order_id=order.id,
+        )
+        if delivered < self.TRUSTED_MIN_DELIVERED:
+            return RiskRuleResult(score=0)
+        bad_rate = bad / (delivered + bad)
+        if bad_rate > self.TRUSTED_MAX_BAD_RATE:
+            return RiskRuleResult(score=0)
+        return RiskRuleResult(
+            score=self.TRUSTED_HISTORY_SCORE,
+            event=RiskEvent(
+                event_type=RiskEventType.TRUSTED_CUSTOMER_HISTORY,
+                score_impact=self.TRUSTED_HISTORY_SCORE,
+                event_data={
+                    "delivered_orders": delivered,
+                    "bad_orders": bad,
+                    "bad_rate": round(bad_rate, 3),
+                    "minimum_delivered": self.TRUSTED_MIN_DELIVERED,
+                },
+            ),
+        )
+
     @staticmethod
     def _self_count(identifier) -> int:
         """Distinct-entity counts are "other entities + the current one", so
@@ -47,7 +81,7 @@ class RiskRules:
             return RiskRuleResult(score=0)
 
         total_orders = (
-            self.order_repository.count_customer_orders(
+            self.order_repository.count_customer_finalized_orders(
                 merchant_id=order.merchant_id,
                 environment=order.environment,
                 customer_id=order.customer_id,
@@ -79,7 +113,8 @@ class RiskRules:
             event_type=RiskEventType.HIGH_CANCEL_RATE,
             score_impact=self.profile.high_cancel_rate_score,
             event_data={
-                "previous_orders": total_orders,
+                "previous_orders": total_orders,  # kept for API consumers
+                "finalized_orders": total_orders,
                 "cancelled_orders": cancelled_orders,
                 "cancellation_rate": cancellation_rate,
                 "threshold": self.profile.high_cancel_rate_threshold,
@@ -395,8 +430,14 @@ class RiskRules:
     def evaluate_multiple_customers_same_ip(
         self,
         order: Order,
+        network_result: NetworkIntelResult | None = None,
     ) -> RiskRuleResult:
         if not order.ip_address:
+            return RiskRuleResult(score=0)
+        # Mobile carriers put many unrelated shoppers behind one address
+        # (CGNAT). Over a 7-day window that is normal; the short-window burst
+        # rule still catches a real ring on one mobile IP.
+        if network_result is not None and network_result.mobile:
             return RiskRuleResult(score=0)
 
         customer_count = (
@@ -749,8 +790,12 @@ class RiskRules:
             ),
         )
 
-    def evaluate_global_ip_reputation(self, order: Order) -> RiskRuleResult:
+    def evaluate_global_ip_reputation(self, order: Order, network_result: NetworkIntelResult | None = None) -> RiskRuleResult:
         if not order.ip_address or order.environment != "live":
+            return RiskRuleResult(score=0)
+        # A CGNAT mobile address is shared by a whole region's subscribers;
+        # its cross-merchant history is not this shopper's history.
+        if network_result is not None and network_result.mobile:
             return RiskRuleResult(score=0)
         total = self.order_repository.count_global_evaluated_orders_for_ip(order.ip_address, exclude_order_id=order.id)
         merchants = self.order_repository.count_global_merchants_for_ip(order.ip_address, exclude_order_id=order.id)
@@ -937,7 +982,7 @@ class RiskRules:
             self.evaluate_multiple_phones_same_device(order),
             self.evaluate_high_order_frequency(order),
             self.evaluate_new_device(order),
-            self.evaluate_multiple_customers_same_ip(order),
+            self.evaluate_multiple_customers_same_ip(order, network_result),
             self.evaluate_high_ip_frequency(order),
             self.evaluate_duplicate_order_pattern(order),
             self.evaluate_burst_network_activity(order),
@@ -953,7 +998,8 @@ class RiskRules:
             self.evaluate_bot_activity(order, network_result),
             self.evaluate_global_phone_reputation(order),
             self.evaluate_global_device_reputation(order),
-            self.evaluate_global_ip_reputation(order),
+            self.evaluate_global_ip_reputation(order, network_result),
             self.evaluate_unusual_order_quantity(order, business_context),
             self.evaluate_unusual_order_value(order, business_context),
+            self.evaluate_trusted_history(order),
         ]

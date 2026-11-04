@@ -168,7 +168,7 @@ def test_risk_assessment_and_events():
         assert result.assessment.order_id == current_order.id
         assert (
             result.assessment.model_version
-            == "rules-v5"
+            == RiskService.MODEL_VERSION
         )
 
         # =========================================================

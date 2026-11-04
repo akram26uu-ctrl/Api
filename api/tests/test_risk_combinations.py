@@ -148,7 +148,10 @@ def test_medium_risk_combination():
                 phone_identifier_id=phone.id,
                 device_identifier_id=device.id,
                 address_identifier_id=None,
-                status=OrderStatus.DELIVERED,
+                # Not yet delivered: a proven buyer (delivered history) is
+                # trusted and its reuse signals are dropped; see
+                # test_trusted_history.py.
+                status=OrderStatus.PENDING,
                 external_order_id=f"MEDIUM-HIST-{index}",
                 created_at=historical_time,
             )
