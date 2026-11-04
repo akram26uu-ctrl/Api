@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
+from app.core.algeria_geo import location_mismatch
+from app.core.order_quality import identity_quality_issues, phone_issues
 from app.core.risk_config import SHARED_IP_WINDOW_DAYS, is_mobile_network
 from app.models.enums import RiskEventType
 from app.models.order import Order
@@ -917,6 +919,64 @@ class RiskRules:
             ),
         )
 
+    @staticmethod
+    def _address_text(order: Order) -> str | None:
+        address = order.address_identifier
+        if address is None:
+            return None
+        # normalized_address is "address,commune,wilaya"; keep the street part.
+        return (address.normalized_address or "").rsplit(",", 2)[0]
+
+    def evaluate_identity_quality(self, order: Order) -> RiskRuleResult:
+        if self.profile.low_quality_identity_score <= 0:  # disabled by the merchant
+            return RiskRuleResult(score=0)
+        issues = identity_quality_issues(order.first_name, order.last_name, self._address_text(order))
+        if not issues:
+            return RiskRuleResult(score=0)
+        score = self.profile.low_quality_identity_score
+        return RiskRuleResult(
+            score=score,
+            event=RiskEvent(
+                event_type=RiskEventType.LOW_QUALITY_IDENTITY,
+                score_impact=score,
+                event_data={"issues": issues},
+            ),
+        )
+
+    def evaluate_phone_pattern(self, order: Order) -> RiskRuleResult:
+        if self.profile.suspicious_phone_score <= 0:
+            return RiskRuleResult(score=0)
+        phone = order.phone_identifier.phone if order.phone_identifier is not None else None
+        issues = phone_issues(phone or "")
+        if not issues:
+            return RiskRuleResult(score=0)
+        score = self.profile.suspicious_phone_score
+        return RiskRuleResult(
+            score=score,
+            event=RiskEvent(
+                event_type=RiskEventType.SUSPICIOUS_PHONE_NUMBER,
+                score_impact=score,
+                event_data={"issues": issues},
+            ),
+        )
+
+    def evaluate_address_location(self, order: Order) -> RiskRuleResult:
+        address = order.address_identifier
+        if address is None or self.profile.address_location_mismatch_score <= 0:
+            return RiskRuleResult(score=0)
+        evidence = location_mismatch(address.wilaya, address.commune)
+        if evidence is None:
+            return RiskRuleResult(score=0)
+        score = self.profile.address_location_mismatch_score
+        return RiskRuleResult(
+            score=score,
+            event=RiskEvent(
+                event_type=RiskEventType.ADDRESS_LOCATION_MISMATCH,
+                score_impact=score,
+                event_data={"wilaya": address.wilaya, "commune": address.commune, **evidence},
+            ),
+        )
+
     def evaluate_vpn(
         self,
         order: Order,
@@ -1000,4 +1060,7 @@ class RiskRules:
             self.evaluate_unusual_order_quantity(order, business_context),
             self.evaluate_unusual_order_value(order, business_context),
             self.evaluate_trusted_history(order),
+            self.evaluate_identity_quality(order),
+            self.evaluate_phone_pattern(order),
+            self.evaluate_address_location(order),
         ]

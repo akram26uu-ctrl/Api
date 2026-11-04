@@ -748,7 +748,69 @@
       "unavailable": "Risk profile unavailable.",
       "unsaved": "Unsaved changes",
       "zero_note": "A value of 0 disables the signal's contribution.",
-      "empty_profile": "Risk settings did not load from the server. Try again shortly."
+      "empty_profile": "Risk settings did not load from the server. Try again shortly.",
+      "signal_labels": {
+        "high_cancel_rate_score": {
+          "label": "High cancel rate",
+          "description": "Past cancellations and returns"
+        },
+        "phone_reuse_score": {
+          "label": "Phone reuse",
+          "description": "Same phone across many orders"
+        },
+        "device_reuse_score": {
+          "label": "Device reuse",
+          "description": "Same device fingerprint repeated"
+        },
+        "address_reuse_score": {
+          "label": "Address reuse",
+          "description": "Same shipping address repeated"
+        },
+        "multiple_customers_same_phone_score": {
+          "label": "Several customers / phone",
+          "description": "Several identities on one phone"
+        },
+        "multiple_phones_same_device_score": {
+          "label": "Several phones / device",
+          "description": "Several phones on one fingerprint"
+        },
+        "high_order_frequency_score": {
+          "label": "Order spike",
+          "description": "Many orders in a short window"
+        },
+        "high_ip_frequency_score": {
+          "label": "Repeated IP",
+          "description": "Repeated activity from one network"
+        },
+        "multiple_customers_same_ip_score": {
+          "label": "Several customers / IP",
+          "description": "Several identities from one IP"
+        },
+        "new_device_score": {
+          "label": "New device",
+          "description": "New device for a known customer"
+        },
+        "vpn_score": {
+          "label": "VPN signal",
+          "description": "VPN network detected"
+        },
+        "proxy_score": {
+          "label": "Proxy signal",
+          "description": "Proxy detected"
+        },
+        "low_quality_identity_score": {
+          "label": "Non-serious customer data",
+          "description": "Name or address like “test” or random letters"
+        },
+        "suspicious_phone_score": {
+          "label": "Suspicious phone number",
+          "description": "Not a mobile prefix, or repeated digits"
+        },
+        "address_location_mismatch_score": {
+          "label": "Commune outside wilaya",
+          "description": "The commune belongs to another wilaya"
+        }
+      }
     },
     "network": {
       "title": "3D Identity Resolution & Entity Relationship Graph",

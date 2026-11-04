@@ -19,6 +19,9 @@ const RULES = [
   ['new_device_score', 'جهاز جديد', 'جهاز جديد لدى عميل معروف'],
   ['vpn_score', 'إشارة VPN', 'شبكة VPN مكتشفة'],
   ['proxy_score', 'إشارة Proxy', 'Proxy مكتشف'],
+  ['low_quality_identity_score', 'بيانات زبون غير جدية', 'اسم أو عنوان مثل test أو أحرف عشوائية'],
+  ['suspicious_phone_score', 'رقم هاتف مريب', 'رقم ليس لمتعامل جوال أو أرقام مكررة'],
+  ['address_location_mismatch_score', 'البلدية لا تتبع الولاية', 'البلدية المكتوبة تابعة لولاية أخرى'],
 ] as const;
 
 export const RulesEngineView: React.FC = () => {
@@ -125,7 +128,9 @@ export const RulesEngineView: React.FC = () => {
           <span className="hidden sm:inline text-xs text-[var(--ordium-subtle)] font-mono">0 — 100</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/5">
-          {RULES.map(([key, label, description]) => {
+          {RULES.map(([key, fallbackLabel, fallbackDescription]) => {
+            const label = t(`dashboard.rules.signal_labels.${key}.label`, fallbackLabel);
+            const description = t(`dashboard.rules.signal_labels.${key}.description`, fallbackDescription);
             const value = Number(draft[key] ?? 0);
             return <div key={key} className="bg-[var(--ordium-surface-raised)]/65 p-4 sm:p-5 hover:bg-[#142033] transition-colors">
               <div className="flex items-start justify-between gap-3"><div><div className="text-xs font-semibold text-white">{label}</div><div className="mt-1 text-xs text-[var(--ordium-subtle)]">{description}</div></div><span className={`min-w-10 text-center rounded-lg border px-2 py-1 text-xs font-bold ${value === 0 ? 'border-white/10 text-[var(--ordium-subtle)]' : 'border-[var(--ordium-signal)]/15 bg-[var(--ordium-signal)]/5 text-[#67E8F9]'}`}>{value}</span></div>

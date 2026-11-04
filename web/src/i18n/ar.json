@@ -753,7 +753,69 @@
       "unavailable": "ملف المخاطر غير متاح.",
       "unsaved": "تغييرات غير محفوظة",
       "zero_note": "القيمة 0 تعطل مساهمة الإشارة.",
-      "empty_profile": "لم تصل إعدادات المخاطر من الخادم. أعد المحاولة بعد قليل."
+      "empty_profile": "لم تصل إعدادات المخاطر من الخادم. أعد المحاولة بعد قليل.",
+      "signal_labels": {
+        "high_cancel_rate_score": {
+          "label": "سجل الإلغاء المرتفع",
+          "description": "التاريخ السابق للإلغاءات"
+        },
+        "phone_reuse_score": {
+          "label": "إعادة استخدام الهاتف",
+          "description": "تكرار الهاتف بين الطلبات"
+        },
+        "device_reuse_score": {
+          "label": "إعادة استخدام الجهاز",
+          "description": "تكرار بصمة الجهاز"
+        },
+        "address_reuse_score": {
+          "label": "إعادة استخدام العنوان",
+          "description": "تكرار عنوان الشحن"
+        },
+        "multiple_customers_same_phone_score": {
+          "label": "عملاء متعددون / هاتف",
+          "description": "أكثر من هوية مرتبطة بالهاتف"
+        },
+        "multiple_phones_same_device_score": {
+          "label": "هواتف متعددة / جهاز",
+          "description": "عدة هواتف على بصمة واحدة"
+        },
+        "high_order_frequency_score": {
+          "label": "تسارع الطلبات",
+          "description": "عدد مرتفع خلال نافذة زمنية قصيرة"
+        },
+        "high_ip_frequency_score": {
+          "label": "تكرار عنوان IP",
+          "description": "نشاط متكرر من نفس الشبكة"
+        },
+        "multiple_customers_same_ip_score": {
+          "label": "عملاء متعددون / IP",
+          "description": "عدة هويات من عنوان واحد"
+        },
+        "new_device_score": {
+          "label": "جهاز جديد",
+          "description": "جهاز جديد لدى عميل معروف"
+        },
+        "vpn_score": {
+          "label": "إشارة VPN",
+          "description": "شبكة VPN مكتشفة"
+        },
+        "proxy_score": {
+          "label": "إشارة Proxy",
+          "description": "Proxy مكتشف"
+        },
+        "low_quality_identity_score": {
+          "label": "بيانات زبون غير جدية",
+          "description": "اسم أو عنوان مثل test أو أحرف عشوائية"
+        },
+        "suspicious_phone_score": {
+          "label": "رقم هاتف مريب",
+          "description": "رقم ليس لمتعامل جوال أو أرقام مكررة"
+        },
+        "address_location_mismatch_score": {
+          "label": "البلدية لا تتبع الولاية",
+          "description": "البلدية المكتوبة تابعة لولاية أخرى"
+        }
+      }
     },
     "network": {
       "title": "خريطة الروابط بين بيانات الطلبات",

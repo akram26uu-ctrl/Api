@@ -70,3 +70,6 @@ class RiskEventType(str, Enum):
     UNUSUAL_ORDER_QUANTITY = "unusual_order_quantity"
     UNUSUAL_ORDER_VALUE = "unusual_order_value"
     TRUSTED_CUSTOMER_HISTORY = "trusted_customer_history"
+    LOW_QUALITY_IDENTITY = "low_quality_identity"
+    SUSPICIOUS_PHONE_NUMBER = "suspicious_phone_number"
+    ADDRESS_LOCATION_MISMATCH = "address_location_mismatch"

@@ -28,6 +28,17 @@ def upgrade() -> None:
     op.create_index("ix_stores_is_active", "stores", ["is_active"], unique=False)
     op.create_index("ix_stores_merchant_active", "stores", ["merchant_id", "is_active"], unique=False)
 
+    # store_integrations (a9d3f6c1e820) predates this table in the chain; link
+    # it now unless an older database already has the constraint.
+    inspector = sa.inspect(op.get_bind())
+    if "store_integrations" in inspector.get_table_names():
+        has_fk = any(fk.get("referred_table") == "stores" for fk in inspector.get_foreign_keys("store_integrations"))
+        if not has_fk:
+            op.create_foreign_key(
+                "fk_store_integrations_store_id", "store_integrations", "stores",
+                ["store_id"], ["id"], ondelete="CASCADE",
+            )
+
     for table in ("api_keys", "orders", "notifications", "risk_evaluations", "webhook_endpoints"):
         op.add_column(table, sa.Column("store_id", sa.Uuid(), nullable=True))
         op.create_index(f"ix_{table}_store_id", table, ["store_id"], unique=False)
@@ -62,6 +73,11 @@ def downgrade() -> None:
         op.drop_constraint(f"fk_{table}_store_id", table, type_="foreignkey")
         op.drop_index(f"ix_{table}_store_id", table_name=table)
         op.drop_column(table, "store_id")
+    inspector = sa.inspect(op.get_bind())
+    if "store_integrations" in inspector.get_table_names():
+        for fk in inspector.get_foreign_keys("store_integrations"):
+            if fk.get("referred_table") == "stores" and fk.get("name"):
+                op.drop_constraint(fk["name"], "store_integrations", type_="foreignkey")
     op.drop_index("ix_stores_merchant_active", table_name="stores")
     op.drop_index("ix_stores_is_active", table_name="stores")
     op.drop_index("ix_stores_merchant_id", table_name="stores")

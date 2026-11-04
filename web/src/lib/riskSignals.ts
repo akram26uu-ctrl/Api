@@ -37,6 +37,9 @@ const SIGNALS: Record<string, Labels> = {
   identity_cluster_risk: { ar: 'هوية مرتبطة بشبكة كبيرة', fr: 'Identité liée à un large réseau', en: 'Identity linked to a large cluster' },
   unusual_order_quantity: { ar: 'كمية أكبر من المعتاد', fr: 'Quantité inhabituelle', en: 'Unusual quantity' },
   unusual_order_value: { ar: 'قيمة أكبر من المعتاد', fr: 'Montant inhabituel', en: 'Unusual order value' },
+  low_quality_identity: { ar: 'بيانات زبون غير جدية', fr: 'Données client non sérieuses', en: 'Non-serious customer data' },
+  suspicious_phone_number: { ar: 'رقم هاتف مريب', fr: 'Numéro de téléphone suspect', en: 'Suspicious phone number' },
+  address_location_mismatch: { ar: 'البلدية لا تتبع الولاية', fr: 'Commune hors de la wilaya', en: 'Commune outside the wilaya' },
   trusted_customer_history: { ar: 'زبون موثوق: طلبات سابقة سُلّمت', fr: 'Client fiable : commandes déjà livrées', en: 'Trusted buyer: past orders delivered' },
 };
 

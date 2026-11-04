@@ -106,6 +106,9 @@ def profile_to_response(
         ),
 
         vpn_score=profile.vpn_score,
+        low_quality_identity_score=profile.low_quality_identity_score,
+        suspicious_phone_score=profile.suspicious_phone_score,
+        address_location_mismatch_score=profile.address_location_mismatch_score,
         proxy_score=profile.proxy_score,
 
         review_threshold=profile.review_threshold,

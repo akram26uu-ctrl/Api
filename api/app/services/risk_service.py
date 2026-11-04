@@ -68,6 +68,12 @@ SCORE_GROUPS: dict[str, frozenset[RiskEventType]] = {
         RiskEventType.HIGH_PHONE_VELOCITY,
         RiskEventType.HIGH_DEVICE_VELOCITY,
     }),
+    # What the buyer typed: junk names/addresses and fake-looking phones are
+    # usually the same hurried fake order.
+    "typed_data": frozenset({
+        RiskEventType.LOW_QUALITY_IDENTITY,
+        RiskEventType.SUSPICIOUS_PHONE_NUMBER,
+    }),
     # Three views of "this IP is shared/busy".
     "shared_ip": frozenset({
         RiskEventType.MULTIPLE_CUSTOMERS_SAME_IP,
@@ -89,9 +95,9 @@ _UNSET = object()
 
 
 class RiskService:
-    MODEL_VERSION = "rules-v7"
-    RULES_VERSION = "2026-11-review-fixes-v7"
-    SCORE_GROUP_CAPS: dict[str, int] = {"network": 35, "identity_reuse": 45, "velocity": 22, "shared_ip": 30}
+    MODEL_VERSION = "rules-v8"
+    RULES_VERSION = "2026-11-first-order-signals-v8"
+    SCORE_GROUP_CAPS: dict[str, int] = {"network": 35, "identity_reuse": 45, "velocity": 22, "shared_ip": 30, "typed_data": 30}
 
     def __init__(
         self,
@@ -272,6 +278,9 @@ class RiskService:
             business_context_value_multiplier=defaults.business_context_value_multiplier,
             unusual_quantity_score=defaults.unusual_quantity_score,
             unusual_value_score=defaults.unusual_value_score,
+            low_quality_identity_score=defaults.low_quality_identity_score,
+            suspicious_phone_score=defaults.suspicious_phone_score,
+            address_location_mismatch_score=defaults.address_location_mismatch_score,
 
             review_threshold=defaults.review_threshold,
             reject_threshold=defaults.reject_threshold,

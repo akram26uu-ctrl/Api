@@ -106,6 +106,10 @@ class RiskProfileDefaults:
     unusual_quantity_score: int = 10
     unusual_value_score: int = 10
 
+    low_quality_identity_score: int = 20
+    suspicious_phone_score: int = 20
+    address_location_mismatch_score: int = 15
+
     review_threshold: int = 50
     reject_threshold: int = 80
     identity_cluster_threshold: int = 6

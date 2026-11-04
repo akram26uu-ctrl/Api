@@ -28,7 +28,7 @@ def upgrade() -> None:
     # and isolated; it never mixes those rows into a newly created store.
     op.execute(sa.text("""
         INSERT INTO stores (id, merchant_id, name, slug, is_active)
-        SELECT md5(m.id::text || ':legacy-unassigned')::uuid,
+        SELECT md5(m.id::text || '\\:legacy-unassigned')::uuid,
                m.id,
                'بيانات سابقة',
                'legacy-unassigned',

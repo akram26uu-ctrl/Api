@@ -749,7 +749,69 @@
       "unavailable": "Profil de risque indisponible.",
       "unsaved": "Modifications non enregistrées",
       "zero_note": "La valeur 0 désactive la contribution du signal.",
-      "empty_profile": "Les paramètres de risque ne se sont pas chargés. Réessayez dans un instant."
+      "empty_profile": "Les paramètres de risque ne se sont pas chargés. Réessayez dans un instant.",
+      "signal_labels": {
+        "high_cancel_rate_score": {
+          "label": "Taux d’annulation élevé",
+          "description": "Historique d’annulations et de retours"
+        },
+        "phone_reuse_score": {
+          "label": "Téléphone réutilisé",
+          "description": "Même téléphone sur de nombreuses commandes"
+        },
+        "device_reuse_score": {
+          "label": "Appareil réutilisé",
+          "description": "Même empreinte d’appareil répétée"
+        },
+        "address_reuse_score": {
+          "label": "Adresse réutilisée",
+          "description": "Même adresse de livraison répétée"
+        },
+        "multiple_customers_same_phone_score": {
+          "label": "Plusieurs clients / téléphone",
+          "description": "Plusieurs identités sur un téléphone"
+        },
+        "multiple_phones_same_device_score": {
+          "label": "Plusieurs téléphones / appareil",
+          "description": "Plusieurs téléphones sur une empreinte"
+        },
+        "high_order_frequency_score": {
+          "label": "Pic de commandes",
+          "description": "Beaucoup de commandes en peu de temps"
+        },
+        "high_ip_frequency_score": {
+          "label": "IP répétée",
+          "description": "Activité répétée depuis le même réseau"
+        },
+        "multiple_customers_same_ip_score": {
+          "label": "Plusieurs clients / IP",
+          "description": "Plusieurs identités depuis une adresse IP"
+        },
+        "new_device_score": {
+          "label": "Nouvel appareil",
+          "description": "Nouvel appareil pour un client connu"
+        },
+        "vpn_score": {
+          "label": "Signal VPN",
+          "description": "Réseau VPN détecté"
+        },
+        "proxy_score": {
+          "label": "Signal proxy",
+          "description": "Proxy détecté"
+        },
+        "low_quality_identity_score": {
+          "label": "Données client non sérieuses",
+          "description": "Nom ou adresse du type « test » ou lettres au hasard"
+        },
+        "suspicious_phone_score": {
+          "label": "Numéro suspect",
+          "description": "Pas un préfixe mobile, ou chiffres répétés"
+        },
+        "address_location_mismatch_score": {
+          "label": "Commune hors wilaya",
+          "description": "La commune saisie appartient à une autre wilaya"
+        }
+      }
     },
     "network": {
       "title": "Graphe 3D de Résolution d'Identité & Relations d'Entités",
