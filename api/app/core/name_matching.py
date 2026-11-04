@@ -6,12 +6,20 @@ way?" Algerian buyers write the same name in Arabic or Latin script, with
 French or English transliteration, in either order, or with the first name
 only: "أمينة بن علي", "Amina Benali", "BENALI Amina", "amina ben ali".
 
-Each name becomes a list of consonant skeletons (vowels are where
-transliterations disagree most). Two names match when every token of the
-shorter one matches a distinct token of the longer one, or when their whole
-skeletons are equal. The rule stays conservative: only skeletons of 4+
-consonants tolerate a one-letter difference, so "Mohamed" (mhmd) and "Ahmed"
-(hmd) remain different people.
+Two names match when every token of the shorter one matches a distinct token
+of the longer one, or when the whole names are equal once concatenated
+("Abd el Kader" / "Abdelkader"). Tokens are compared:
+
+* in the same script, letter by letter *with* vowels (one typo allowed only
+  for 5+ letters): "Hocine" ≠ "Hassan", "حسين" ≠ "حسن", "Mohamed" = "Mohammed";
+* across scripts, by consonant skeleton (vowels are where transliterations
+  disagree most): "أمينة" = "Amina", "محمد" = "Mohamed";
+* always with the same ending: a final "a" sound (Latin -a/-ah, Arabic
+  ة ا اء ى ه) marks most feminine names, so "Karim" ≠ "Karima",
+  "Amina" ≠ "Amine", "Sami" ≠ "Samia".
+
+Cross-script matching stays coarser ("Hocine" and "حسن" share a skeleton);
+it only runs between customers who already share one phone at one merchant.
 """
 from __future__ import annotations
 
@@ -75,8 +83,32 @@ def _tokens(name: str) -> list[str]:
     return out
 
 
+def _is_arabic(token: str) -> bool:
+    return any("\u0600" <= ch <= "\u06ff" for ch in token)
+
+
+_ARABIC_LOOSE = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ة": "ه", "ى": "ي", "ؤ": "و", "ئ": "ي"})
+
+
+def _loose(token: str) -> str:
+    """Same-script spelling form: keeps vowels, smooths common variants."""
+    if _is_arabic(token):
+        value = token.translate(_ARABIC_LOOSE)
+    else:
+        value = token
+        for a, b in (("dj", "j"), ("ph", "f"), ("ou", "u"), ("ee", "i"), ("y", "i"), ("sch", "sh"), ("ch", "sh")):
+            value = value.replace(a, b)
+    return re.sub(r"(.)\1+", r"\1", value)
+
+
+def _a_ending(token: str) -> bool:
+    if _is_arabic(token):
+        return token.endswith(("ة", "ا", "اء", "ى", "ه"))
+    return token.endswith(("a", "ah"))
+
+
 def _skeleton(token: str) -> str:
-    if any("؀" <= ch <= "ۿ" for ch in token):
+    if _is_arabic(token):
         letters = "".join(_ARABIC.get(ch, "") for ch in token)
     else:
         for digraph, repl in _LATIN_DIGRAPHS:
@@ -85,33 +117,65 @@ def _skeleton(token: str) -> str:
     return re.sub(r"(.)\1+", r"\1", letters)
 
 
+class _Token:
+    __slots__ = ("arabic", "loose", "skeleton", "a_ending")
+
+    def __init__(self, raw: str):
+        self.arabic = _is_arabic(raw)
+        self.loose = _loose(raw)
+        self.skeleton = _skeleton(raw)
+        self.a_ending = _a_ending(raw)
+
+
+def _parse(name: str) -> list[_Token]:
+    return [t for t in (_Token(raw) for raw in _tokens(name)) if t.skeleton]
+
+
 def name_skeletons(name: str) -> list[str]:
-    return [s for s in (_skeleton(t) for t in _tokens(name)) if s]
+    return [t.skeleton for t in _parse(name)]
 
 
-def _close(a: str, b: str) -> bool:
-    if a == b:
-        return True
-    if min(len(a), len(b)) < 4 or abs(len(a) - len(b)) > 1:
+def _one_edit(a: str, b: str) -> bool:
+    if abs(len(a) - len(b)) > 1:
         return False
-    # Edit distance <= 1.
     if len(a) == len(b):
         return sum(x != y for x, y in zip(a, b)) == 1
     short, long_ = (a, b) if len(a) < len(b) else (b, a)
     return any(long_[:i] + long_[i + 1:] == short for i in range(len(long_)))
 
 
-def names_match(a: str, b: str) -> bool:
-    sa, sb = name_skeletons(a), name_skeletons(b)
-    if not sa or not sb:
+def _token_match(a: _Token, b: _Token) -> bool:
+    if a.a_ending != b.a_ending:
         return False
-    if "".join(sa) == "".join(sb) or "".join(sa) == "".join(reversed(sb)):
+    if a.arabic == b.arabic:
+        if a.loose == b.loose:
+            return True
+        return min(len(a.loose), len(b.loose)) >= 5 and _one_edit(a.loose, b.loose)
+    if a.skeleton == b.skeleton:
         return True
-    short, long_ = (sa, sb) if len(sa) <= len(sb) else (sb, sa)
+    return min(len(a.skeleton), len(b.skeleton)) >= 4 and _one_edit(a.skeleton, b.skeleton)
+
+
+def _concat_match(a: list[_Token], b: list[_Token]) -> bool:
+    # Every word's ending must agree, whatever the word boundaries.
+    if sum(t.a_ending for t in a) != sum(t.a_ending for t in b):
+        return False
+    same_script = all(t.arabic for t in a + b) or not any(t.arabic for t in a + b)
+    key = (lambda ts: "".join(t.loose for t in ts)) if same_script else (lambda ts: "".join(t.skeleton for t in ts))
+    return key(a) == key(b)
+
+
+def names_match(a: str, b: str) -> bool:
+    ta, tb = _parse(a), _parse(b)
+    if not ta or not tb:
+        return False
+    if _concat_match(ta, tb) or _concat_match(ta, list(reversed(tb))):
+        return True
+    short, long_ = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
     remaining = list(long_)
     for token in short:
-        match = next((i for i, other in enumerate(remaining) if _close(token, other)), None)
-        if match is None:
+        index = next((i for i, other in enumerate(remaining) if _token_match(token, other)), None)
+        if index is None:
             return False
-        remaining.pop(match)
-    return sum(len(t) for t in short) >= 2
+        remaining.pop(index)
+    return sum(len(t.skeleton) for t in short) >= 2

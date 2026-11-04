@@ -83,6 +83,35 @@ class OrderService:
         if store_id is None:
             raise ValueError("store_id is required")
         request_hash = self._request_hash(data, device_fingerprint)
+        if idempotency_key is not None:
+            idempotency_key = idempotency_key.strip()
+            if not idempotency_key or len(idempotency_key) > 255:
+                raise ValueError("Invalid Idempotency-Key")
+
+        # Cheap read-only checks first: a replay, a duplicate order number or
+        # an exhausted quota must not wait for (or pay for) the external IP
+        # lookup. The authoritative checks run again inside the transaction.
+        if idempotency_key is not None:
+            pending = self.idempotency_repository.get(merchant_id, environment, idempotency_key)
+            if (
+                pending is not None
+                and pending.order_id is not None
+                and pending.expires_at is not None
+                and self._aware(pending.expires_at) > datetime.now(timezone.utc)
+            ):
+                return self._replay_or_reject(pending, request_hash)
+        if self.order_repository.get_by_external_id(
+            merchant_id=merchant_id,
+            external_order_id=data.external_order_id,
+            environment=environment,
+            store_id=store_id,
+        ) is not None:
+            raise ValueError("An order with this external order number already exists")
+        if environment == "live":
+            from app.services.usage_service import live_quota_exhausted
+            if live_quota_exhausted(self.db, merchant_id):
+                raise ValueError("usage_quota_exceeded")
+
         # External IP intelligence runs before any write so a slow provider
         # never holds row locks / an open write transaction.
         if ip_address:
@@ -91,10 +120,6 @@ class OrderService:
 
         try:
             if idempotency_key is not None:
-                idempotency_key = idempotency_key.strip()
-                if not idempotency_key or len(idempotency_key) > 255:
-                    raise ValueError("Invalid Idempotency-Key")
-
                 now = datetime.now(timezone.utc)
                 self.idempotency_repository.delete_expired_for_merchant(
                     merchant_id,
@@ -400,6 +425,10 @@ class OrderService:
                 for item in order.items
             ],
         }
+
+    @staticmethod
+    def _aware(value: datetime) -> datetime:
+        return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
     @staticmethod
     def _request_hash(data: OrderCreate, device_fingerprint: str | None) -> str:

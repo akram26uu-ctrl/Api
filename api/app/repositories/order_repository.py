@@ -24,6 +24,17 @@ def _bad_outcome_condition():
     )
 
 
+def _local_bad_order_condition():
+    """Order-level form of app.core.outcomes.is_bad_outcome for merchant-local
+    history: a cancelled/returned order, unless its outcome reason explains it
+    without blaming the buyer (stock, Ordium's own decision)."""
+    explained = exists().where(
+        OrderOutcome.order_id == Order.id,
+        OrderOutcome.reason.in_(tuple(NON_BAD_REASONS)),
+    )
+    return and_(Order.status.in_((OrderStatus.CANCELLED, OrderStatus.RETURNED)), ~explained)
+
+
 def _trusted_merchant_scope(statement):
     cutoff = datetime.now(timezone.utc) - timedelta(days=GLOBAL_REPUTATION_MIN_MERCHANT_AGE_DAYS)
     return statement.join(Merchant, Merchant.id == Order.merchant_id).where(
@@ -98,92 +109,62 @@ class OrderRepository:
 
         return self.db.scalar(statement) or 0
 
-    def count_customer_cancelled_orders(
+    def customer_outcome_counts(
         self,
         merchant_id: UUID,
         customer_id: UUID,
         exclude_order_id: UUID | None = None,
         environment: str = "live",
-    ) -> int:
-        """Count the customer's *bad* orders: cancelled or returned (COD refusal),
-        excluding cancellations explained by stock or by Ordium's own decision."""
-        non_bad = exists().where(
-            OrderOutcome.order_id == Order.id,
-            OrderOutcome.reason.in_(tuple(NON_BAD_REASONS)),
-        )
+    ) -> tuple[int, int, int]:
+        """(previous orders, orders with a known outcome, bad orders) in one query.
+
+        "Known outcome" (delivered, or a bad cancel/return) is the denominator
+        of the cancel/return rate: pending or in-transit orders say nothing
+        about the buyer yet, and counting them let a fraudster dilute their own
+        rate by placing more orders.
+        """
+        bad = _local_bad_order_condition()
         statement = select(
             func.count(Order.id),
+            func.count(Order.id).filter(or_(Order.status == OrderStatus.DELIVERED, bad)),
+            func.count(Order.id).filter(bad),
         ).where(
             Order.merchant_id == merchant_id,
             Order.environment == environment,
             Order.customer_id == customer_id,
-            Order.status.in_((OrderStatus.CANCELLED, OrderStatus.RETURNED)),
-            ~non_bad,
-        )
-
-        if exclude_order_id is not None:
-            statement = statement.where(
-                Order.id != exclude_order_id,
-            )
-
-        return self.db.scalar(statement) or 0
-
-    def count_customer_finalized_orders(
-        self,
-        merchant_id: UUID,
-        customer_id: UUID,
-        exclude_order_id: UUID | None = None,
-        environment: str = "live",
-    ) -> int:
-        """Orders whose outcome is known (delivered, or a *bad* cancel/return).
-
-        Denominator of the cancel/return rate. Pending or in-transit orders say
-        nothing about the buyer yet; counting them let a fraudster dilute their
-        own rate by placing more orders. Cancellations explained by stock or by
-        Ordium's own decision are excluded, as in the numerator.
-        """
-        non_bad = exists().where(
-            OrderOutcome.order_id == Order.id,
-            OrderOutcome.reason.in_(tuple(NON_BAD_REASONS)),
-        )
-        statement = select(func.count(Order.id)).where(
-            Order.merchant_id == merchant_id,
-            Order.environment == environment,
-            Order.customer_id == customer_id,
-            or_(
-                Order.status == OrderStatus.DELIVERED,
-                and_(Order.status.in_((OrderStatus.CANCELLED, OrderStatus.RETURNED)), ~non_bad),
-            ),
         )
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
-        return self.db.scalar(statement) or 0
+        previous, finalized, bad_count = self.db.execute(statement).one()
+        return int(previous or 0), int(finalized or 0), int(bad_count or 0)
 
-    def phone_outcome_history(
+    def buyer_outcome_history(
         self,
         merchant_id: UUID,
+        customer_id: UUID,
         phone_identifier_id: UUID,
         exclude_order_id: UUID | None = None,
         environment: str = "live",
     ) -> tuple[int, int]:
-        """(delivered, bad) order counts for a phone at this merchant."""
-        non_bad = exists().where(
-            OrderOutcome.order_id == Order.id,
-            OrderOutcome.reason.in_(tuple(NON_BAD_REASONS)),
-        )
-        is_bad = and_(Order.status.in_((OrderStatus.CANCELLED, OrderStatus.RETURNED)), ~non_bad)
+        """(delivered, bad) orders of this customer on this phone at this merchant.
+
+        Both must match: a known-good phone typed under someone else's name is
+        not that buyer's history.
+        """
+        bad = _local_bad_order_condition()
         statement = select(
             func.count(Order.id).filter(Order.status == OrderStatus.DELIVERED),
-            func.count(Order.id).filter(is_bad),
+            func.count(Order.id).filter(bad),
         ).where(
             Order.merchant_id == merchant_id,
             Order.environment == environment,
+            Order.customer_id == customer_id,
             Order.phone_identifier_id == phone_identifier_id,
         )
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
-        delivered, bad = self.db.execute(statement).one()
-        return int(delivered or 0), int(bad or 0)
+        delivered, bad_count = self.db.execute(statement).one()
+        return int(delivered or 0), int(bad_count or 0)
 
     def count_phone_orders(
         self,

@@ -4,15 +4,15 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.risk_config import SHARED_IP_WINDOW_DAYS, is_mobile_network
 from app.models.order import Order
 
 
 class IdentityGraphService:
     """Relational identity graph over the existing PostgreSQL schema."""
 
-    # Shared-IP links go stale fast (CGNAT, dynamic home IPs); same window as
-    # RiskRules.SHARED_IP_WINDOW_DAYS.
-    IP_LINK_WINDOW_DAYS = 7
+    # Shared-IP links go stale fast (CGNAT, dynamic home IPs).
+    IP_LINK_WINDOW_DAYS = SHARED_IP_WINDOW_DAYS
 
     def __init__(self, db: Session):
         self.db = db
@@ -40,7 +40,7 @@ class IdentityGraphService:
 
         # A mobile-carrier IP joins unrelated subscribers; it is not an
         # identity link.
-        ip_is_link = bool(order.ip_address) and not (network_result is not None and getattr(network_result, "mobile", False))
+        ip_is_link = bool(order.ip_address) and not is_mobile_network(network_result)
         if ip_is_link:
             customer_ids = self._ip_customer_ids(order)
             counts["ip_customers"] = len(customer_ids)

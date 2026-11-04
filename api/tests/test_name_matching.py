@@ -27,6 +27,11 @@ client = TestClient(app)
     ("Djamel Khelifi", "جمال خليفي"),
     ("Nour El Houda", "نور الهدى"),
     ("Amina", "Amina Benali"),
+    ("Yacine Amrani", "Yassine Amrani"),
+    ("Moussa", "موسى"),
+    ("Leila Haddad", "ليلى حداد"),
+    ("Karima Saidi", "كريمة سعيدي"),
+    ("Karim Saidi", "كريم سعيدي"),
 ])
 def test_same_person(a, b):
     assert names_match(a, b)
@@ -40,6 +45,13 @@ def test_same_person(a, b):
     ("Ali Benali", "Ali Mansouri"),
     ("Ali", "Ali Benali Karim"),
     ("", "Amina"),
+    ("Karim Saidi", "Karima Saidi"),
+    ("Amina", "Amine"),
+    ("Sami", "Samia"),
+    ("Samir Haddad", "Samira Haddad"),
+    ("Hocine", "Hassan"),
+    ("حسين", "حسن"),
+    ("كريم سعيدي", "Karima Saidi"),
 ])
 def test_different_people(a, b):
     assert not names_match(a, b)

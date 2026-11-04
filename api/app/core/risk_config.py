@@ -1,5 +1,15 @@
 from dataclasses import dataclass
 
+# Shared-IP associations older than this are stale: mobile carriers use CGNAT
+# and rotate addresses, so unrelated shoppers share IPs over time.
+SHARED_IP_WINDOW_DAYS = 7
+
+
+def is_mobile_network(network_result) -> bool:
+    """Mobile-carrier (CGNAT) IP: many unrelated shoppers behind one address,
+    so the IP is not an identity link between them."""
+    return network_result is not None and bool(getattr(network_result, "mobile", False))
+
 
 @dataclass(frozen=True)
 class RiskProfileDefaults:

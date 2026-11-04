@@ -176,3 +176,21 @@ def test_merchant_without_history_is_not_flagged():
     finally:
         db.rollback()
         db.close()
+
+
+def test_flood_with_no_baseline_is_still_flagged():
+    """A night-time or first-week flood has no comparable history; a large
+    absolute burst must still raise the signal."""
+    db = SessionLocal()
+    try:
+        merchant = Merchant(name="Flood", email=f"flood-{uuid4()}@ordium.local", status=MerchantStatus.ACTIVE)
+        db.add(merchant)
+        db.flush()
+        now = datetime.now(timezone.utc)
+        for index in range(20):
+            db.add(_freq_order(merchant, now - timedelta(seconds=20 * index)))
+        db.flush()
+        assert _has_frequency_event(db, merchant, now)
+    finally:
+        db.rollback()
+        db.close()

@@ -248,3 +248,22 @@ def test_own_past_orders_do_not_count_as_cluster_members():
     finally:
         db.rollback()
         db.close()
+
+
+def test_known_good_phone_typed_by_someone_else_is_not_trusted():
+    db = SessionLocal()
+    try:
+        m, owner, phone, device = _merchant(db), _customer(db, "owner"), _phone(db), _device(db)
+        _loyal_history(db, m, owner, phone, device, delivered=5)
+        stranger = _customer(db, "stranger")
+        current = _order(m, stranger, phone_identifier_id=phone.id, device_identifier_id=_device(db).id,
+                         created_at=datetime.now(timezone.utc))
+        db.add(current)
+        db.flush()
+
+        types = _types(RiskService(db).assess_order(current))
+
+        assert RiskEventType.TRUSTED_CUSTOMER_HISTORY not in types
+    finally:
+        db.rollback()
+        db.close()

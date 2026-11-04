@@ -89,8 +89,8 @@ _UNSET = object()
 
 
 class RiskService:
-    MODEL_VERSION = "rules-v6"
-    RULES_VERSION = "2026-11-trust-and-groups-v6"
+    MODEL_VERSION = "rules-v7"
+    RULES_VERSION = "2026-11-review-fixes-v7"
     SCORE_GROUP_CAPS: dict[str, int] = {"network": 35, "identity_reuse": 45, "velocity": 22, "shared_ip": 30}
 
     def __init__(

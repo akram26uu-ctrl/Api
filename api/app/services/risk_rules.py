@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
+from app.core.risk_config import SHARED_IP_WINDOW_DAYS, is_mobile_network
 from app.models.enums import RiskEventType
 from app.models.order import Order
 from app.models.risk_event import RiskEvent
@@ -28,10 +29,11 @@ class RiskRules:
     # normal traffic at the same time of day over the previous 7 days.
     TRAFFIC_BASELINE_DAYS = 7
     TRAFFIC_SPIKE_MULTIPLIER = 3.0
+    # Without comparable history (new merchant, quiet night hours) a flood is
+    # most anomalous, not least: fire on a large absolute burst instead.
+    COLD_START_BURST_MULTIPLIER = 3
 
-    # Shared-IP associations older than this are stale: mobile carriers use
-    # CGNAT and rotate addresses, so unrelated shoppers share IPs over time.
-    SHARED_IP_WINDOW_DAYS = 7
+    SHARED_IP_WINDOW_DAYS = SHARED_IP_WINDOW_DAYS
 
     # A phone that already paid for several delivered COD orders at this
     # merchant is a proven buyer: its repeat usage is loyalty, not risk.
@@ -40,11 +42,12 @@ class RiskRules:
     TRUSTED_HISTORY_SCORE = -10
 
     def evaluate_trusted_history(self, order: Order) -> RiskRuleResult:
-        if order.phone_identifier_id is None:
+        if order.phone_identifier_id is None or order.customer_id is None:
             return RiskRuleResult(score=0)
-        delivered, bad = self.order_repository.phone_outcome_history(
+        delivered, bad = self.order_repository.buyer_outcome_history(
             merchant_id=order.merchant_id,
             environment=order.environment,
+            customer_id=order.customer_id,
             phone_identifier_id=order.phone_identifier_id,
             exclude_order_id=order.id,
         )
@@ -80,17 +83,8 @@ class RiskRules:
         if order.customer_id is None:
             return RiskRuleResult(score=0)
 
-        total_orders = (
-            self.order_repository.count_customer_finalized_orders(
-                merchant_id=order.merchant_id,
-                environment=order.environment,
-                customer_id=order.customer_id,
-                exclude_order_id=order.id,
-            )
-        )
-
-        cancelled_orders = (
-            self.order_repository.count_customer_cancelled_orders(
+        previous_orders, total_orders, cancelled_orders = (
+            self.order_repository.customer_outcome_counts(
                 merchant_id=order.merchant_id,
                 environment=order.environment,
                 customer_id=order.customer_id,
@@ -113,7 +107,7 @@ class RiskRules:
             event_type=RiskEventType.HIGH_CANCEL_RATE,
             score_impact=self.profile.high_cancel_rate_score,
             event_data={
-                "previous_orders": total_orders,  # kept for API consumers
+                "previous_orders": previous_orders,
                 "finalized_orders": total_orders,
                 "cancelled_orders": cancelled_orders,
                 "cancellation_rate": cancellation_rate,
@@ -330,7 +324,6 @@ class RiskRules:
         if order_count < self.profile.high_order_frequency_count:
             return RiskRuleResult(score=0)
 
-        window_minutes = self.profile.high_order_frequency_window_minutes
         # Same time-of-day window on each of the previous N days, so normal
         # daily peaks are part of the baseline.
         baseline_orders = self.order_repository.count_orders_in_ranges(
@@ -341,14 +334,19 @@ class RiskRules:
                 for day in range(1, self.TRAFFIC_BASELINE_DAYS + 1)
             ],
         )
-        # Too little history to tell a launch/promo from an attack; a
-        # merchant-wide signal would otherwise add score to every legit order.
-        if baseline_orders < self.profile.high_order_frequency_count:
-            return RiskRuleResult(score=0)
         expected_per_window = baseline_orders / self.TRAFFIC_BASELINE_DAYS
-        spike_threshold = expected_per_window * self.TRAFFIC_SPIKE_MULTIPLIER
-        if order_count <= spike_threshold:
-            return RiskRuleResult(score=0)
+        if baseline_orders < self.profile.high_order_frequency_count:
+            # Too little history to tell a launch/promo from an attack at the
+            # normal bar; require a much larger absolute burst.
+            baseline_status = "insufficient"
+            spike_threshold = self.profile.high_order_frequency_count * self.COLD_START_BURST_MULTIPLIER
+            if order_count < spike_threshold:
+                return RiskRuleResult(score=0)
+        else:
+            baseline_status = "available"
+            spike_threshold = expected_per_window * self.TRAFFIC_SPIKE_MULTIPLIER
+            if order_count <= spike_threshold:
+                return RiskRuleResult(score=0)
 
         event = RiskEvent(
             event_type=RiskEventType.HIGH_ORDER_FREQUENCY,
@@ -363,6 +361,8 @@ class RiskRules:
                 ),
                 "expected_orders_in_window": round(expected_per_window, 3),
                 "spike_multiplier": self.TRAFFIC_SPIKE_MULTIPLIER,
+                "baseline": baseline_status,
+                "spike_threshold": round(spike_threshold, 3),
             },
         )
 
@@ -437,7 +437,7 @@ class RiskRules:
         # Mobile carriers put many unrelated shoppers behind one address
         # (CGNAT). Over a 7-day window that is normal; the short-window burst
         # rule still catches a real ring on one mobile IP.
-        if network_result is not None and network_result.mobile:
+        if is_mobile_network(network_result):
             return RiskRuleResult(score=0)
 
         customer_count = (
@@ -795,7 +795,7 @@ class RiskRules:
             return RiskRuleResult(score=0)
         # A CGNAT mobile address is shared by a whole region's subscribers;
         # its cross-merchant history is not this shopper's history.
-        if network_result is not None and network_result.mobile:
+        if is_mobile_network(network_result):
             return RiskRuleResult(score=0)
         total = self.order_repository.count_global_evaluated_orders_for_ip(order.ip_address, exclude_order_id=order.id)
         merchants = self.order_repository.count_global_merchants_for_ip(order.ip_address, exclude_order_id=order.id)
