@@ -44,6 +44,26 @@ class MerchantCustomerRepository:
         )
         return self.db.scalar(statement)
 
+    def list_customers_by_phone(
+        self,
+        merchant_id: UUID,
+        phone_identifier_id: UUID,
+        limit: int = 50,
+    ) -> list[Customer]:
+        """Customers already linked to this phone at this merchant, oldest first."""
+        statement = (
+            select(Customer)
+            .join(MerchantCustomer, MerchantCustomer.customer_id == Customer.id)
+            .join(CustomerPhone, CustomerPhone.customer_id == Customer.id)
+            .where(
+                MerchantCustomer.merchant_id == merchant_id,
+                CustomerPhone.phone_identifier_id == phone_identifier_id,
+            )
+            .order_by(MerchantCustomer.first_seen_at, Customer.id)
+            .limit(limit)
+        )
+        return list(self.db.scalars(statement))
+
     def create(self, link: MerchantCustomer) -> MerchantCustomer:
         self.db.add(link)
         self.db.flush()

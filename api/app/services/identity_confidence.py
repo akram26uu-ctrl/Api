@@ -12,6 +12,7 @@ def calculate_identity_confidence(
     exact_phone: bool,
     exact_name: bool,
     existing_customer: bool,
+    similar_name: bool = False,
 ) -> IdentityConfidence:
     # A newly created customer has no historical identity evidence.
     # Never award "exact_name" confidence merely because the just-created
@@ -23,6 +24,8 @@ def calculate_identity_confidence(
 
     if exact_phone and exact_name:
         return IdentityConfidence(100, ("existing_customer", "exact_phone", "exact_name"))
+    if exact_phone and similar_name:
+        return IdentityConfidence(95, ("existing_customer", "exact_phone", "similar_name"))
     if exact_phone:
         return IdentityConfidence(90, ("existing_customer", "exact_phone"))
     if exact_name:
