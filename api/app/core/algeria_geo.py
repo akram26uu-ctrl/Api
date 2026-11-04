@@ -15,7 +15,7 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-from app.core.name_matching import name_skeletons
+from app.core.name_matching import _parse, name_skeletons
 
 _DATA = Path(__file__).resolve().parent.parent / "data" / "algeria_communes.json"
 
@@ -43,18 +43,32 @@ _PREFIXES = re.compile(
 )
 
 
-def _key(text: str) -> str:
+# Consonant skeletons shorter than this ("sl", "fl") are shared by too many
+# unrelated places to count as recognising a commune.
+MIN_SKELETON_EVIDENCE = 4
+
+
+def _strip_prefixes(text: str) -> str:
     value = text or ""
     for _ in range(3):
         stripped = _PREFIXES.sub("", value)
         if stripped == value:
             break
         value = stripped
-    return "".join(name_skeletons(value))
+    return value
+
+
+def _key(text: str) -> str:
+    return "".join(name_skeletons(_strip_prefixes(text)))
+
+
+def _spelling_key(text: str) -> str:
+    """Same-script spelling (vowels kept): "babezuar", "بابزوار"."""
+    return "".join(t.loose for t in _parse(_strip_prefixes(text)))
 
 
 @lru_cache(maxsize=1)
-def _index() -> tuple[dict[str, set[str]], dict[str, set[str]], set[str]]:
+def _index() -> tuple[dict[str, set[str]], dict[str, set[str]], set[str], dict[str, set[str]]]:
     data = json.loads(_DATA.read_text(encoding="utf-8"))
     wilaya_by_key: dict[str, set[str]] = {}
     for code, names in data["wilayas"].items():
@@ -63,19 +77,23 @@ def _index() -> tuple[dict[str, set[str]], dict[str, set[str]], set[str]]:
             if key:
                 wilaya_by_key.setdefault(key, set()).add(code)
     commune_by_key: dict[str, set[str]] = {}
+    commune_by_spelling: dict[str, set[str]] = {}
     for code, ascii_name, arabic_name in data["communes"]:
         for name in (ascii_name, arabic_name):
             key = _key(name)
-            if key:
+            if len(key) >= MIN_SKELETON_EVIDENCE:
                 commune_by_key.setdefault(key, set()).add(code)
-    return wilaya_by_key, commune_by_key, set(data["wilayas"])
+            spelling = _spelling_key(name)
+            if spelling:
+                commune_by_spelling.setdefault(spelling, set()).add(code)
+    return wilaya_by_key, commune_by_key, set(data["wilayas"]), commune_by_spelling
 
 
 def resolve_wilaya(text: str | None) -> str | None:
     """Wilaya code ("01".."58") for a free-text wilaya, or None if unclear."""
     if not text or not text.strip():
         return None
-    wilaya_by_key, _, codes = _index()
+    wilaya_by_key, _, codes, _ = _index()
     match = re.match(r"^\s*(\d{1,2})(?!\d)", text)
     if match:
         code = f"{int(match.group(1)):02d}"
@@ -88,8 +106,15 @@ def commune_wilayas(text: str | None) -> set[str]:
     """Wilaya codes that have a commune with this name (empty if unknown)."""
     if not text or not text.strip():
         return set()
-    _, commune_by_key, _ = _index()
-    return set(commune_by_key.get(_key(text), set()))
+    _, commune_by_key, _, commune_by_spelling = _index()
+    # Exact spelling first; across scripts only a distinctive skeleton counts.
+    exact = commune_by_spelling.get(_spelling_key(text))
+    if exact:
+        return set(exact)
+    key = _key(text)
+    if len(key) < MIN_SKELETON_EVIDENCE:
+        return set()
+    return set(commune_by_key.get(key, set()))
 
 
 def _related(a: str, b: str) -> bool:

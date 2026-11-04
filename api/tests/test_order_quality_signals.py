@@ -32,7 +32,7 @@ def test_real_identities_are_clean(first, last, address):
 @pytest.mark.parametrize("first,last,address,expected", [
     ("test", "test", "test", {"placeholder_name", "placeholder_address"}),
     ("dfghj", "qsdfg", "zzzzz", {"gibberish_name", "gibberish_address"}),
-    ("Amina2", "Benali", "12", {"digits_in_name", "address_without_text"}),
+    ("Amina", "2024", "12", {"digits_in_name", "address_without_text"}),
     ("تجربة", "اختبار", "الجزائر", {"placeholder_name"}),
 ])
 def test_junk_identities_are_flagged(first, last, address, expected):
@@ -137,5 +137,61 @@ def test_merchant_can_switch_a_signal_off():
         assert response.json()["suspicious_phone_score"] == 0
         events = _post(headers, phone="0744444444")
         assert RiskEventType.SUSPICIOUS_PHONE_NUMBER.value not in events
+    finally:
+        db.close()
+
+
+# --- second review: false positives and edge cases ---------------------------
+
+@pytest.mark.parametrize("wilaya,commune", [
+    ("Alger", "Saoula"),     # dataset spells it Sehaoula; skeleton "sl" is shared
+    ("Alger", "Ville"),      # "fl" collides with communes elsewhere
+    ("Oran", "Centre"),
+])
+def test_short_or_ambiguous_commune_names_are_not_evidence(wilaya, commune):
+    assert location_mismatch(wilaya, commune) is None
+
+
+@pytest.mark.parametrize("first,last,address", [
+    ("Mo7amed", "Sa3idi", "12 Rue Larbi Ben Mhidi"),   # Arabizi
+    ("3abdelkader", "Benali", "Cite 5 juillet"),
+    ("Nan", "Haddad", "Rue sans nom"),
+    ("Amina", "Benali", "حي 5"),
+])
+def test_more_real_identities_are_clean(first, last, address):
+    assert identity_quality_issues(first, last, address) == []
+
+
+def test_digit_only_name_is_flagged():
+    assert "digits_in_name" in identity_quality_issues("Amina", "12345", "12 Rue Didouche Mourad")
+
+
+@pytest.mark.parametrize("phone", ["0770770770", "0550505050", "0661161616"])
+def test_vanity_numbers_are_not_suspicious(phone):
+    assert phone_issues(phone) == []
+
+
+def test_punctuation_only_address_is_judged_on_what_was_typed():
+    db = SessionLocal()
+    try:
+        events = _post(_headers(db), address="...")
+        assert "address_without_text" in events[RiskEventType.LOW_QUALITY_IDENTITY.value]["event_data"]["issues"]
+    finally:
+        db.close()
+
+
+def test_merchant_weight_above_group_cap_is_not_cut():
+    db = SessionLocal()
+    try:
+        headers = _headers(db, scopes=["orders:write", "risk_profile:write"])
+        assert client.patch("/api/v1/risk-profile", json={"low_quality_identity_score": 60}, headers=headers).status_code == 200
+        body = {
+            "external_order_id": f"q-{uuid4()}", "first_name": "test", "last_name": "Benali",
+            "phone": f"0661{uuid4().int % 10**6:06d}", "wilaya": "Alger", "commune": "Bab Ezzouar",
+            "address": "12 Rue Didouche Mourad", "total_amount": "4500.00",
+        }
+        response = client.post("/api/v1/orders", json=body, headers=headers)
+        assert response.status_code == 201, response.text
+        assert response.json()["risk"]["score"] >= 60
     finally:
         db.close()

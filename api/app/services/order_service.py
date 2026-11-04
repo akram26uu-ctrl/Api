@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 import re
-import unicodedata
 from app.utils.json import to_json_safe
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -31,6 +30,7 @@ from app.services.audit_service import AuditService
 from app.services.webhook_service import WebhookService
 from app.core.business_context import normalize_category
 from app.core.config import settings
+from app.core.text import fold
 from app.services.usage_service import enforce_live_quota
 
 
@@ -235,7 +235,9 @@ class OrderService:
                 self.db.rollback()
                 raise ValueError("An order with this external order number already exists") from exc
 
-            risk_result = self.risk_service.assess_order(order, network_result=network_result)
+            risk_result = self.risk_service.assess_order(
+                order, network_result=network_result, submitted_address=data.address,
+            )
             engine_decision = risk_result.decision
 
             # Shadow mode: when enabled, the merchant observes rejections without
@@ -434,8 +436,7 @@ class OrderService:
 
     @staticmethod
     def _normalize_address(address: str, commune: str, wilaya: str) -> str:
-        value = unicodedata.normalize("NFKC", f"{address}, {commune}, {wilaya}").casefold()
-        value = "".join(ch for ch in unicodedata.normalize("NFKD", value) if not unicodedata.combining(ch))
+        value = fold(f"{address}, {commune}, {wilaya}")
         value = re.sub(r"[^\w\s,]", " ", value, flags=re.UNICODE)
         value = re.sub(r"\s*,\s*", ",", value)
         value = re.sub(r"\s+", " ", value).strip(" ,")

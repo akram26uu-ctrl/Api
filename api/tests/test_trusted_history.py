@@ -1,4 +1,5 @@
 """rules-v6: trusted buyer history, finalized cancel-rate, signal groups, mobile IPs."""
+import pytest
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -266,6 +267,28 @@ def test_known_good_phone_typed_by_someone_else_is_not_trusted():
         types = _types(RiskService(db).assess_order(current))
 
         assert RiskEventType.TRUSTED_CUSTOMER_HISTORY not in types
+    finally:
+        db.rollback()
+        db.close()
+
+
+@pytest.mark.first_order_checks
+def test_proven_buyer_with_odd_looking_number_is_not_penalised():
+    """Production weights: delivered orders prove the number is real."""
+    db = SessionLocal()
+    try:
+        m, c, device = _merchant(db), _customer(db), _device(db)
+        phone = PhoneIdentifier(phone="0733333333")
+        db.add(phone)
+        db.flush()
+        _loyal_history(db, m, c, phone, device, delivered=3)
+        current = _order(m, c, phone_identifier_id=phone.id, device_identifier_id=device.id,
+                         created_at=datetime.now(timezone.utc))
+        db.add(current)
+        db.flush()
+        types = _types(RiskService(db).assess_order(current))
+        assert RiskEventType.TRUSTED_CUSTOMER_HISTORY in types
+        assert RiskEventType.SUSPICIOUS_PHONE_NUMBER not in types
     finally:
         db.rollback()
         db.close()

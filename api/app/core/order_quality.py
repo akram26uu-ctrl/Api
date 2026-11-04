@@ -10,24 +10,19 @@ short, and nothing here fires on an unusual-but-plausible name.
 from __future__ import annotations
 
 import re
-import unicodedata
+
+from app.core.text import fold as _fold
 
 # Algerian mobile numbers: 05 (Ooredoo), 06 (Mobilis), 07 (Djezzy).
 MOBILE_PREFIXES = ("05", "06", "07")
 
 _PLACEHOLDER_WORDS = {
     "test", "tests", "testing", "fake", "xxx", "xx", "aaa", "abc", "asdf", "qwerty", "azerty",
-    "qsdf", "null", "none", "nan", "undefined", "anonymous", "client", "customer", "nom", "prenom",
-    "name", "firstname", "lastname", "tst", "demo",
+    "qsdf", "null", "none", "undefined", "anonymous", "prenom", "firstname", "lastname", "tst", "demo",
     "تجربة", "اختبار", "تست", "مجهول", "زبون", "اسم",
 }
 
 _LATIN_VOWELS = set("aeiouy")
-
-
-def _fold(text: str) -> str:
-    value = unicodedata.normalize("NFKC", text or "").casefold()
-    return "".join(ch for ch in unicodedata.normalize("NFKD", value) if not unicodedata.combining(ch))
 
 
 def _words(text: str) -> list[str]:
@@ -46,7 +41,9 @@ def _is_repeated(word: str) -> bool:
 def identity_quality_issues(first_name: str, last_name: str, address: str | None) -> list[str]:
     issues: list[str] = []
     name_words = _words(f"{first_name} {last_name}")
-    if any(ch.isdigit() for ch in f"{first_name}{last_name}"):
+    # Arabizi spells Arabic sounds with digits (Mo7amed, Sa3idi, 3abdelkader),
+    # so only a name word made of digits is evidence.
+    if any(w.isdigit() for w in name_words):
         issues.append("digits_in_name")
     if any(w in _PLACEHOLDER_WORDS for w in name_words):
         issues.append("placeholder_name")
@@ -57,11 +54,11 @@ def identity_quality_issues(first_name: str, last_name: str, address: str | None
         return issues
     address_words = _words(address)
     letters = sum(ch.isalpha() for ch in _fold(address))
-    if letters < 3:
+    if letters < 2:  # "حي 5" is a real (short) address
         issues.append("address_without_text")
     if any(w in _PLACEHOLDER_WORDS for w in address_words):
         issues.append("placeholder_address")
-    if address_words and all(_is_repeated(w) or _is_mash(w) or w.isdigit() for w in address_words) and letters >= 3:
+    if address_words and all(_is_repeated(w) or _is_mash(w) or w.isdigit() for w in address_words) and letters >= 2:
         issues.append("gibberish_address")
     return issues
 
@@ -74,7 +71,9 @@ def phone_issues(phone: str) -> list[str]:
     if not phone.startswith(MOBILE_PREFIXES):
         issues.append("not_a_mobile_prefix")
     subscriber = phone[2:]
-    if len(set(subscriber)) <= 2:
+    # One digit throughout (0555555555). Two-digit patterns such as
+    # 0770770770 are sold by operators as "golden" numbers.
+    if len(set(subscriber)) == 1:
         issues.append("repeated_digits")
     elif subscriber in "0123456789012345" or subscriber in "9876543210987654":
         issues.append("sequential_digits")

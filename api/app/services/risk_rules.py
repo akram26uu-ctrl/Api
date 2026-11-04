@@ -919,18 +919,12 @@ class RiskRules:
             ),
         )
 
-    @staticmethod
-    def _address_text(order: Order) -> str | None:
-        address = order.address_identifier
-        if address is None:
-            return None
-        # normalized_address is "address,commune,wilaya"; keep the street part.
-        return (address.normalized_address or "").rsplit(",", 2)[0]
-
-    def evaluate_identity_quality(self, order: Order) -> RiskRuleResult:
+    def evaluate_identity_quality(self, order: Order, submitted_address: str | None = None) -> RiskRuleResult:
         if self.profile.low_quality_identity_score <= 0:  # disabled by the merchant
             return RiskRuleResult(score=0)
-        issues = identity_quality_issues(order.first_name, order.last_name, self._address_text(order))
+        # The street exactly as typed (the stored address key is normalized and
+        # joined with commune/wilaya, so it cannot be judged reliably).
+        issues = identity_quality_issues(order.first_name, order.last_name, submitted_address)
         if not issues:
             return RiskRuleResult(score=0)
         score = self.profile.low_quality_identity_score
@@ -1030,6 +1024,7 @@ class RiskRules:
         order: Order,
         network_result: NetworkIntelResult | None = None,
         business_context: dict | None = None,
+        submitted_address: str | None = None,
     ) -> list[RiskRuleResult]:
         return [
             self.evaluate_high_cancel_rate(order),
@@ -1060,7 +1055,7 @@ class RiskRules:
             self.evaluate_unusual_order_quantity(order, business_context),
             self.evaluate_unusual_order_value(order, business_context),
             self.evaluate_trusted_history(order),
-            self.evaluate_identity_quality(order),
+            self.evaluate_identity_quality(order, submitted_address),
             self.evaluate_phone_pattern(order),
             self.evaluate_address_location(order),
         ]

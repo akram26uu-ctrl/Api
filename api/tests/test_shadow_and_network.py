@@ -26,8 +26,8 @@ def test_shadow_mode_records_engine_decision(monkeypatch):
         service = OrderService(db)
         original = service.risk_service.assess_order
 
-        def forced_reject(order, network_result=None):
-            result = original(order, network_result=network_result)
+        def forced_reject(order, network_result=None, **kwargs):
+            result = original(order, network_result=network_result, **kwargs)
             result.assessment.decision = RiskDecision.REJECT
             return RiskResult(score=95, decision=RiskDecision.REJECT, assessment=result.assessment, events=result.events)
 

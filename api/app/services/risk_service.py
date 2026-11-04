@@ -89,6 +89,8 @@ TRUST_SUPPRESSED: frozenset[RiskEventType] = frozenset({
     RiskEventType.DEVICE_REUSED,
     RiskEventType.ADDRESS_REUSED,
     RiskEventType.NEW_DEVICE,
+    # Delivered, paid orders prove the number is real.
+    RiskEventType.SUSPICIOUS_PHONE_NUMBER,
 })
 
 _UNSET = object()
@@ -315,6 +317,7 @@ class RiskService:
     @classmethod
     def _apply_group_caps(cls, events: list[RiskEvent]) -> tuple[int, dict[str, dict[str, int]]]:
         group_raw: dict[str, int] = {}
+        group_max: dict[str, int] = {}
         score = 0
         for event in events:
             group = next((name for name, members in SCORE_GROUPS.items() if event.event_type in members), None)
@@ -322,9 +325,12 @@ class RiskService:
                 score += event.score_impact
             else:
                 group_raw[group] = group_raw.get(group, 0) + event.score_impact
+                group_max[group] = max(group_max.get(group, 0), event.score_impact)
         applied: dict[str, dict[str, int]] = {}
         for group, raw in group_raw.items():
-            cap = cls.SCORE_GROUP_CAPS.get(group, raw)
+            # A cap limits stacking; it never cuts one signal below the weight
+            # the merchant gave it.
+            cap = max(cls.SCORE_GROUP_CAPS.get(group, raw), group_max.get(group, 0))
             score += min(raw, cap)
             if raw > cap:
                 applied[group] = {"raw": raw, "cap": cap}
@@ -334,6 +340,7 @@ class RiskService:
         self,
         order: Order,
         network_result: NetworkIntelResult | None | object = _UNSET,
+        submitted_address: str | None = None,
     ) -> RiskResult:
         started_at = time.perf_counter()
         profile = self._get_or_create_profile(
@@ -361,6 +368,7 @@ class RiskService:
             order,
             network_result,
             business_context=business_context,
+            submitted_address=submitted_address,
         )
 
         graph_summary = self.graph_service.summarize_order(order, network_result)
