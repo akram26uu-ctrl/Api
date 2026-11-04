@@ -1,6 +1,6 @@
 from decimal import Decimal
 from app.core.algeria_geo import canonical_wilaya_text
-from app.core.dz_input import normalize_dz_phone, to_cents
+from app.core.dz_input import normalize_currency, normalize_dz_phone, to_cents
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from datetime import datetime
@@ -115,6 +115,11 @@ class OrderCreate(BaseModel):
         min_length=3,
         max_length=3,
     )
+
+    @field_validator("currency", mode="before")
+    @classmethod
+    def local_currency_labels(cls, value):
+        return normalize_currency(value) if value is not None else value
 
     @field_validator("phone")
     @classmethod

@@ -32,3 +32,5 @@ from app.models.order_confirmation_attempt import OrderConfirmationAttempt
 from app.models.store_integration import StoreIntegration
 
 from app.models.whatsapp_message import WhatsAppInboundEvent, WhatsAppMessage
+
+from app.models.store_order_backlog import StoreOrderBacklog

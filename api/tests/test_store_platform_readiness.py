@@ -282,3 +282,87 @@ def test_woocommerce_multi_quantity_and_same_second_orders_are_all_ingested():
     resend = _wc_send(connection, _wc_order(base + 2, quantity=5, unit_price=2500, total="12500.00", phone="0661234567"), delivery_id="other")
     assert resend.status_code == 200, resend.text
     assert resend.json().get("duplicate") is True or resend.json().get("replayed") is True
+
+
+def test_quota_hit_orders_are_queued_and_retried_not_lost(monkeypatch):
+    """A quota refusal is temporary: the store is told "received" (so the
+    webhook stays enabled) and Ordium ingests the order once quota allows."""
+    from app.models.notification import Notification
+    from app.models.order import Order
+    from app.models.store_order_backlog import StoreOrderBacklog
+    from scripts import retry_store_backlog
+    import app.services.order_service as order_service_module
+    import app.services.usage_service as usage_service_module
+
+    (merchant_id, store_id), raw_key = _merchant_with_key()
+    connection = _create(raw_key, store_id, platform="woocommerce", external_store_id=f"wc-{uuid4().hex}").json()
+
+    def over_quota(db, merchant_id):
+        raise ValueError("usage_quota_exceeded")
+    monkeypatch.setattr(order_service_module, "enforce_live_quota", over_quota)
+
+    order_id = int(uuid4().int % 10**9)
+    response = _wc_send(connection, _wc_order(order_id), delivery_id=f"q-{order_id}")
+    assert response.status_code == 200
+    assert response.json() == {"accepted": True, "queued": True, "reason": "usage_quota_exceeded"}
+
+    db = SessionLocal()
+    try:
+        item = db.query(StoreOrderBacklog).filter(StoreOrderBacklog.store_id == UUID(store_id)).one()
+        assert item.resolved_at is None and item.payload
+        assert db.query(Notification).filter(
+            Notification.store_id == UUID(store_id), Notification.notification_type == "integration.order_queued",
+        ).count() == 1
+        assert db.query(Order).filter(Order.store_id == UUID(store_id)).count() == 0
+    finally:
+        db.close()
+
+    # Still over quota: kept for later.
+    retry_store_backlog.run_once()
+    db = SessionLocal()
+    try:
+        item = db.query(StoreOrderBacklog).filter(StoreOrderBacklog.store_id == UUID(store_id)).one()
+        assert item.resolved_at is None and item.attempts == 1
+        item.next_attempt_at = item.created_at  # due again
+        db.commit()
+    finally:
+        db.close()
+
+    # Quota available again: the order arrives and the payload is cleared.
+    monkeypatch.setattr(order_service_module, "enforce_live_quota", lambda db, merchant_id: {})
+    monkeypatch.setattr(usage_service_module, "live_quota_exhausted", lambda db, merchant_id: False)
+    retry_store_backlog.run_once()
+    db = SessionLocal()
+    try:
+        item = db.query(StoreOrderBacklog).filter(StoreOrderBacklog.store_id == UUID(store_id)).one()
+        assert item.resolution == "ingested" and item.payload is None
+        assert db.query(Order).filter(Order.store_id == UUID(store_id), Order.external_order_id == str(order_id)).count() == 1
+    finally:
+        db.close()
+
+
+def test_different_broken_orders_without_id_are_each_reported():
+    from app.models.notification import Notification
+    (_, store_id), raw_key = _merchant_with_key()
+    connection = _create(raw_key, store_id, platform="woocommerce", external_store_id=f"wc-{uuid4().hex}").json()
+    path = connection["webhook_url"].split("testserver", 1)[-1]
+    for body in ({"currency": "DZD", "note": "a"}, {"currency": "DZD", "note": "b"}):
+        raw = json.dumps(body).encode()
+        signature = base64.b64encode(hmac.new(connection["webhook_secret"].encode(), raw, hashlib.sha256).digest()).decode()
+        response = client.post(path, content=raw, headers={"X-WC-Webhook-Signature": signature, "X-WC-Webhook-Topic": "order.created"})
+        assert response.status_code == 200 and response.json()["accepted"] is False
+    db = SessionLocal()
+    try:
+        assert db.query(Notification).filter(
+            Notification.store_id == UUID(store_id), Notification.notification_type == "integration.order_rejected",
+        ).count() == 2
+    finally:
+        db.close()
+
+
+def test_huge_amount_is_a_clean_rejection_not_a_server_error():
+    (_, store_id), raw_key = _merchant_with_key()
+    connection = _create(raw_key, store_id, platform="woocommerce", external_store_id=f"wc-{uuid4().hex}").json()
+    response = _wc_send(connection, _wc_order(int(uuid4().int % 10**9), total="1e30"), delivery_id=f"h-{uuid4()}")
+    assert response.status_code == 200
+    assert response.json()["accepted"] is False

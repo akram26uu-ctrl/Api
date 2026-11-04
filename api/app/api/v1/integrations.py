@@ -61,16 +61,13 @@ def _required_text(value, label: str, maximum: int = 255) -> str:
 
 
 def _money(value, label: str) -> Decimal:
-    from app.core.dz_input import parse_amount
+    from app.core.dz_input import AmountError, cents
     try:
-        amount = parse_amount(value)
-    except (InvalidOperation, ValueError, TypeError, AttributeError) as exc:
+        # Rounded to cents: platforms derive unit prices as line_total / quantity
+        # (2500 / 3 = 833.3333 after a discount).
+        amount = cents(value)
+    except (AmountError, InvalidOperation, ValueError, TypeError, AttributeError) as exc:
         raise HTTPException(422, f"Order has an invalid amount: {label}") from exc
-    if not amount.is_finite():
-        raise HTTPException(422, f"Order has an invalid amount: {label}")
-    # Platforms derive unit prices as line_total / quantity (e.g. 2500 / 3 = 833.3333 after a
-    # discount), so round to cents instead of rejecting the order.
-    amount = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     if amount <= 0:
         raise HTTPException(422, f"Order has an invalid amount: {label}")
     return amount
@@ -157,10 +154,8 @@ def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
     if address2:
         street = f"{street}, {address2}" if street else address2
 
-    currency = str(payload.get("currency") or payload.get("currency_code") or "DZD").strip().upper()
-    # Stores configured with a local label instead of the ISO code.
-    if currency in {"DA", "DZ", "دج", "د.ج", "DINAR", "DINARS"}:
-        currency = "DZD"
+    from app.core.dz_input import normalize_currency
+    currency = normalize_currency(payload.get("currency") or payload.get("currency_code") or "DZD")
     if currency != "DZD":
         raise HTTPException(422, "ORDIUM currently accepts DZD orders only")
 
@@ -363,7 +358,17 @@ def _ingest_acknowledged(payload: dict, merchant_id: UUID, store_id: UUID, event
         if exc.status_code >= 500:
             raise
         logger.warning("legacy store webhook rejected event=%s status=%s reason=%s", event_id[:80], exc.status_code, exc.detail)
-        return {"accepted": False, "reason": str(exc.detail)}
+        from app.db.database import SessionLocal
+        from app.services.store_delivery_service import handle_unprocessable_delivery
+        order = payload.get("order") if isinstance(payload.get("order"), dict) else payload
+        external_id = order.get("id") or order.get("order_id") or order.get("name")
+        platform = event_id.split(":", 1)[0]
+        with SessionLocal() as db:
+            return handle_unprocessable_delivery(
+                db, merchant_id=merchant_id, store_id=store_id, platform=platform, source_name=platform,
+                external_order_id=str(external_id) if external_id is not None else None,
+                event_id=event_id, reason=str(exc.detail), payload=payload,
+            )
 
 
 @router.get("/status")

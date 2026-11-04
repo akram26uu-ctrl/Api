@@ -145,3 +145,16 @@ def test_postal_code_supplies_a_missing_wilaya():
                              "address1": "5 Rue X", "city": "Es Senia", "zip": "31000", "province": None},
     }
     assert _normalize_order(payload, "78").wilaya == "Oran"
+
+
+@pytest.mark.parametrize("raw", ["1e30", "123456789012345678901234567890"])
+def test_out_of_range_amounts_are_clean_422s(raw):
+    with pytest.raises(HTTPException):
+        _money(raw, "total")
+    with pytest.raises(ValueError):
+        _order(total_amount=raw)
+
+
+@pytest.mark.parametrize("currency", ["DA", " DZD ", "dzd", "دج"])
+def test_api_accepts_local_currency_labels(currency):
+    assert _order(currency=currency).currency == "DZD"

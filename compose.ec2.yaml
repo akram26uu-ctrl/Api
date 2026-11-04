@@ -161,7 +161,7 @@ services:
     command:
       - sh
       - -c
-      - while true; do python -m scripts.dispatch_webhooks || echo "Webhook batch failed; retrying"; python -m scripts.dispatch_whatsapp || echo "WhatsApp batch failed; retrying"; sleep 10; done
+      - while true; do python -m scripts.dispatch_webhooks || echo "Webhook batch failed; retrying"; python -m scripts.dispatch_whatsapp || echo "WhatsApp batch failed; retrying"; python -m scripts.retry_store_backlog || echo "Store backlog batch failed; retrying"; sleep 10; done
     environment: *api-environment
     depends_on:
       api:

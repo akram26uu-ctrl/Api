@@ -46,6 +46,12 @@ export function localizeNotification(item: DashboardNotification, t: Translate):
       }),
     };
   }
+  if (type === 'integration.order_queued') {
+    return {
+      title: t('dashboard.notifications.types.store_queued.title', item.title),
+      message: fill(t('dashboard.notifications.types.store_queued.message', item.message), { order, platform: meta.platform }),
+    };
+  }
   if (type === 'integration.order_rejected') {
     const reason = String(meta.reason ?? '');
     return {
@@ -151,7 +157,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({ enviro
               <div className="p-6 text-center"><p className="text-xs text-red-300">{error}</p><Button className="mt-3" variant="outline" size="sm" onClick={() => void load()}>{t('common.retry', 'Retry')}</Button></div>
             ) : items.length === 0 ? (
               <div className="p-8 text-center"><Bell className="w-7 h-7 mx-auto text-[#334155]" /><p className="mt-3 text-sm text-white">{t('dashboard.notifications.empty', 'You are all caught up.')}</p><p className="mt-1 text-xs text-[var(--ordium-subtle)]">{t('dashboard.notifications.empty_desc', 'Actionable risk alerts will appear here.')}</p></div>
-            ) : items.map(item => (
+            ) : items.map(item => { const text = localizeNotification(item, t); return (
               <button
                 key={item.id}
                 type="button"
@@ -161,13 +167,13 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({ enviro
                 <div className="flex gap-3">
                   <div className="mt-0.5 shrink-0">{iconFor(item.severity)}</div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3"><p className="text-xs font-semibold text-white">{localizeNotification(item, t).title}</p>{!item.read_at && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0" />}</div>
-                    <p className="text-xs leading-relaxed text-[var(--ordium-muted)] mt-1">{localizeNotification(item, t).message}</p>
+                    <div className="flex items-start justify-between gap-3"><p className="text-xs font-semibold text-white">{text.title}</p>{!item.read_at && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0" />}</div>
+                    <p className="text-xs leading-relaxed text-[var(--ordium-muted)] mt-1">{text.message}</p>
                     <p className="text-xs text-[#475569] font-mono mt-2">{new Date(item.created_at).toLocaleString()}</p>
                   </div>
                 </div>
               </button>
-            ))}
+            ); })}
           </div>
         </div>
       )}

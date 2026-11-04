@@ -1030,6 +1030,10 @@
         "store_rejected": {
           "title": "A store order was not processed",
           "message": "Order {order} from {platform} was not recorded: {reason}. Fix the field in your store or enter the order manually."
+        },
+        "store_queued": {
+          "title": "A store order is waiting",
+          "message": "Order {order} from {platform} will be processed automatically once your monthly quota allows."
         }
       },
       "outcomes": {

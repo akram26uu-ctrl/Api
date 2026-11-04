@@ -19,7 +19,7 @@ from app.api.dependencies import get_database, require_api_scope
 from app.core.config import settings
 from app.models.api_key import ApiKey
 from app.models.store import Store
-from app.models.notification import Notification
+from app.services.store_delivery_service import handle_unprocessable_delivery
 from app.models.store_integration import StoreIntegration
 from app.services.audit_service import AuditService
 
@@ -430,9 +430,7 @@ async def receive_store_webhook(
     # deliveries and Shopify removes it after repeated failures, which would
     # silently cut off every later order. Rejections are shown to the
     # merchant as alerts instead. Only transient server errors stay 5xx.
-    integration.last_event_at = datetime.now(timezone.utc)
     if topic not in allowed_topics:
-        db.commit()
         return {"accepted": True, "ignored": True, "reason": "unsupported_topic"}
 
     order = payload.get("data") if isinstance(payload.get("data"), dict) else payload.get("order")
@@ -440,10 +438,16 @@ async def receive_store_webhook(
         order = payload
     external_order_id = order.get("id") or order.get("order_id") or order.get("name")
     if external_order_id is None:
-        return _reject_delivery(db, integration, platform, None, "Webhook payload is missing the external order ID")
+        return handle_unprocessable_delivery(
+            db, merchant_id=integration.merchant_id, store_id=integration.store_id, platform=platform,
+            source_name=integration.display_name, external_order_id=None,
+            event_id=hashlib.sha256(raw_body).hexdigest(),
+            reason="Webhook payload is missing the external order ID", payload=None,
+        )
 
     from app.api.v1.integrations import _ingest
     stable_event_id = _stable_event_id(platform, request.headers, payload, str(external_order_id))
+    ingest_event_id = f"{platform}:{integration.id}:{stable_event_id}"
     # _ingest owns a separate DB session for order creation; this session only tracks connection metadata.
     try:
         # _ingest is blocking (database + network-intelligence lookups); run it off the event loop
@@ -453,7 +457,7 @@ async def receive_store_webhook(
             order,
             integration.merchant_id,
             integration.store_id,
-            f"{platform}:{integration.id}:{stable_event_id}",
+            ingest_event_id,
         )
     except HTTPException as exc:
         # Record why a signed delivery was rejected; details name fields only, never customer data.
@@ -463,38 +467,13 @@ async def receive_store_webhook(
         )
         if exc.status_code >= 500:
             raise
-        return _reject_delivery(db, integration, platform, str(external_order_id), str(exc.detail))
+        return handle_unprocessable_delivery(
+            db, merchant_id=integration.merchant_id, store_id=integration.store_id, platform=platform,
+            source_name=integration.display_name, external_order_id=str(external_order_id),
+            event_id=ingest_event_id, reason=str(exc.detail), payload=order,
+        )
+    # "Last order received" in the dashboard: only for an ingested order.
+    integration.last_event_at = datetime.now(timezone.utc)
     db.commit()
     return result
 
-
-_REJECTION_REASONS_AR = {
-    "usage_quota_exceeded": "تم بلوغ حد الطلبات الشهري لحسابك",
-}
-
-
-def _reject_delivery(db: Session, integration, platform: str, external_order_id: str | None, reason: str) -> dict:
-    """Acknowledge a signed delivery that cannot become an order, and tell the
-    merchant once per store order (the store may retry the same delivery)."""
-    resource_id = f"{platform}:{integration.id}:{external_order_id or 'unknown'}"[:255]
-    already = db.query(Notification.id).filter(
-        Notification.store_id == integration.store_id,
-        Notification.notification_type == "integration.order_rejected",
-        Notification.resource_id == resource_id,
-    ).first()
-    if already is None:
-        shown = _REJECTION_REASONS_AR.get(reason, reason)
-        db.add(Notification(
-            merchant_id=integration.merchant_id,
-            store_id=integration.store_id,
-            environment="live",
-            notification_type="integration.order_rejected",
-            severity="warning",
-            title="A store order could not be processed",
-            message=f"Order {external_order_id or '?'} from {integration.display_name} ({platform}) was not processed: {shown}"[:2000],
-            resource_type="store_integration",
-            resource_id=resource_id,
-            metadata_json={"platform": platform, "external_order_id": external_order_id, "reason": reason[:500]},
-        ))
-    db.commit()
-    return {"accepted": False, "reason": reason}

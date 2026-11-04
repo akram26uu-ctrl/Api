@@ -79,10 +79,43 @@ def parse_amount(value) -> Decimal:
     return amount
 
 
-def to_cents(value):
-    """parse_amount rounded to cents (discounts give 833.3333 unit prices).
-    Unparseable input is passed through so the schema reports the field."""
+class AmountError(ValueError):
+    pass
+
+
+# Order totals are Numeric(12, 2): anything at or above 10^10 cannot be stored.
+MAX_AMOUNT = Decimal("10000000000")
+
+
+def cents(value) -> Decimal:
+    """parse_amount rounded to cents; AmountError when not a storable amount
+    (huge values like "1e30" would otherwise fail quantize with an
+    InvalidOperation and surface as a server error)."""
     try:
-        return parse_amount(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    except (ValueError, TypeError):
+        amount = parse_amount(value)
+    except (ValueError, TypeError) as exc:
+        raise AmountError(str(exc)) from exc
+    if abs(amount) >= MAX_AMOUNT:
+        raise AmountError("amount too large")
+    try:
+        return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except InvalidOperation as exc:
+        raise AmountError("invalid amount") from exc
+
+
+def to_cents(value):
+    """cents() for schema validators: unparseable or out-of-range input is
+    passed through so the schema rejects the field with a clear 422."""
+    try:
+        return cents(value)
+    except AmountError:
         return value
+
+
+# Stores configured with a local label instead of the ISO code.
+_CURRENCY_ALIASES = {"DA", "DZ", "DZD", "دج", "د.ج", "دينار", "DINAR", "DINARS"}
+
+
+def normalize_currency(value) -> str:
+    text = str(value or "").strip()
+    return "DZD" if text.upper() in _CURRENCY_ALIASES or text in _CURRENCY_ALIASES else text.upper()

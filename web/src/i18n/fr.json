@@ -1031,6 +1031,10 @@
         "store_rejected": {
           "title": "Commande de la boutique non traitée",
           "message": "La commande {order} de {platform} n’a pas été enregistrée : {reason}. Corrigez le champ dans la boutique ou saisissez la commande manuellement."
+        },
+        "store_queued": {
+          "title": "Commande de la boutique en attente",
+          "message": "La commande {order} de {platform} sera traitée automatiquement dès que votre quota mensuel le permettra."
         }
       },
       "outcomes": {
