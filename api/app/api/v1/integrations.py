@@ -61,8 +61,9 @@ def _required_text(value, label: str, maximum: int = 255) -> str:
 
 
 def _money(value, label: str) -> Decimal:
+    from app.core.dz_input import parse_amount
     try:
-        amount = Decimal(str(value).strip().replace(",", "."))
+        amount = parse_amount(value)
     except (InvalidOperation, ValueError, TypeError, AttributeError) as exc:
         raise HTTPException(422, f"Order has an invalid amount: {label}") from exc
     if not amount.is_finite():
@@ -94,18 +95,10 @@ def _is_zero_amount(value) -> bool:
 
 def _normalize_dz_phone(value):
     """Accept the common store formats of Algerian mobile numbers (e.g. '550 12 34 56')."""
+    from app.core.dz_input import normalize_dz_phone
     if value is None:
         return None
-    digits = "".join(ch for ch in str(value) if ch.isdigit() or ch == "+")
-    if digits.startswith("+213"):
-        digits = "0" + digits[4:]
-    elif digits.startswith("00213"):
-        digits = "0" + digits[5:]
-    elif digits.startswith("213") and len(digits) == 12:
-        digits = "0" + digits[3:]
-    if len(digits) == 9 and digits[0] in "567":
-        digits = "0" + digits
-    return digits or value
+    return normalize_dz_phone(value) or value
 
 
 def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
@@ -190,7 +183,7 @@ def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
         external_order_id=external_order_id,
         first_name=_required_text(first_name, "first name", 100),
         last_name=_required_text(last_name, "last name", 100),
-        phone=_required_text(phone, "phone", 20),
+        phone=_required_text(phone, "phone", 32),
         wilaya=_required_text(province, "wilaya/province", 100),
         commune=_required_text(city, "commune/city", 100),
         address=_required_text(street, "shipping address", 500),

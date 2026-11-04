@@ -1,4 +1,6 @@
 from decimal import Decimal
+from app.core.algeria_geo import canonical_wilaya_text
+from app.core.dz_input import normalize_dz_phone, to_cents
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from datetime import datetime
@@ -33,9 +35,14 @@ class OrderItemCreate(BaseModel):
 
     product_name: str = Field(min_length=1, max_length=255)
     sku: str | None = Field(default=None, max_length=100)
-    product_category: str | None = Field(default=None, min_length=2, max_length=100)
+    product_category: str | None = Field(default=None, min_length=1, max_length=100)
     quantity: int = Field(gt=0, le=10000)
     unit_price: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+
+    @field_validator("unit_price", mode="before")
+    @classmethod
+    def parse_unit_price(cls, value):
+        return to_cents(value)
 
 
 class OrderItemResponse(BaseModel):
@@ -60,23 +67,26 @@ class OrderCreate(BaseModel):
         max_length=255,
     )
 
+    # One letter is a real (if terse) checkout entry; rejecting it lost orders.
     first_name: str = Field(
-        min_length=2,
+        min_length=1,
         max_length=100,
     )
 
     last_name: str = Field(
-        min_length=2,
+        min_length=1,
         max_length=100,
     )
 
+    # Raw input may carry spaces, "(0)" and a country code; it is normalized
+    # to 10 digits by validate_phone.
     phone: str = Field(
         min_length=9,
-        max_length=20,
+        max_length=32,
     )
 
     wilaya: str = Field(
-        min_length=2,
+        min_length=1,
         max_length=100,
     )
 
@@ -107,24 +117,24 @@ class OrderCreate(BaseModel):
     @field_validator("phone")
     @classmethod
     def validate_phone(cls, value: str) -> str:
-        value = value.replace(" ", "").replace("-", "").replace("(", "").replace(")", "").replace(".", "")
-
-        if value.startswith("+213"):
-            value = "0" + value[4:]
-        elif value.startswith("00213"):
-            value = "0" + value[5:]
-
+        if any(ch.isalpha() for ch in value):
+            raise ValueError("Phone number must contain only digits")
+        value = normalize_dz_phone(value)
         if not value.isdigit():
-            raise ValueError(
-                "Phone number must contain only digits",
-            )
-
-        if len(value) != 10 or not value.startswith("0"):
-            raise ValueError(
-                "Invalid Algerian phone number",
-            )
-
+            raise ValueError("Phone number must contain only digits")
+        if len(value) != 10 or not value.startswith("0") or value.startswith("00"):
+            raise ValueError("Invalid Algerian phone number")
         return value
+
+    @field_validator("wilaya")
+    @classmethod
+    def readable_wilaya(cls, value: str) -> str:
+        return canonical_wilaya_text(value)
+
+    @field_validator("total_amount", mode="before")
+    @classmethod
+    def parse_total(cls, value):
+        return to_cents(value)
 
     # The shopper's public IP as seen by the merchant's storefront. The API is
     # called server-to-server, so the transport peer IP is the merchant's

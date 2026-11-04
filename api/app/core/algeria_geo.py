@@ -89,12 +89,35 @@ def _index() -> tuple[dict[str, set[str]], dict[str, set[str]], set[str], dict[s
     return wilaya_by_key, commune_by_key, set(data["wilayas"]), commune_by_spelling
 
 
+# ISO 3166-2 (WooCommerce "DZ-16"), bare codes ("16", "1"), "dz16".
+_CODE = re.compile(r"^\s*(?:dz[\s_-]?)?(\d{1,2})(?!\d)", re.IGNORECASE)
+_CODE_ONLY = re.compile(r"^\s*(?:dz[\s_-]?)?(\d{1,2})\s*$", re.IGNORECASE)
+
+
+def wilaya_name(code: str) -> str | None:
+    """Official Latin name ("Alger") for a wilaya code."""
+    _, _, codes, _ = _index()
+    if code not in codes:
+        return None
+    data = json.loads(_DATA.read_text(encoding="utf-8"))
+    return data["wilayas"][code][0]
+
+
+def canonical_wilaya_text(text: str) -> str:
+    """Replace a bare code ("DZ-16", "16", "1") by the wilaya name so merchants
+    read "Alger"; any other text is kept exactly as typed."""
+    match = _CODE_ONLY.match(text or "")
+    if not match:
+        return text
+    return wilaya_name(f"{int(match.group(1)):02d}") or text
+
+
 def resolve_wilaya(text: str | None) -> str | None:
     """Wilaya code ("01".."58") for a free-text wilaya, or None if unclear."""
     if not text or not text.strip():
         return None
     wilaya_by_key, _, codes, _ = _index()
-    match = re.match(r"^\s*(\d{1,2})(?!\d)", text)
+    match = _CODE.match(text)
     if match:
         code = f"{int(match.group(1)):02d}"
         return code if code in codes else None
