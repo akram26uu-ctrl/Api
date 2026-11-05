@@ -36,7 +36,7 @@ def _latest_assessments(db: Session, order_ids: set) -> dict:
 
 
 def _item(db: Session, service: ShippingService, shipment, orders: dict | None = None,
-          assessments: dict | None = None) -> dict:
+          assessments: dict | None = None, warehouses: dict | None = None) -> dict:
     order = orders.get(shipment.order_id) if orders is not None else db.get(Order, shipment.order_id)
     assessment = assessments.get(shipment.order_id) if assessments is not None else latest_assessment(
         db, shipment.order_id)
@@ -53,7 +53,8 @@ def _item(db: Session, service: ShippingService, shipment, orders: dict | None =
         "available_warehouses": [
             {"id": str(w.id), "carrier_account_id": str(w.carrier_account_id), "name": w.name,
              "wilaya_code": w.wilaya_code}
-            for w in service.available_warehouses(shipment)] if shipment.hold_reason == "out_of_stock" else [],
+            for w in (warehouses[shipment.id] if warehouses is not None else service.available_warehouses(shipment))
+        ] if shipment.hold_reason == "out_of_stock" else [],
     }
 
 
@@ -78,8 +79,10 @@ def list_pending(
         selectinload(Order.address_identifier), selectinload(Order.items)).filter(
         Order.id.in_(order_ids))} if order_ids else {}
     assessments = _latest_assessments(db, order_ids)
+    stock_rows = [s for s in rows if s.hold_reason == "out_of_stock"]
+    warehouses = service.available_warehouses_batch(stock_rows, orders)
     return {
-        "data": [_item(db, service, s, orders, assessments) for s in rows], "counts": counts,
+        "data": [_item(db, service, s, orders, assessments, warehouses) for s in rows], "counts": counts,
         "pagination": {"total": total, "page": page, "limit": limit,
                        "total_pages": (total + limit - 1) // limit if total else 1},
     }

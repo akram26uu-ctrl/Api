@@ -405,6 +405,13 @@ class ShippingService:
                                  "The carrier refused to cancel the shipment; cancel it manually.")
                     self.db.flush()
                     return shipment
+                except Exception:
+                    logger.exception("unexpected error cancelling shipment %s at the carrier", shipment.id)
+                    shipment.last_error = "unexpected carrier cancel error"
+                    self._notify(shipment, "shipment.cancel_failed", "Shipment cancellation failed",
+                                 "The carrier refused to cancel the shipment; cancel it manually.")
+                    self.db.flush()
+                    return shipment
             else:
                 self._notify(shipment, "shipment.cancel_at_carrier_manually", "Cancel the shipment at the carrier",
                              "The order was cancelled but the carrier cannot cancel automatically; cancel it manually.")
@@ -590,3 +597,51 @@ class ShippingService:
                 if all(self.inventory.available(p.id, warehouse.id, lock=lock) >= q for p, q in needs.values()):
                     found.append(warehouse)
         return found
+
+    def available_warehouses_batch(self, shipments: list[Shipment], orders: dict | None = None) -> dict:
+        """``available_warehouses`` for many shipments with one product load per store and one
+        stock load for the page (read-only, no locks). Returns {shipment.id: [warehouse]}."""
+        from app.models.product import StockLevel
+        orders = orders if orders is not None else {}
+        result: dict = {s.id: [] for s in shipments}
+        by_sku_cache: dict = {}
+        plans: list = []
+        product_ids: set = set()
+        for shipment in shipments:
+            order = orders.get(shipment.order_id) or self.db.get(Order, shipment.order_id)
+            if order is None or order.store_id is None or not order.items:
+                continue
+            if order.store_id not in by_sku_cache:
+                by_sku_cache[order.store_id] = self.inventory._products_by_sku(order.store_id)
+            by_sku = by_sku_cache[order.store_id]
+            needs: dict = {}
+            ok = True
+            for item in order.items:
+                product = by_sku.get(self.inventory.normalize_sku(item.sku) or "")
+                if product is None or product.fulfillment != "carrier":
+                    ok = False
+                    break
+                current = needs.get(product.id, (product, 0))
+                needs[product.id] = (product, current[1] + int(item.quantity))
+            if ok:
+                plans.append((shipment, order, needs))
+                product_ids.update(needs)
+        if not plans:
+            return result
+        levels = {(r[0], r[1]): r[2] - r[3] for r in self.db.query(
+            StockLevel.product_id, StockLevel.warehouse_id, StockLevel.on_hand, StockLevel.reserved).filter(
+            StockLevel.product_id.in_(product_ids)).all()}
+        candidates: dict = {}
+        for shipment, order, needs in plans:
+            wilaya = self._wilaya_code(order)
+            primary, fallback = self.settings_service.resolve_route(order.store_id, order.environment, wilaya)
+            for account in (primary, fallback):
+                if account is None:
+                    continue
+                key = (account.id, wilaya)
+                if key not in candidates:
+                    candidates[key] = self._candidate_warehouses(account, wilaya)
+                for warehouse in candidates[key]:
+                    if all(levels.get((p.id, warehouse.id), 0) >= q for p, q in needs.values()):
+                        result[shipment.id].append(warehouse)
+        return result
