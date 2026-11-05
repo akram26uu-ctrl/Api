@@ -1,5 +1,5 @@
 /** ORDIUM Inventory: stock per location, deposits to carrier warehouses and the movement history. */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, Search, Plus, Trash2, Link2, ChevronLeft, ChevronRight, Package, Warehouse, Store, CheckCircle2, AlertTriangle, XCircle, ArrowRight, Pencil, PackagePlus } from 'lucide-react';
 import type { CarrierAccount, CarrierWarehouse, Deposit, Movement, MovementPage, Product, StockRow, UnmappedProduct } from '../../lib/api/types';
 import { inventoryApi } from '../../lib/api/inventory';
@@ -37,6 +37,12 @@ const Field: React.FC<{ id: string; label: string; children: React.ReactNode }> 
   <div><label htmlFor={id} className="block text-xs font-semibold text-[var(--ordium-muted)] mb-1.5">{label}</label>{children}</div>
 );
 
+const Badge: React.FC<{ status: StockStatus }> = ({ status }) => {
+  const { t } = useLanguage();
+  const b = BADGES[status] ?? BADGES.ok; const Icon = b.icon;
+  return <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md border whitespace-nowrap ${b.cls}`}><Icon className="w-3.5 h-3.5" aria-hidden="true" /><span>{t(`inventory.status.${status}`, b.fallback)}</span></span>;
+};
+
 export const InventoryView: React.FC = () => {
   const { t, language } = useLanguage();
   const locale = language === 'ar' ? 'ar-DZ' : language === 'fr' ? 'fr-DZ' : 'en-GB';
@@ -49,6 +55,8 @@ export const InventoryView: React.FC = () => {
   const [warehouses, setWarehouses] = useState<Array<CarrierWarehouse & { accountId: string }>>([]);
   const [movements, setMovements] = useState<MovementPage | null>(null);
   const [page, setPage] = useState(1);
+  const pageRef = useRef(1);
+  const [movLoading, setMovLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -58,8 +66,7 @@ export const InventoryView: React.FC = () => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkSku, setLinkSku] = useState<UnmappedProduct | null>(null);
-  const [linkMode, setLinkMode] = useState<'existing' | 'new'>('existing');
-  const [linkProductId, setLinkProductId] = useState('');
+  const [linkWeight, setLinkWeight] = useState('');
   const [linkAccount, setLinkAccount] = useState('');
   const [linkNewName, setLinkNewName] = useState('');
   const [linkFulfillment, setLinkFulfillment] = useState<'carrier' | 'merchant'>('carrier');
@@ -87,15 +94,22 @@ export const InventoryView: React.FC = () => {
     try {
       const [s, p, u, d, c, m] = await Promise.all([
         inventoryApi.getStock(), inventoryApi.listProducts(), inventoryApi.listUnmapped(), inventoryApi.listDeposits(),
-        shippingApi.listCarriers(), inventoryApi.listMovements({ page, limit: 20 }),
+        shippingApi.listCarriers(), inventoryApi.listMovements({ page: pageRef.current, limit: 20 }),
       ]);
       setStock(s); setProducts(p); setUnmapped(u); setDeposits(d); setAccounts(c.accounts); setMovements(m);
       const lists = await Promise.all(c.accounts.map(a => shippingApi.listWarehouses(a.id).then(ws => ws.map(w => ({ ...w, accountId: a.id }))).catch(() => [])));
       setWarehouses(lists.flat().filter(w => w.is_active));
     } catch (err) { setError(errText(err)); }
     finally { setLoading(false); }
-  }, [page, errText]);
+  }, [errText]);
   useEffect(() => { void load(); }, [load]);
+  const loadMovements = useCallback(async (p: number) => {
+    setMovLoading(true);
+    try { setMovements(await inventoryApi.listMovements({ page: p, limit: 20 })); }
+    catch (err) { notify('error', t('inventory.load_error', 'تعذر تحميل المخزون'), errText(err)); }
+    finally { setMovLoading(false); }
+  }, [errText, notify, t]);
+  const goPage = (p: number) => { pageRef.current = p; setPage(p); void loadMovements(p); };
 
   const sync = async () => {
     setSyncing(true);
@@ -135,24 +149,26 @@ export const InventoryView: React.FC = () => {
     finally { setBusy(null); }
   };
 
+  const linkable = useMemo(() => unmapped.filter(u => u.sku), [unmapped]);
+  const noSkuCount = unmapped.length - linkable.length;
+  const skuOf = (u: UnmappedProduct | null) => (u?.display_sku || u?.sku || '').trim();
   const openLink = (u: UnmappedProduct) => {
-    setLinkSku(u); setLinkMode('existing'); setLinkProductId(products[0]?.id ?? ''); setLinkAccount(accounts[0]?.id ?? '');
-    setLinkNewName(u.name); setLinkFulfillment('carrier'); setFormError(null); setLinkOpen(true);
+    setLinkSku(u); setLinkAccount(accounts[0]?.id ?? ''); setLinkNewName(u.name); setLinkFulfillment('carrier'); setLinkWeight('');
+    setFormError(null); setLinkOpen(true);
   };
   const submitLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!linkSku?.sku) return;
+    const sku = skuOf(linkSku);
+    if (!sku) return;
+    if (linkFulfillment === 'carrier' && !linkAccount) { setFormError(t('inventory.link.missing', 'اختر حساب شركة التوصيل')); return; }
     setSaving(true); setFormError(null);
+    const weight = linkWeight.trim() === '' ? null : Math.max(0, Math.round(Number(linkWeight)));
     try {
-      let productId = linkProductId;
-      if (linkMode === 'new') productId = (await inventoryApi.createProduct({ sku: linkSku.sku, name: linkNewName.trim(), fulfillment: linkFulfillment })).id;
-      if (linkMode === 'existing' || linkFulfillment === 'carrier') {
-        if (!productId || !linkAccount) { setFormError(t('inventory.link.missing', 'اختر المنتج وحساب شركة التوصيل')); return; }
-        await inventoryApi.linkProduct(productId, { carrier_account_id: linkAccount, external_product_id: linkSku.sku });
-      }
-      notify('success', t('inventory.link.done', 'تم ربط المنتج'));
+      const created = await inventoryApi.createProduct({ sku, name: linkNewName.trim(), fulfillment: linkFulfillment, weight_grams: weight });
+      if (linkFulfillment === 'carrier') await inventoryApi.linkProduct(created.id, { carrier_account_id: linkAccount, external_product_id: sku });
+      notify('success', t('inventory.link.done', 'أُنشئ المنتج'));
       setLinkOpen(false); await load();
-    } catch (err) { setFormError(errText(err)); }
+    } catch (err) { setFormError(errText(err)); await load(); }
     finally { setSaving(false); }
   };
 
@@ -185,10 +201,6 @@ export const InventoryView: React.FC = () => {
   };
   const setLine = (i: number, patch: Partial<Line>) => setDepLines(ls => ls.map((l, idx) => idx === i ? { ...l, ...patch } : l));
 
-  const Badge = ({ status }: { status: StockStatus }) => {
-    const b = BADGES[status] ?? BADGES.ok; const Icon = b.icon;
-    return <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md border whitespace-nowrap ${b.cls}`}><Icon className="w-3.5 h-3.5" aria-hidden="true" /><span>{t(`inventory.status.${status}`, b.fallback)}</span></span>;
-  };
   const formErr = formError && <div role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-white">{formError}</div>;
 
   const hasProducts = stock.length > 0;
@@ -208,12 +220,13 @@ export const InventoryView: React.FC = () => {
         </div>
       </div>
 
-      {unmapped.length > 0 && (
+      {linkable.length > 0 && (
         <div role="alert" className="rounded-2xl border border-[var(--ordium-warning)]/30 bg-[var(--ordium-warning)]/10 p-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-white inline-flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-[var(--ordium-warning)] shrink-0" aria-hidden="true" />{t('inventory.unmapped_alert', 'منتجات في طلباتك غير مربوطة بالمخزون')}: <span className="font-bold tabular-nums">{num(unmapped.length)}</span></p>
-          <Button variant="outline" size="md" onClick={() => openLink(unmapped[0])} leftIcon={<Link2 className="w-3.5 h-3.5" aria-hidden="true" />}>{t('inventory.link_products', 'ربط المنتجات')}</Button>
+          <p className="text-sm text-white inline-flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-[var(--ordium-warning)] shrink-0" aria-hidden="true" />{t('inventory.unmapped_alert', 'منتجات في طلباتك غير مربوطة بالمخزون')}: <span className="font-bold tabular-nums">{num(linkable.length)}</span></p>
+          <Button variant="outline" size="md" onClick={() => openLink(linkable[0])} leftIcon={<Link2 className="w-3.5 h-3.5" aria-hidden="true" />}>{t('inventory.link_products', 'ربط المنتجات')}</Button>
         </div>
       )}
+      {noSkuCount > 0 && <p className="rounded-2xl border border-white/10 bg-[var(--ordium-surface)] p-4 text-sm text-[var(--ordium-muted)]">{num(noSkuCount)} {t('inventory.no_sku_note', 'عناصر بلا SKU — أضف SKU لهذه المنتجات في متجرك')}</p>}
 
       {error ? (
         <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-8 text-center">
@@ -298,7 +311,7 @@ export const InventoryView: React.FC = () => {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><span className="text-sm font-semibold text-white font-mono" dir="ltr">{d.reference}</span>
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-md border ${d.status === 'received' ? SUCCESS : d.status === 'counting' ? WARNING : MUTED}`}>{t(`inventory.deposit_status.${d.status}`, d.status)}</span></div>
-                    <p className="text-xs text-[var(--ordium-muted)] mt-1"><span dir="auto">{whName(d.warehouse_id)}</span> · {when(d.created_at)} · {d.lines.map(l => `${l.sku} ×${num(l.quantity)}`).join('، ')}</p>
+                    <p className="text-xs text-[var(--ordium-muted)] mt-1"><span dir="auto">{whName(d.warehouse_id)}</span> · {when(d.created_at)} · {d.lines.map(l => `${l.sku} ×${num(l.quantity)}`).join(', ')}</p>
                   </div>
                   {next && <Button variant="outline" size="md" isLoading={busy === d.id} onClick={() => void advance(d)} rightIcon={<ArrowRight className="w-3.5 h-3.5 rtl:-scale-x-100" aria-hidden="true" />}>{t(`inventory.mark_${next}`, next)}</Button>}
                 </li>
@@ -310,7 +323,7 @@ export const InventoryView: React.FC = () => {
         {tab === 'movements' && ((movements?.data.length ?? 0) === 0 ? (
           <EmptyState icon={<RefreshCw className="w-8 h-8" />} title={t('inventory.movements.empty_title', 'لا حركات بعد')} description={t('inventory.movements.empty_desc', 'تظهر هنا كل زيادة أو نقصان في المخزون.')} />
         ) : (
-          <div className="dashboard-panel overflow-hidden">
+          <div className={`dashboard-panel overflow-hidden transition-opacity ${movLoading ? 'opacity-60' : ''}`} aria-busy={movLoading}>
             <ul className="divide-y divide-white/5">
               {movements!.data.map((m: Movement) => (
                 <li key={m.id} className="p-4 flex items-center gap-4 text-start">
@@ -323,50 +336,40 @@ export const InventoryView: React.FC = () => {
               ))}
             </ul>
             <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
-              <Button variant="outline" size="md" disabled={page <= 1} onClick={() => setPage(p => p - 1)} leftIcon={<ChevronLeft aria-hidden="true" className="w-3.5 h-3.5 rtl:-scale-x-100" />}>{t('shipping.prev_page', 'السابق')}</Button>
+              <Button variant="outline" size="md" disabled={page <= 1} onClick={() => goPage(page - 1)} leftIcon={<ChevronLeft aria-hidden="true" className="w-3.5 h-3.5 rtl:-scale-x-100" />}>{t('shipping.prev_page', 'السابق')}</Button>
               <span className="text-xs font-mono text-[var(--ordium-subtle)]">{page} / {movements?.pagination.total_pages ?? 1}</span>
-              <Button variant="outline" size="md" disabled={page >= (movements?.pagination.total_pages ?? 1)} onClick={() => setPage(p => p + 1)} rightIcon={<ChevronRight aria-hidden="true" className="w-3.5 h-3.5 rtl:-scale-x-100" />}>{t('shipping.next_page', 'التالي')}</Button>
+              <Button variant="outline" size="md" disabled={page >= (movements?.pagination.total_pages ?? 1)} onClick={() => goPage(page + 1)} rightIcon={<ChevronRight aria-hidden="true" className="w-3.5 h-3.5 rtl:-scale-x-100" />}>{t('shipping.next_page', 'التالي')}</Button>
             </div>
           </div>
         ))}
       </>)}
 
-      <Modal isOpen={linkOpen} onClose={() => setLinkOpen(false)} title={t('inventory.link.title', 'ربط منتج غير مربوط')} description={t('inventory.link.desc', 'اربط المنتج الظاهر في الطلبات بمنتج من مخزونك أو أنشئ منتجًا جديدًا.')}>
+      <Modal isOpen={linkOpen} onClose={() => setLinkOpen(false)} title={t('inventory.link.title', 'إنشاء منتج بهذا الـSKU')} description={t('inventory.link.desc', 'تُطابَق عناصر الطلبات مع المنتجات عبر الـSKU فقط. أنشئ منتجًا بنفس الـSKU لرفع الإيقاف.')}>
         <form onSubmit={e => void submitLink(e)} className="space-y-4">
-          <Field id="inv-link-sku" label={t('inventory.link.unmapped', 'المنتج غير المربوط')}>
-            <select id="inv-link-sku" className={inputCls} value={linkSku?.sku ?? ''} onChange={e => { const u = unmapped.find(x => x.sku === e.target.value); if (u) { setLinkSku(u); setLinkNewName(u.name); } }}>
-              {unmapped.map((u, i) => <option key={`${u.sku}-${i}`} value={u.sku ?? ''} disabled={!u.sku}>{u.name}{u.sku ? ` (${u.sku})` : ''}</option>)}
+          <Field id="inv-link-sku" label={t('inventory.link.unmapped', 'الـSKU غير المربوط')}>
+            <select id="inv-link-sku" className={inputCls} value={linkSku?.sku ?? ''} onChange={e => { const u = linkable.find(x => x.sku === e.target.value); if (u) { setLinkSku(u); setLinkNewName(u.name); } }}>
+              {linkable.map(u => <option key={u.sku} value={u.sku ?? ''}>{u.name} ({skuOf(u)})</option>)}
             </select>
           </Field>
-          {!linkSku?.sku && <p className="text-xs text-[var(--ordium-warning)]">{t('inventory.link.no_sku', 'هذا المنتج بلا SKU في الطلب ولا يمكن ربطه من هنا.')}</p>}
-          <div role="radiogroup" aria-label={t('inventory.link.mode', 'طريقة الربط')} className="flex gap-1 rounded-xl border border-white/10 bg-[var(--ordium-surface)] p-1">
-            {(['existing', 'new'] as const).map(m => <button key={m} type="button" role="radio" aria-checked={linkMode === m} onClick={() => setLinkMode(m)} className={`flex-1 min-h-11 px-3 rounded-lg text-sm font-semibold ${linkMode === m ? 'bg-[var(--ordium-surface-raised)] text-white' : 'text-[var(--ordium-muted)] hover:text-white'}`}>{t(`inventory.link.mode_${m}`, m)}</button>)}
-          </div>
-          {linkMode === 'existing' ? (
-            <Field id="inv-link-product" label={t('inventory.link.product', 'منتج من مخزونك')}>
-              <select id="inv-link-product" className={inputCls} value={linkProductId} onChange={e => setLinkProductId(e.target.value)}>
-                {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
-              </select>
-            </Field>
-          ) : (<>
-            <Field id="inv-link-name" label={t('inventory.product.name', 'اسم المنتج')}><input id="inv-link-name" required className={inputCls} value={linkNewName} onChange={e => setLinkNewName(e.target.value)} dir="auto" /></Field>
-            <Field id="inv-link-ful" label={t('inventory.product.fulfillment', 'مكان الحفظ')}>
-              <select id="inv-link-ful" className={inputCls} value={linkFulfillment} onChange={e => setLinkFulfillment(e.target.value as 'carrier' | 'merchant')}>
-                <option value="carrier">{t('inventory.fulfillment.carrier', 'عند شركة التوصيل')}</option><option value="merchant">{t('inventory.fulfillment.merchant', 'عندي')}</option>
-              </select>
-            </Field>
-          </>)}
-          {(linkMode === 'existing' || linkFulfillment === 'carrier') && (
+          <p className="text-xs text-[var(--ordium-muted)] leading-relaxed">{t('inventory.link.wrong_sku', 'إن كان الـSKU خاطئًا، صحّحه في متجرك أو عند شركة التوصيل ليطابق منتجًا موجودًا.')}</p>
+          <Field id="inv-link-name" label={t('inventory.product.name', 'اسم المنتج')}><input id="inv-link-name" required className={inputCls} value={linkNewName} onChange={e => setLinkNewName(e.target.value)} dir="auto" /></Field>
+          <Field id="inv-link-ful" label={t('inventory.product.fulfillment', 'مكان الحفظ')}>
+            <select id="inv-link-ful" className={inputCls} value={linkFulfillment} onChange={e => setLinkFulfillment(e.target.value as 'carrier' | 'merchant')}>
+              <option value="carrier">{t('inventory.fulfillment.carrier', 'عند شركة التوصيل')}</option><option value="merchant">{t('inventory.fulfillment.merchant', 'عندي')}</option>
+            </select>
+          </Field>
+          {linkFulfillment === 'carrier' && (
             <Field id="inv-link-account" label={t('inventory.link.account', 'شركة التوصيل')}>
               <select id="inv-link-account" className={inputCls} value={linkAccount} onChange={e => setLinkAccount(e.target.value)}>
                 {accounts.map(a => <option key={a.id} value={a.id}>{a.display_name}</option>)}
               </select>
             </Field>
           )}
+          <Field id="inv-link-weight" label={t('inventory.product.weight', 'الوزن بالغرام (اختياري)')}><input id="inv-link-weight" type="number" min={0} inputMode="numeric" className={inputCls} dir="ltr" value={linkWeight} onChange={e => setLinkWeight(e.target.value)} /></Field>
           {formErr}
           <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" size="md" onClick={() => setLinkOpen(false)}>{t('common.cancel', 'إلغاء')}</Button>
-            <Button type="submit" variant="primary" size="md" isLoading={saving} disabled={!linkSku?.sku}>{t('inventory.link.submit', 'ربط')}</Button>
+            <Button type="submit" variant="primary" size="md" isLoading={saving} disabled={!skuOf(linkSku)}>{t('inventory.link.submit', 'إنشاء المنتج')}</Button>
           </div>
         </form>
       </Modal>
@@ -376,7 +379,7 @@ export const InventoryView: React.FC = () => {
           <Field id="inv-dep-wh" label={t('inventory.deposit.warehouse', 'المستودع')}>
             <select id="inv-dep-wh" className={inputCls} value={depWarehouse} onChange={e => setDepWarehouse(e.target.value)}>{warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
           </Field>
-          <Field id="inv-dep-ref" label={t('inventory.deposit.reference', 'المرجع (اختياري)')}><input id="inv-dep-ref" className={inputCls} value={depRef} onChange={e => setDepRef(e.target.value)} dir="ltr" autoComplete="off" /></Field>
+          <Field id="inv-dep-ref" label={t('inventory.deposit.reference', 'المرجع (اختياري)')}><input id="inv-dep-ref" placeholder="DEP-XXXXXX" className={inputCls} value={depRef} onChange={e => setDepRef(e.target.value)} dir="ltr" autoComplete="off" /></Field>
           <fieldset className="space-y-2"><legend className="text-xs font-semibold text-[var(--ordium-muted)] mb-1.5">{t('inventory.deposit.lines', 'الأسطر')}</legend>
             {depLines.map((l, i) => (
               <div key={i} className="flex items-center gap-2">

@@ -2156,18 +2156,14 @@
       "deposit": "Deposit"
     },
     "link": {
-      "title": "Link an unmapped product",
-      "desc": "Link the product seen in orders to one in your inventory, or create a new product.",
-      "unmapped": "Unmapped product",
-      "no_sku": "This product has no SKU in the order and cannot be linked from here.",
-      "mode": "Link mode",
-      "mode_existing": "Existing product",
-      "mode_new": "New product",
-      "product": "Product from your inventory",
+      "title": "Create a product with this SKU",
+      "desc": "Order items are matched to products by SKU only. Create a product with the same SKU to release the hold.",
+      "unmapped": "Unmatched SKU",
+      "wrong_sku": "If the SKU is wrong, correct it in your store or at the courier so it matches an existing product.",
       "account": "Carrier",
-      "submit": "Link",
-      "missing": "Choose the product and carrier account",
-      "done": "Product linked"
+      "submit": "Create product",
+      "missing": "Choose the carrier account",
+      "done": "Product created"
     },
     "deposit": {
       "title": "Deposit to warehouse",
@@ -2201,6 +2197,7 @@
       "sku_required": "SKU is required.",
       "invalid_deposit_transition": "A deposit cannot go back to an earlier status.",
       "store_id_required": "Select a store first."
-    }
+    },
+    "no_sku_note": "items have no SKU — add SKUs to these products in your store"
   }
 }

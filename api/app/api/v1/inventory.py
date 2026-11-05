@@ -101,7 +101,7 @@ def unmapped_products(store_id: str | None = Query(default=None), db: Session = 
         key = service.normalize_sku(sku)
         if key and any(key in by_sku for by_sku in known.values()):
             continue
-        seen.setdefault((key, name if key is None else None), UnmappedProduct(sku=key, name=name))
+        seen.setdefault((key, name if key is None else None), UnmappedProduct(sku=key, display_sku=(sku or '').strip() or None if key else None, name=name))
     return list(seen.values())
 
 

@@ -37,6 +37,7 @@ class ProductResponse(BaseModel):
 
 class UnmappedProduct(BaseModel):
     sku: str | None = None
+    display_sku: str | None = None
     name: str
 
 

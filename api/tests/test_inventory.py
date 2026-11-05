@@ -269,7 +269,7 @@ def test_unmapped_products_endpoint():
         order.items.append(OrderItem(sku=" Zed-1 ", product_name="Zed", quantity=1, unit_price=Decimal("1")))
         db.commit()
     r = client.get(f"/api/v1/inventory/products/unmapped?store_id={store_id}", headers=h)
-    assert r.status_code == 200 and r.json() == [{"sku": "zed-1", "name": "Zed"}]
+    assert r.status_code == 200 and r.json() == [{"sku": "zed-1", "display_sku": "Zed-1", "name": "Zed"}]
 
 
 def _level_of(db, p):

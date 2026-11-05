@@ -694,6 +694,7 @@ export interface Product {
 
 export interface UnmappedProduct {
   sku: string | null;
+  display_sku: string | null;
   name: string;
 }
 

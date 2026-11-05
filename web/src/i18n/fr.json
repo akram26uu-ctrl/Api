@@ -2157,18 +2157,14 @@
       "deposit": "Dépôt"
     },
     "link": {
-      "title": "Lier un produit non lié",
-      "desc": "Liez le produit vu dans les commandes à un produit de votre stock, ou créez-en un nouveau.",
-      "unmapped": "Produit non lié",
-      "no_sku": "Ce produit n'a pas de SKU dans la commande et ne peut pas être lié d'ici.",
-      "mode": "Mode de liaison",
-      "mode_existing": "Produit existant",
-      "mode_new": "Nouveau produit",
-      "product": "Produit de votre stock",
+      "title": "Créer un produit avec ce SKU",
+      "desc": "Les articles des commandes sont rapprochés des produits uniquement par SKU. Créez un produit avec le même SKU pour lever la mise en attente.",
+      "unmapped": "SKU non rapproché",
+      "wrong_sku": "Si le SKU est erroné, corrigez-le dans votre boutique ou chez le transporteur pour qu'il corresponde à un produit existant.",
       "account": "Transporteur",
-      "submit": "Lier",
-      "missing": "Choisissez le produit et le compte transporteur",
-      "done": "Produit lié"
+      "submit": "Créer le produit",
+      "missing": "Choisissez le compte transporteur",
+      "done": "Produit créé"
     },
     "deposit": {
       "title": "Déposer en entrepôt",
@@ -2202,6 +2198,7 @@
       "sku_required": "Le SKU est obligatoire.",
       "invalid_deposit_transition": "Un dépôt ne peut pas revenir à un statut précédent.",
       "store_id_required": "Choisissez d'abord une boutique."
-    }
+    },
+    "no_sku_note": "articles sans SKU — ajoutez des SKU à ces produits dans votre boutique"
   }
 }
