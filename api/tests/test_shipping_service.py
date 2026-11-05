@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -217,6 +217,18 @@ def test_dispatch_from_refused_for_review(db):
     assert s.hold_reason is None and s.next_attempt_at is not None
 
 
+def test_restore_reserves_like_approve(db):
+    merchant, store, acc = _world(db)
+    wh = db.query(CarrierWarehouse).filter_by(carrier_account_id=acc.id).first()
+    p = _product(db, merchant, store, "CAR", stock=[(wh.id, 3)])
+    svc = ShippingService(db)
+    s = svc.on_decision(_order(db, merchant, store, [("CAR", 1)]), merchant, RiskDecision.REJECT)
+    assert InventoryService(db).available(p.id, wh.id) == 3  # risk holds do not reserve
+    svc.restore(s, "key")
+    assert s.hold_reason is None and s.warehouse_id == wh.id
+    assert InventoryService(db).available(p.id, wh.id) == 2
+
+
 def test_restore_only_rejected(db):
     merchant, store, _ = _world(db)
     svc = ShippingService(db)
@@ -225,7 +237,7 @@ def test_restore_only_rejected(db):
         svc.restore(s, "key")
     s2 = svc.on_decision(_order(db, merchant, store), merchant, RiskDecision.REJECT)
     svc.restore(s2, "key")
-    assert s2.hold_reason == "review" and s2.next_attempt_at is None
+    assert s2.hold_reason is None and s2.next_attempt_at is not None
 
 
 def test_shipping_failure_never_breaks_order_hooks(db, monkeypatch):
@@ -234,3 +246,140 @@ def test_shipping_failure_never_breaks_order_hooks(db, monkeypatch):
     monkeypatch.setattr(ShippingService, "on_confirmed", lambda self, o: (_ for _ in ()).throw(RuntimeError("boom")))
     attempt = apply_confirmation(db, order, channel="whatsapp", outcome="confirmed")
     assert attempt is not None and order.status == OrderStatus.CONFIRMED
+
+
+def test_stock_hold_keeps_confirmation_pending(db):
+    merchant, store, acc = _world(db, confirmation=True)
+    wh = db.query(CarrierWarehouse).filter_by(carrier_account_id=acc.id).first()
+    p = _product(db, merchant, store, "CAR", stock=[])
+    order = _order(db, merchant, store, [("CAR", 1)])
+    svc = ShippingService(db)
+    s = svc.on_decision(order, merchant, RiskDecision.ALLOW)
+    assert s.hold_reason == "out_of_stock" and s.meta["needs_confirmation"] is True
+    # stock arrives, still unconfirmed: back to awaiting_confirmation, never due
+    db.add(StockLevel(product_id=p.id, warehouse_id=wh.id, on_hand=3, reserved=0, inbound=0))
+    db.flush()
+    svc.allocate_and_reserve(s)
+    assert s.hold_reason == "awaiting_confirmation" and s.next_attempt_at is None
+
+
+def test_confirmation_keeps_stock_hold_and_clears_flag(db):
+    merchant, store, _ = _world(db, confirmation=True)
+    _product(db, merchant, store, "CAR", stock=[])
+    order = _order(db, merchant, store, [("CAR", 1)])
+    s = ShippingService(db).on_decision(order, merchant, RiskDecision.ALLOW)
+    apply_confirmation(db, order, channel="whatsapp", outcome="confirmed")
+    assert s.hold_reason == "out_of_stock" and s.next_attempt_at is None
+    assert not (s.meta or {}).get("needs_confirmation")
+
+
+def test_timeout_with_stock_hold_flags_no_answer_only(db):
+    merchant, store, _ = _world(db, confirmation=True)
+    _product(db, merchant, store, "CAR", stock=[])
+    s = ShippingService(db).on_decision(_order(db, merchant, store, [("CAR", 1)]), merchant, RiskDecision.ALLOW)
+    assert ShippingService(db).expire_unconfirmed(datetime.now(timezone.utc) + timedelta(hours=25)) == 1
+    assert s.hold_reason == "out_of_stock" and s.meta["no_answer"] is True
+
+
+def test_reject_survives_existing_outcome(db, monkeypatch):
+    from app.repositories.order_outcome_repository import OrderOutcomeRepository
+    from app.models.audit_log import AuditLog
+    merchant, store, _ = _world(db)
+    order = _order(db, merchant, store)
+    svc = ShippingService(db)
+    s = svc.on_decision(order, merchant, RiskDecision.REVIEW)
+    db.add(OrderOutcome(order_id=order.id, outcome_status="returned", source="api",
+                        occurred_at=datetime.now(timezone.utc)))
+    db.flush()
+    # simulate the race: pre-check misses, the unique constraint catches it at insert
+    monkeypatch.setattr(OrderOutcomeRepository, "get_by_order_id", lambda self, oid: None)
+    svc.reject(s, "key")
+    assert s.status == "cancelled"
+    audit = db.query(AuditLog).filter_by(action="shipment.reject", resource_id=str(s.id)).one()
+    assert audit.metadata_json["outcome_recorded"] is False
+
+
+def test_reject_reasons_and_refusals(db):
+    merchant, store, _ = _world(db, confirmation=True)
+    svc = ShippingService(db)
+    waiting = svc.on_decision(_order(db, merchant, store), merchant, RiskDecision.ALLOW)
+    with pytest.raises(ShipmentActionRefused):
+        svc.reject(waiting, "key")
+    waiting.hold_reason = "no_answer"
+    order = db.get(Order, waiting.order_id)
+    svc.reject(waiting, "key")
+    outcome = db.query(OrderOutcome).filter_by(order_id=order.id).one()
+    assert outcome.reason == "unreachable" and is_bad_outcome("cancelled", "unreachable")
+
+
+def test_storeless_orders_need_a_merchant_carrier_account(db):
+    merchant, _, _ = _world(db, linked=False)
+    assert ShippingService(db).on_decision(_order(db, merchant, None), merchant, RiskDecision.ALLOW) is None
+    merchant2, _, _ = _world(db)
+    s = ShippingService(db).on_decision(_order(db, merchant2, None), merchant2, RiskDecision.ALLOW)
+    assert s.hold_reason == "no_store"
+
+
+def test_cancel_accepted_without_cancel_capability_cancels_locally(db):
+    from app.models.notification import Notification
+    merchant, store, acc = _world(db)
+    order = _order(db, merchant, store)
+    s = ShippingService(db).on_decision(order, merchant, RiskDecision.ALLOW)
+    s.status, s.tracking_number = "accepted", None
+    ShippingService(db).on_cancelled(order)
+    assert s.status == "cancelled"
+    assert db.query(Notification).filter_by(resource_id=str(s.id),
+                                            notification_type="shipment.cancel_at_carrier_manually").count() == 1
+
+
+# ---- API-level hook tests -------------------------------------------------
+from fastapi.testclient import TestClient  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models.whatsapp_message import WhatsAppMessage  # noqa: E402
+from app.services.api_key_service import ApiKeyService  # noqa: E402
+
+client = TestClient(app)
+
+
+def _api_world(confirmation=False):
+    with SessionLocal() as db:
+        merchant, store, _ = _world(db, confirmation=confirmation)
+        _, raw = ApiKeyService(db).create_key(merchant=merchant, name="k", environment="test",
+                                              scopes=["orders:read", "orders:write"])
+        db.commit()
+        return merchant.id, store.id, {"Authorization": f"Bearer {raw}"}
+
+
+def _post_order(headers):
+    body = {"external_order_id": f"API-{uuid4()}", "first_name": "Amina", "last_name": "Benali",
+            "phone": f"0661{uuid4().int % 10**6:06d}", "wilaya": "Oran", "commune": "Bir El Djir",
+            "address": "12 Rue Test", "total_amount": "4500.00", "currency": "DZD"}
+    r = client.post("/api/v1/orders", json=body, headers=headers)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def test_order_creation_creates_shipment():
+    merchant_id, store_id, headers = _api_world()
+    body = _post_order(headers)
+    with SessionLocal() as db:
+        shipments = db.query(Shipment).filter_by(order_id=UUID(body["order_id"])).all()
+        assert len(shipments) == 1 and shipments[0].store_id == store_id
+
+
+def test_shipping_hook_failure_does_not_affect_order(monkeypatch):
+    merchant_id, store_id, headers = _api_world(confirmation=True)
+    ok = _post_order(headers)
+
+    def boom(self, order, merchant, decision):
+        self.db.add(Shipment(merchant_id=order.merchant_id, order_id=order.id, environment="test",
+                             idempotency_key=str(uuid4())))
+        self.db.flush()
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(ShippingService, "on_decision", boom)
+    body = _post_order(headers)
+    assert body["risk"].keys() == ok["risk"].keys() and body["risk"]["decision"] == ok["risk"]["decision"]
+    with SessionLocal() as db:
+        assert db.query(Shipment).filter_by(order_id=UUID(body["order_id"])).count() == 0
+        assert db.query(WhatsAppMessage).filter_by(order_id=UUID(body["order_id"])).count() == 1

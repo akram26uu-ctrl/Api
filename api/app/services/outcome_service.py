@@ -53,9 +53,9 @@ def record_outcome(
         note=note, reason=reason, occurred_at=occurred_at,
     )
     try:
-        repository.create(outcome)
+        with db.begin_nested():
+            repository.create(outcome)
     except IntegrityError as exc:
-        db.rollback()
         raise OutcomeExists("Order outcome already exists") from exc
 
     order.status = STATUS_MAP[outcome_status]

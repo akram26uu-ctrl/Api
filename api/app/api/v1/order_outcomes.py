@@ -1,10 +1,8 @@
 from uuid import UUID
-from datetime import datetime, timezone
+from datetime import timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import or_
 
 from app.api.dependencies import (
     get_database,

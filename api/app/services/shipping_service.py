@@ -70,6 +70,18 @@ class ShippingService:
         shipment.hold_reason = reason
         shipment.next_attempt_at = None
 
+    @staticmethod
+    def _set_meta(shipment: Shipment, **values) -> None:
+        meta = {**(shipment.meta or {}), **values}
+        shipment.meta = {k: v for k, v in meta.items() if v is not None}
+
+    def _release_stock_hold(self, shipment: Shipment) -> None:
+        """The only way to clear a stock hold: never makes an unconfirmed order due."""
+        if (shipment.meta or {}).get("needs_confirmation"):
+            self._hold(shipment, "awaiting_confirmation")
+        else:
+            self._release_hold(shipment)
+
     def _release_hold(self, shipment: Shipment, now: datetime | None = None) -> None:
         shipment.hold_reason = None
         shipment.next_attempt_at = self._due(shipment.store_id, now)
@@ -101,7 +113,13 @@ class ShippingService:
     # ---- creation -----------------------------------------------------
     def on_decision(self, order: Order, merchant: Merchant | None, decision: RiskDecision) -> Shipment | None:
         settings = None
-        if order.store_id is not None:
+        if order.store_id is None:
+            has_account = self.db.query(CarrierAccount.id).filter(
+                CarrierAccount.merchant_id == order.merchant_id,
+                CarrierAccount.environment == order.environment).first()
+            if has_account is None:
+                return None
+        else:
             first = CarrierAccountService(self.db).first_linked_at(order.store_id, order.environment)
             if first is None or _aware(order.created_at) < _aware(first):
                 return None
@@ -131,6 +149,8 @@ class ShippingService:
         else:
             shipment.next_attempt_at = now + timedelta(minutes=settings.hold_minutes)
             reserve = settings.reserve_on_accept
+        if shipment.hold_reason == "awaiting_confirmation":
+            shipment.meta = {"needs_confirmation": True}
         self.db.add(shipment)
         self.db.flush()
         if shipment.hold_reason in RISK_HOLDS or shipment.hold_reason == "no_store":
@@ -192,6 +212,7 @@ class ShippingService:
             shipment.fulfillment, shipment.warehouse_id = "merchant", None
             if all(self.inventory.available(p.id, None) >= q for p, q in needs.values()):
                 self._reserve(shipment, needs, None)
+                self._clear_stock_hold_if_reserved(shipment)
                 return
             self._out_of_stock(shipment, settings, None)
             return
@@ -210,6 +231,11 @@ class ShippingService:
             return
         shipment.carrier_account_id, shipment.warehouse_id = chosen.id, warehouse.id
         self._reserve(shipment, needs, warehouse.id)
+        self._clear_stock_hold_if_reserved(shipment)
+
+    def _clear_stock_hold_if_reserved(self, shipment: Shipment) -> None:
+        if (shipment.meta or {}).get("stock") == "reserved" and shipment.hold_reason in STOCK_HOLDS:
+            self._release_stock_hold(shipment)
 
     def _reserve(self, shipment: Shipment, needs: dict, warehouse_id) -> None:
         try:
@@ -228,9 +254,10 @@ class ShippingService:
         shipment = self.active_shipment(order.id)
         if shipment is None or shipment.status != "pending_dispatch":
             return shipment
+        self._set_meta(shipment, needs_confirmation=None, no_answer=None)
         if shipment.hold_reason in ("awaiting_confirmation", "no_answer"):
             self._release_hold(shipment)
-            self.db.flush()
+        self.db.flush()
         return shipment
 
     def on_cancelled(self, order: Order) -> Shipment | None:
@@ -241,17 +268,19 @@ class ShippingService:
             self._cancel(shipment)
         elif shipment.status == "accepted":
             account = self.db.get(CarrierAccount, shipment.carrier_account_id) if shipment.carrier_account_id else None
-            if account is not None and shipment.tracking_number:
-                adapter = CarrierAccountService(self.db).adapter_for(account)
-                if adapter.capabilities.cancel:
-                    try:
-                        adapter.cancel_shipment(shipment.tracking_number)
-                    except CarrierError as exc:
-                        shipment.last_error = str(exc)[:500]
-                        self._notify(shipment, "shipment.cancel_failed", "Shipment cancellation failed",
-                                     "The carrier refused to cancel the shipment; cancel it manually.")
-                        self.db.flush()
-                        return shipment
+            adapter = CarrierAccountService(self.db).adapter_for(account) if account is not None else None
+            if adapter is not None and adapter.capabilities.cancel and shipment.tracking_number:
+                try:
+                    adapter.cancel_shipment(shipment.tracking_number)
+                except CarrierError as exc:
+                    shipment.last_error = str(exc)[:500]
+                    self._notify(shipment, "shipment.cancel_failed", "Shipment cancellation failed",
+                                 "The carrier refused to cancel the shipment; cancel it manually.")
+                    self.db.flush()
+                    return shipment
+            else:
+                self._notify(shipment, "shipment.cancel_at_carrier_manually", "Cancel the shipment at the carrier",
+                             "The order was cancelled but the carrier cannot cancel automatically; cancel it manually.")
             self._cancel(shipment)
         else:
             self._notify(shipment, "shipment.cancel_after_pickup", "Order cancelled after pickup",
@@ -268,17 +297,25 @@ class ShippingService:
         now = now or _now()
         changed = 0
         rows = self.db.query(Shipment).filter(
-            Shipment.status == "pending_dispatch", Shipment.hold_reason == "awaiting_confirmation").all()
+            Shipment.status == "pending_dispatch",
+            Shipment.hold_reason.in_(("awaiting_confirmation", "no_answer") + STOCK_HOLDS)).all()
         for shipment in rows:
-            if shipment.store_id is None:
+            if shipment.store_id is None or not (shipment.meta or {}).get("needs_confirmation"):
                 continue
             settings = self.settings_service.get_or_default(shipment.store_id)
             merchant = self.db.get(Merchant, shipment.merchant_id)
             if not self.confirmation_applies(merchant) or settings.dispatch_trigger == "on_allow":
-                self._release_hold(shipment, now)
+                self._set_meta(shipment, needs_confirmation=None, no_answer=None)
+                if shipment.hold_reason in ("awaiting_confirmation", "no_answer"):
+                    self._release_hold(shipment, now)
                 changed += 1
+            elif shipment.hold_reason == "no_answer" or (shipment.meta or {}).get("no_answer"):
+                continue
             elif _aware(shipment.created_at) + timedelta(hours=settings.confirmation_timeout_hours) <= now:
-                self._hold(shipment, "no_answer")
+                if shipment.hold_reason == "awaiting_confirmation":
+                    self._hold(shipment, "no_answer")
+                else:
+                    self._set_meta(shipment, no_answer=True)
                 changed += 1
         if changed:
             self.db.flush()
@@ -289,30 +326,43 @@ class ShippingService:
         if shipment.status != "pending_dispatch":
             raise ShipmentActionRefused(f"Shipment is {shipment.status}")
 
-    def approve(self, shipment: Shipment, actor_key) -> Shipment:
-        self._require_pending(shipment)
-        if shipment.hold_reason not in RISK_HOLDS:
-            raise ShipmentActionRefused("Shipment is not held for review")
+    def _open_for_dispatch(self, shipment: Shipment, action: str, actor_key) -> Shipment:
         order = self.db.get(Order, shipment.order_id)
         if order is not None and order.status == OrderStatus.CANCELLED:
             raise ShipmentActionRefused("Order is cancelled")
+        self._set_meta(shipment, needs_confirmation=None, no_answer=None)
         self._release_hold(shipment)
-        self._audit(shipment, "approve", actor_key)
+        self._audit(shipment, action, actor_key)
         self.db.flush()
         if shipment.store_id is not None and self.settings_service.get_or_default(shipment.store_id).reserve_on_accept:
             self.allocate_and_reserve(shipment)
         return shipment
 
+    def approve(self, shipment: Shipment, actor_key) -> Shipment:
+        self._require_pending(shipment)
+        if shipment.hold_reason not in RISK_HOLDS:
+            raise ShipmentActionRefused("Shipment is not held for review")
+        return self._open_for_dispatch(shipment, "approve", actor_key)
+
+    REJECT_REASONS = {
+        "review": "risk_decision", "rejected": "risk_decision", "no_answer": "unreachable",
+        "unmapped_product": "other", "mixed_source": "other", "no_store": "other",
+    }
+
     def reject(self, shipment: Shipment, actor_key) -> Shipment:
         self._require_pending(shipment)
+        reason = self.REJECT_REASONS.get(shipment.hold_reason)
+        if reason is None:
+            raise ShipmentActionRefused("Shipment cannot be rejected in its current state")
         self._cancel(shipment)
+        recorded = True
         order = self.db.get(Order, shipment.order_id)
         if order is not None:
             try:
-                record_outcome(self.db, order, "cancelled", source="merchant", reason="risk_decision")
+                record_outcome(self.db, order, "cancelled", source="merchant", reason=reason)
             except OutcomeExists:
-                pass
-        self._audit(shipment, "reject", actor_key)
+                recorded = False
+        self._audit(shipment, "reject", actor_key, {"outcome_recorded": recorded, "reason": reason})
         self.db.flush()
         return shipment
 
@@ -321,11 +371,7 @@ class ShippingService:
         order = self.db.get(Order, shipment.order_id)
         if shipment.hold_reason != "rejected" or (order is not None and order.status == OrderStatus.CANCELLED):
             raise ShipmentActionRefused("Only a rejected, uncancelled order can be restored")
-        # Back to the review queue: dispatch still needs an explicit approve.
-        self._hold(shipment, "review")
-        self._audit(shipment, "restore", actor_key)
-        self.db.flush()
-        return shipment
+        return self._open_for_dispatch(shipment, "restore", actor_key)
 
     def archive(self, shipment: Shipment, actor_key) -> Shipment:
         self._require_pending(shipment)
@@ -365,6 +411,7 @@ class ShippingService:
             warehouse.carrier_account_id, warehouse.id, "carrier")
         shipment.next_attempt_at = _now()
         shipment.hold_reason = None
+        self._set_meta(shipment, needs_confirmation=None, no_answer=None)
         self._audit(shipment, "dispatch_from", actor_key, {"warehouse_id": str(warehouse.id)})
         self.db.flush()
         return shipment
