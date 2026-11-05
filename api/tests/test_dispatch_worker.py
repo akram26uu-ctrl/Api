@@ -514,3 +514,43 @@ def test_release_backorders_ignores_other_stores(db):
     db.refresh(s)
     assert s.hold_reason == "out_of_stock"
     assert ShippingService(db).release_backorders({mine.product_id}) == 1
+
+
+# ---- dispatch-time allocation and claiming ------------------------------
+def test_unreserved_shipment_is_reserved_at_dispatch(db):
+    merchant, store, acc = _world(db)
+    ShippingSettingsService(db).update(store.id, {"reserve_on_accept": False})
+    level = _product(db, merchant, store, "DA-1", _wh(db, acc).id, 5)
+    s, _o = _shipment(db, merchant, store, items=[("DA-1", 2)])
+    assert s.meta.get("stock") != "reserved"
+    svc, _now = _svc(db)
+    assert svc.run_batch()["dispatched"] == 1
+    db.refresh(s); db.refresh(level)
+    assert s.status == "accepted" and level.reserved == 2 and s.meta["stock"] == "reserved"
+    assert s.warehouse_id == _wh(db, acc).id
+
+
+def test_unreserved_without_stock_is_held_and_carrier_not_called(db, monkeypatch):
+    merchant, store, acc = _world(db)
+    ShippingSettingsService(db).update(store.id, {"reserve_on_accept": False})
+    _product(db, merchant, store, "DA-2", _wh(db, acc).id, 0)
+    adapter = _FakeAdapter(False)
+    monkeypatch.setattr(CarrierAccountService, "adapter_for", lambda self, a: adapter)
+    s, _o = _shipment(db, merchant, store, items=[("DA-2", 1)])
+    svc, _now = _svc(db)
+    assert svc.run_batch() == {"dispatched": 0, "retried": 0, "failed": 0, "fell_back": 0}
+    db.refresh(s)
+    assert s.status == "pending_dispatch" and s.hold_reason == "out_of_stock" and s.next_attempt_at is None
+    assert adapter.calls == 0
+
+
+def test_run_batch_claims_one_row_at_a_time(db):
+    merchant, store, _ = _world(db)
+    shipments = [_shipment(db, merchant, store)[0] for _ in range(3)]
+    calls = []
+    svc, _now = _svc(db)
+    counts = svc.run_batch(limit=2, commit=lambda: calls.append(1))
+    assert counts["dispatched"] == 2 and len(calls) == 2
+    for s in shipments:
+        db.refresh(s)
+    assert sorted(s.status for s in shipments) == ["accepted", "accepted", "pending_dispatch"]

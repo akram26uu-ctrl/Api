@@ -48,16 +48,22 @@ class DispatchService:
         now = self.clock()
         self.shipping.expire_unconfirmed(now)  # re-check hold rules before picking work
         manual_stores = select(ShippingSettings.store_id).where(ShippingSettings.auto_dispatch.is_(False))
-        due = self.db.scalars(
-            select(Shipment)
-            .where(Shipment.status == "pending_dispatch", Shipment.hold_reason.is_(None),
-                   Shipment.next_attempt_at <= now, Shipment.store_id.not_in(manual_stores))
-            .order_by(Shipment.next_attempt_at)
-            .limit(limit)
-            .with_for_update(skip_locked=True)
-        ).all()
         counts = {"dispatched": 0, "retried": 0, "failed": 0, "fell_back": 0}
-        for shipment in due:
+        seen: set = set()
+        for _ in range(limit):
+            # Claim one row at a time: committing releases its lock without freeing the rest of a batch.
+            shipment = self.db.scalars(
+                select(Shipment)
+                .where(Shipment.status == "pending_dispatch", Shipment.hold_reason.is_(None),
+                       Shipment.next_attempt_at <= now, Shipment.store_id.not_in(manual_stores),
+                       Shipment.id.not_in(seen))
+                .order_by(Shipment.next_attempt_at)
+                .limit(1)
+                .with_for_update(skip_locked=True)
+            ).first()
+            if shipment is None:
+                break
+            seen.add(shipment.id)
             try:
                 with self.db.begin_nested():
                     outcome = self.dispatch_one(shipment, source="poll")
@@ -86,12 +92,18 @@ class DispatchService:
 
     # ---- one shipment -------------------------------------------------
     def dispatch_one(self, shipment: Shipment, source: str = "poll") -> str:
-        """Returns dispatched | retried | failed | fell_back | skipped."""
+        """Returns dispatched | retried | failed | fell_back | held | skipped."""
         if shipment.status != "pending_dispatch" or shipment.hold_reason is not None:
             return "skipped"
         order = self.db.get(Order, shipment.order_id)
         if order is None:
             return self._fail(shipment, "order_not_found")
+        if shipment.fulfillment == "carrier" and (shipment.meta or {}).get("stock") != "reserved":
+            # Stock is checked again at dispatch (nothing may have been reserved yet).
+            self.shipping.allocate_and_reserve(shipment)
+            if shipment.hold_reason is not None:
+                self.db.flush()
+                return "held"
         account, error = self._account(shipment, order)
         if account is None:
             return self._fail(shipment, error or "no_carrier_route")
