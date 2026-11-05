@@ -13,6 +13,7 @@ class ShippingSettings(Base):
     __tablename__ = "shipping_settings"
     __table_args__ = (
         CheckConstraint("dispatch_trigger IN ('after_confirmation', 'on_allow')", name="ck_shipping_settings_trigger"),
+        CheckConstraint("label_size IN ('a6', 'a4_4', 'a4_1')", name="ck_shipping_settings_label_size"),
         CheckConstraint(
             "out_of_stock_policy IN ('hold', 'backorder', 'other_warehouse')", name="ck_shipping_settings_oos_policy"
         ),
@@ -36,7 +37,7 @@ class ShippingSettings(Base):
     pickup_wilaya: Mapped[str | None] = mapped_column(String(100), nullable=True)
     pickup_commune: Mapped[str | None] = mapped_column(String(100), nullable=True)
     pickup_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    label_size: Mapped[str] = mapped_column(String(10), nullable=False, default="A6")
+    label_size: Mapped[str] = mapped_column(String(10), nullable=False, default="a6")
     notify_on_hold: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notify_on_failure: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notify_on_low_stock: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

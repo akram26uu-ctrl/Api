@@ -1,6 +1,7 @@
 """Shipping, tracking and inventory tables; order delivery fields"""
 
 import json
+import uuid
 
 import sqlalchemy as sa
 from alembic import op
@@ -35,12 +36,28 @@ def _write_scopes(conn, key_id, scopes):
         sa.text("UPDATE api_keys SET scopes = :scopes WHERE id = :id").bindparams(
             sa.bindparam("scopes", type_=sa.JSON()), sa.bindparam("id", type_=sa.Uuid())
         ),
-        {"scopes": scopes, "id": key_id},
+        {"scopes": scopes, "id": key_id if isinstance(key_id, uuid.UUID) else uuid.UUID(str(key_id))},
     )
 
 
 def _as_list(value):
     return json.loads(value) if isinstance(value, str) else list(value or [])
+
+
+def append_scopes(conn) -> None:
+    for key_id, raw in _dashboard_keys(conn):
+        scopes = _as_list(raw)
+        merged = scopes + [s for s in NEW_SCOPES if s not in scopes]
+        if merged != scopes:
+            _write_scopes(conn, key_id, merged)
+
+
+def remove_scopes(conn) -> None:
+    for key_id, raw in _dashboard_keys(conn):
+        scopes = _as_list(raw)
+        kept = [s for s in scopes if s not in NEW_SCOPES]
+        if kept != scopes:
+            _write_scopes(conn, key_id, kept)
 
 
 def upgrade() -> None:
@@ -85,7 +102,7 @@ def upgrade() -> None:
     op.create_table(
         "products", _id(),
         sa.Column("merchant_id", sa.Uuid(), nullable=False),
-        sa.Column("store_id", sa.Uuid(), nullable=True),
+        sa.Column("store_id", sa.Uuid(), nullable=False),
         sa.Column("sku", sa.String(length=100), nullable=False),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("fulfillment", sa.String(length=20), nullable=False),
@@ -252,7 +269,7 @@ def upgrade() -> None:
         sa.Column("pickup_wilaya", sa.String(length=100), nullable=True),
         sa.Column("pickup_commune", sa.String(length=100), nullable=True),
         sa.Column("pickup_phone", sa.String(length=32), nullable=True),
-        sa.Column("label_size", sa.String(length=10), nullable=False),
+        sa.Column("label_size", sa.String(length=10), nullable=False, server_default="a6"),
         sa.Column("notify_on_hold", sa.Boolean(), nullable=False),
         sa.Column("notify_on_failure", sa.Boolean(), nullable=False),
         sa.Column("notify_on_low_stock", sa.Boolean(), nullable=False),
@@ -262,6 +279,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("store_id"),
         sa.CheckConstraint("dispatch_trigger IN ('after_confirmation', 'on_allow')", name="ck_shipping_settings_trigger"),
+        sa.CheckConstraint("label_size IN ('a6', 'a4_4', 'a4_1')", name="ck_shipping_settings_label_size"),
         sa.CheckConstraint(
             "out_of_stock_policy IN ('hold', 'backorder', 'other_warehouse')", name="ck_shipping_settings_oos_policy"
         ),
@@ -285,21 +303,11 @@ def upgrade() -> None:
     op.create_index("ix_shipping_routes_merchant_id", "shipping_routes", ["merchant_id"])
     op.create_index("ix_shipping_routes_store_priority", "shipping_routes", ["store_id", "priority"])
 
-    conn = op.get_bind()
-    for key_id, raw in _dashboard_keys(conn):
-        scopes = _as_list(raw)
-        merged = scopes + [s for s in NEW_SCOPES if s not in scopes]
-        if merged != scopes:
-            _write_scopes(conn, key_id, merged)
+    append_scopes(op.get_bind())
 
 
 def downgrade() -> None:
-    conn = op.get_bind()
-    for key_id, raw in _dashboard_keys(conn):
-        scopes = _as_list(raw)
-        kept = [s for s in scopes if s not in NEW_SCOPES]
-        if kept != scopes:
-            _write_scopes(conn, key_id, kept)
+    remove_scopes(op.get_bind())
 
     for table in (
         "shipping_routes", "shipping_settings", "shipment_events", "stock_movements", "shipments",

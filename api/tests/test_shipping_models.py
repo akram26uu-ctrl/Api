@@ -25,6 +25,19 @@ def db():
         session.close()
 
 
+def _product(db, merchant, sku):
+    from app.models.product import Product
+    from app.models.store import Store
+
+    store = Store(merchant_id=merchant.id, name="S", slug=uuid4().hex[:8])
+    db.add(store)
+    db.flush()
+    product = Product(merchant_id=merchant.id, store_id=store.id, sku=sku, name="P")
+    db.add(product)
+    db.flush()
+    return product
+
+
 def _order(db):
     merchant = Merchant(name="M", email=f"{uuid4().hex}@example.com")
     db.add(merchant)
@@ -42,9 +55,7 @@ def test_stock_level_rejects_reserved_above_on_hand(db):
     from app.models.product import Product, StockLevel
 
     merchant, _ = _order(db)
-    product = Product(merchant_id=merchant.id, sku="SKU1", name="P")
-    db.add(product)
-    db.flush()
+    product = _product(db, merchant, "SKU1")
     db.add(StockLevel(product_id=product.id, warehouse_id=None, on_hand=1, reserved=2))
     with pytest.raises(IntegrityError):
         db.flush()
@@ -84,9 +95,7 @@ def test_merchant_stock_location_unique_per_product(db):
     from app.models.product import Product, StockLevel
 
     merchant, _ = _order(db)
-    product = Product(merchant_id=merchant.id, sku="SKU2", name="P")
-    db.add(product)
-    db.flush()
+    product = _product(db, merchant, "SKU2")
     db.add(StockLevel(product_id=product.id, warehouse_id=None, on_hand=1))
     db.flush()
     db.add(StockLevel(product_id=product.id, warehouse_id=None, on_hand=2))
@@ -143,3 +152,74 @@ def test_integration_maps_stop_desk_shipping_method():
     assert _normalize_order(payload, "9").delivery_type == "home"
     payload.pop("shipping_lines")
     assert _normalize_order(payload, "9").delivery_type == "home"
+
+
+def _load_migration():
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[1] / "migrations" / "versions" / "f3c9a1d7e2b5_add_shipping_and_inventory.py"
+    spec = importlib.util.spec_from_file_location("mig_f3c9", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_migration_scope_data_steps():
+    import json
+    import sqlalchemy as sa
+
+    mig = _load_migration()
+    engine = sa.create_engine("sqlite+pysqlite://")
+    dash, other, system_other = uuid4(), uuid4(), uuid4()
+    existing = ["orders:read", "audit:read", "inventory:read"]
+    with engine.begin() as conn:
+        conn.execute(sa.text(
+            "CREATE TABLE api_keys (id CHAR(32) PRIMARY KEY, name TEXT, key_kind TEXT, scopes JSON)"
+        ))
+        for kid, name, kind, scopes in (
+            (dash, "Dashboard session (test)", "system", existing),
+            (other, "Dashboard session (live)", "customer", ["orders:read"]),
+            (system_other, "Initial test key", "system", ["orders:write"]),
+        ):
+            conn.execute(sa.text("INSERT INTO api_keys VALUES (:i, :n, :k, :s)"),
+                         {"i": kid.hex, "n": name, "k": kind, "s": json.dumps(scopes)})
+
+        def scopes_of(kid):
+            return json.loads(conn.execute(sa.text("SELECT scopes FROM api_keys WHERE id = :i"), {"i": kid.hex}).scalar())
+
+        mig.append_scopes(conn)
+        mig.append_scopes(conn)  # idempotent: no duplicates
+        assert scopes_of(dash) == existing + ["shipping:read", "shipping:write", "inventory:write"]
+        assert scopes_of(other) == ["orders:read"]
+        assert scopes_of(system_other) == ["orders:write"]
+
+        mig.remove_scopes(conn)
+        assert scopes_of(dash) == ["orders:read", "audit:read"]
+        assert scopes_of(other) == ["orders:read"]
+        assert scopes_of(system_other) == ["orders:write"]
+
+
+def test_label_size_default_and_check(db):
+    from app.models.shipping_settings import ShippingSettings
+    from app.models.store import Store
+
+    merchant, _ = _order(db)
+    store = Store(merchant_id=merchant.id, name="S", slug=uuid4().hex[:8])
+    db.add(store)
+    db.flush()
+    settings = ShippingSettings(merchant_id=merchant.id, store_id=store.id)
+    db.add(settings)
+    db.flush()
+    assert settings.label_size == "a6"
+    settings.label_size = "A6"
+    with pytest.raises(IntegrityError):
+        db.flush()
+
+
+def test_product_requires_store(db):
+    from app.models.product import Product
+
+    merchant, _ = _order(db)
+    db.add(Product(merchant_id=merchant.id, store_id=None, sku="X", name="P"))
+    with pytest.raises(IntegrityError):
+        db.flush()

@@ -18,7 +18,7 @@ class Product(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     merchant_id: Mapped[UUID] = mapped_column(ForeignKey("merchants.id", ondelete="CASCADE"), nullable=False, index=True)
-    store_id: Mapped[UUID | None] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), nullable=True, index=True)
+    store_id: Mapped[UUID] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True)
     sku: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     fulfillment: Mapped[str] = mapped_column(String(20), nullable=False, default="merchant")
