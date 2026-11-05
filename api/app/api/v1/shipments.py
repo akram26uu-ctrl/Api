@@ -9,6 +9,7 @@ from app.api.dependencies import get_database, require_api_scope
 from app.api.store_scope import requested_store_id
 from app.models.api_key import ApiKey
 from app.models.carrier_account import CarrierAccount
+from app.models.carrier_warehouse import CarrierWarehouse
 from app.models.enums import OrderStatus, RiskDecision
 from app.models.merchant import Merchant
 from app.models.order import Order
@@ -103,6 +104,7 @@ def _hold_detail(shipment: Shipment) -> str:
 def list_shipments(
     status_filter: str | None = Query(default=None, alias="status"),
     source: str | None = Query(default=None, max_length=50),
+    origin: str | None = Query(default=None, max_length=50),
     q: str | None = Query(default=None, max_length=255),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
@@ -117,6 +119,20 @@ def list_shipments(
         or_(Shipment.status != "pending_dispatch", Shipment.hold_reason.is_(None)))
     if source:
         base = base.filter(Order.source == source)
+    if origin == "merchant":
+        base = base.filter(Shipment.fulfillment == "merchant")
+    elif origin:
+        try:
+            warehouse_id = UUID(origin)
+        except ValueError:
+            raise HTTPException(422, "invalid_origin")
+        owned = db.query(CarrierWarehouse.id).join(
+            CarrierAccount, CarrierAccount.id == CarrierWarehouse.carrier_account_id).filter(
+            CarrierWarehouse.id == warehouse_id, CarrierAccount.merchant_id == api_key.merchant_id,
+            CarrierAccount.environment == api_key.environment).first()
+        if owned is None:
+            raise HTTPException(422, "invalid_origin")
+        base = base.filter(Shipment.warehouse_id == warehouse_id)
     if q:
         escaped = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         term = f"%{escaped}%"

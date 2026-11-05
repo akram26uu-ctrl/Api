@@ -1944,8 +1944,8 @@
       "carrier": "Carrier warehouse",
       "merchant": "From my shop"
     },
-    "source_all": "All sources",
-    "source_filter": "Order source",
+    "source_all": "All",
+    "source_filter": "Origin",
     "tabs_label": "Shipment status",
     "title": "Shipments",
     "tab": {
@@ -1956,12 +1956,6 @@
       "done": "Delivered",
       "ret": "Returned",
       "fail": "Not sent"
-    },
-    "order_source": {
-      "api": "API",
-      "shopify": "Shopify",
-      "woocommerce": "WooCommerce",
-      "youcan": "YouCan"
     },
     "delivery_type": {
       "home": "Home delivery",
@@ -2005,6 +1999,11 @@
       "unmapped_product": "A product is not mapped to inventory.",
       "mixed_source": "Products come from different stock sources.",
       "no_store": "The order is not linked to a store."
+    },
+    "print_modal": {
+      "title": "My labels",
+      "count": "labels ready to print",
+      "note": "This covers the current page only."
     }
   }
 }

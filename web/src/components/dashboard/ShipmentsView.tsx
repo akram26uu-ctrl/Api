@@ -1,7 +1,7 @@
 /** ORDIUM Shipments View: every parcel from dispatch to delivery or return. */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Search, RefreshCw, Printer, Send, Truck, AlertTriangle, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
-import type { CarrierListResponse, NextPickup, Shipment, ShipmentListResponse } from '../../lib/api/types';
+import type { CarrierListResponse, CarrierWarehouse, Environment, NextPickup, Shipment, ShipmentListResponse } from '../../lib/api/types';
 import { shippingApi } from '../../lib/api/shipping';
 import { Button } from '../common/Button';
 import { EmptyState, LoadingState } from '../common/EmptyState';
@@ -12,14 +12,27 @@ import { ShipmentDetailDrawer } from './ShipmentDetailDrawer';
 import { shippingErrorMessage } from './shippingErrors';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { DashboardRoute } from './DashboardLayout';
+import { ALGERIAN_WILAYAS } from '../../lib/algeriaData';
 
 const TABS = ['all', 'ready', 'transit', 'out', 'done', 'ret', 'fail'] as const;
 type Tab = typeof TABS[number];
-const SOURCES = ['api', 'shopify', 'woocommerce', 'youcan'];
 
-interface Props { onNavigate?: (route: DashboardRoute) => void }
+/** The payload carries the wilaya as a code or a name; resolve it to "NN · name" when it is a known wilaya. */
+const resolveWilaya = (raw: string | null, lang: string): string | null => {
+  if (!raw) return null;
+  const v = raw.trim();
+  const norm = (x: string) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const found = /^\d{1,2}$/.test(v)
+    ? ALGERIAN_WILAYAS.find(w => w.code === Number(v))
+    : ALGERIAN_WILAYAS.find(w => [w.nameEn, w.nameFr, w.nameAr].some(n => norm(n) === norm(v)));
+  if (!found) return v;
+  const name = lang === 'ar' ? found.nameAr : lang === 'fr' ? found.nameFr : found.nameEn;
+  return `${String(found.code).padStart(2, '0')} · ${name}`;
+};
 
-export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
+interface Props { environment: Environment; onNavigate?: (route: DashboardRoute) => void }
+
+export const ShipmentsView: React.FC<Props> = ({ environment, onNavigate }) => {
   const { t, language } = useLanguage();
   const locale = language === 'ar' ? 'ar-DZ' : language === 'fr' ? 'fr-DZ' : 'en-GB';
   const [data, setData] = useState<ShipmentListResponse | null>(null);
@@ -33,6 +46,8 @@ export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Shipment | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [origins, setOrigins] = useState<{ id: string; label: string }[]>([]);
+  const [printOpen, setPrintOpen] = useState(false);
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [dispatching, setDispatching] = useState(false);
@@ -47,17 +62,22 @@ export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const res = await shippingApi.listShipments({ status: tab === 'all' ? undefined : tab, source: source === 'all' ? undefined : source, q: query.trim() || undefined, page, limit: 20 });
+      const res = await shippingApi.listShipments({ status: tab === 'all' ? undefined : tab, origin: source === 'all' ? undefined : source, q: query.trim() || undefined, page, limit: 20 });
       setData(res);
     } catch (err) {
-      setData(null); setError((err as Error).message || t('shipping.load_error', 'تعذر تحميل الشحنات'));
+      setData(null); setError(shippingErrorMessage(err, t));
     } finally { setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, source, query, page]);
 
   useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 300); return () => window.clearTimeout(timer); }, [load]);
   useEffect(() => {
-    void shippingApi.listCarriers().then(setCarriers).catch(() => setCarriers(null));
+    void shippingApi.listCarriers().then(async res => {
+      setCarriers(res);
+      const lists = await Promise.all(res.accounts.filter(a => a.status === 'active').map(a =>
+        shippingApi.listWarehouses(a.id).then((ws: CarrierWarehouse[]) => ws.filter(w => w.is_active).map(w => ({ id: w.id, label: `${w.name} · ${a.display_name}` }))).catch(() => [])));
+      setOrigins(lists.flat());
+    }).catch(() => setCarriers(null));
     void shippingApi.nextPickups().then(r => setPickups(r.data)).catch(() => setPickups([]));
   }, []);
 
@@ -70,7 +90,10 @@ export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
   const sourceLabel = (r: Shipment) => r.fulfillment === 'merchant' ? t('shipping.source.merchant', 'من متجري') : t('shipping.source.carrier', 'مستودع الشركة');
   const onChanged = (s: Shipment) => { setSelected(prev => prev && prev.id === s.id ? { ...prev, ...s } : prev); setData(prev => prev ? { ...prev, data: prev.data.map(r => r.id === s.id ? { ...r, ...s, events: r.events } : r) } : prev); };
 
-  const printLabels = () => printable.forEach(r => window.open(r.label_url as string, '_blank', 'noopener,noreferrer'));
+  const printLabels = () => {
+    if (printable.length === 1) window.open(printable[0].label_url as string, '_blank', 'noopener,noreferrer');
+    else if (printable.length > 1) setPrintOpen(true);
+  };
   const submitDispatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orderId.trim()) return;
@@ -85,6 +108,7 @@ export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
 
   const noAccounts = carriers != null && carriers.accounts.length === 0;
   const showCarrierEmpty = noAccounts && !loading && !error && (data?.counts?.all ?? 0) === 0;
+  const liveNoCarriers = environment === 'live';
   const failCount = counts.fail ?? 0;
   const selectCls = 'bg-[var(--ordium-surface)] border border-white/10 rounded-xl px-3 min-h-11 text-xs font-mono text-white';
 
@@ -96,8 +120,8 @@ export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
           <p className="text-sm text-[var(--ordium-muted)] mt-1 leading-relaxed max-w-2xl">{t('shipping.description', 'كل طرد خرج من متجرك أو من مستودع شركة التوصيل، من الإرسال حتى التسليم أو الإرجاع.')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" disabled={printable.length === 0} onClick={printLabels} leftIcon={<Printer className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.print_labels', 'طباعة ملصقات طرودي')}</Button>
-          <Button variant="primary" size="sm" onClick={() => { setDispatchError(null); setDispatchOpen(true); }} leftIcon={<Send className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.manual_dispatch', 'إرسال طلب يدويًا')}</Button>
+          <Button variant="outline" size="md" disabled={printable.length === 0} onClick={printLabels} leftIcon={<Printer className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.print_labels', 'طباعة ملصقات طرودي')}</Button>
+          <Button variant="primary" size="md" onClick={() => { setDispatchError(null); setDispatchOpen(true); }} leftIcon={<Send className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.manual_dispatch', 'إرسال طلب يدويًا')}</Button>
         </div>
       </div>
 
@@ -119,7 +143,7 @@ export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
       {failCount > 0 && tab !== 'fail' && (
         <div role="alert" className="rounded-xl border border-[var(--ordium-danger)]/30 bg-[var(--ordium-danger)]/5 p-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0"><AlertTriangle className="w-4 h-4 text-[var(--ordium-danger)] shrink-0 mt-0.5" aria-hidden="true" /><p className="text-sm text-white">{t('shipping.fail_alert', 'طلبات لم تصل إلى شركة التوصيل:')} <span className="font-bold tabular-nums">{failCount}</span></p></div>
-          <Button variant="danger" size="sm" onClick={() => { setTab('fail'); setPage(1); }}>{t('shipping.fail_alert_action', 'عرض وإصلاح')}</Button>
+          <Button variant="danger" size="md" onClick={() => { setTab('fail'); setPage(1); }}>{t('shipping.fail_alert_action', 'عرض وإصلاح')}</Button>
         </div>
       )}
 
@@ -138,20 +162,21 @@ export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
         </div>
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <select aria-label={t('shipping.source_filter', 'مصدر الطلب')} value={source} onChange={e => { setSource(e.target.value); setPage(1); }} className={selectCls}>
-            <option value="all">{t('shipping.source_all', 'كل المصادر')}</option>
-            {SOURCES.map(s => <option key={s} value={s}>{t(`shipping.order_source.${s}`, s)}</option>)}
+            <option value="all">{t('shipping.source_all', 'الكل')}</option>
+            <option value="merchant">{t('shipping.source.merchant', 'من متجري')}</option>
+            {origins.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
           </select>
-          <Button variant="outline" size="sm" onClick={() => void load()} leftIcon={<RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.refresh', 'تحديث')}</Button>
+          <Button variant="outline" size="md" onClick={() => void load()} leftIcon={<RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.refresh', 'تحديث')}</Button>
         </div>
       </div>
 
       {error ? (
         <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-8 text-center">
           <h3 className="text-sm font-semibold text-white">{t('shipping.load_error', 'تعذر تحميل الشحنات')}</h3><p className="text-xs text-[var(--ordium-muted)] mt-2">{error}</p>
-          <Button className="mt-4" variant="outline" size="sm" onClick={() => void load()}>{t('common.retry', 'إعادة المحاولة')}</Button>
+          <Button className="mt-4" variant="outline" size="md" onClick={() => void load()}>{t('common.retry', 'إعادة المحاولة')}</Button>
         </div>
       ) : loading && !data ? <LoadingState message={t('shipping.loading', 'جارٍ تحميل الشحنات…')} />
-      : showCarrierEmpty && carriers && carriers.available.length === 0 ? (
+      : showCarrierEmpty && liveNoCarriers ? (
         <EmptyState icon={<Truck className="w-8 h-8" />} title={t('shipping.empty.no_carriers_live', 'لا توجد شركات توصيل متاحة بعد')} description={t('shipping.empty.no_carriers_live_desc', 'سنُعلمك فور إتاحة أول شركة توصيل لحسابك.')} />
       ) : showCarrierEmpty ? (
         <EmptyState icon={<Truck className="w-8 h-8" />} title={t('shipping.empty.link_title', 'اربط شركة توصيل')} description={t('shipping.empty.link_desc', 'اربط شركة توصيل من الإعدادات لتبدأ إرسال الطلبات المقبولة تلقائيًا.')} actionText={t('shipping.empty.link_action', 'فتح الإعدادات')} onAction={() => onNavigate?.('settings')} />
@@ -169,7 +194,7 @@ export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
                 {rows.map(r => (
                   <tr key={r.id} onClick={() => setSelected(r)} className="hover:bg-white/[0.03] transition-colors cursor-pointer">
                     <td data-label={t('shipping.col_wilaya', 'الولاية')} className="py-3 px-4 font-mono text-white" dir="ltr">{r.wilaya ?? '—'}</td>
-                    <td data-label={t('shipping.col_destination', 'الوجهة والزبون')} className="py-3 px-4 text-sm text-[#C1CCDA]"><span dir="auto">{r.customer_name ?? '—'}</span></td>
+                    <td data-label={t('shipping.col_destination', 'الوجهة والزبون')} className="py-3 px-4 text-sm text-[#C1CCDA]"><div dir="auto">{resolveWilaya(r.wilaya, language) ?? '—'}</div><div className="text-xs text-[var(--ordium-muted)]" dir="auto">{r.customer_name ?? '—'}</div></td>
                     <td data-label={t('shipping.col_order', 'الطلب')} className="py-3 px-4 font-bold text-white">
                       <button type="button" onClick={e => { e.stopPropagation(); setSelected(r); }} aria-label={`${t('shipping.open', 'فتح الشحنة')} ${r.external_order_id ?? r.order_id}`} className="min-h-11 md:min-h-0 text-start focus-visible:outline-2 focus-visible:outline-[var(--ordium-signal)]" dir="ltr">{r.external_order_id ?? r.order_id.slice(0, 8)}</button>
                     </td>
@@ -184,9 +209,9 @@ export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
             </table>
           </div>
           <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} leftIcon={<ChevronLeft aria-hidden="true" className="w-3.5 h-3.5 rtl:-scale-x-100" />}>{t('shipping.prev_page', 'السابق')}</Button>
+            <Button variant="outline" size="md" disabled={page <= 1} onClick={() => setPage(p => p - 1)} leftIcon={<ChevronLeft aria-hidden="true" className="w-3.5 h-3.5 rtl:-scale-x-100" />}>{t('shipping.prev_page', 'السابق')}</Button>
             <span className="text-xs font-mono text-[var(--ordium-subtle)]">{page} / {pagination?.total_pages ?? 1}</span>
-            <Button variant="outline" size="sm" disabled={page >= (pagination?.total_pages ?? 1)} onClick={() => setPage(p => p + 1)} rightIcon={<ChevronRight aria-hidden="true" className="w-3.5 h-3.5 rtl:-scale-x-100" />}>{t('shipping.next_page', 'التالي')}</Button>
+            <Button variant="outline" size="md" disabled={page >= (pagination?.total_pages ?? 1)} onClick={() => setPage(p => p + 1)} rightIcon={<ChevronRight aria-hidden="true" className="w-3.5 h-3.5 rtl:-scale-x-100" />}>{t('shipping.next_page', 'التالي')}</Button>
           </div>
         </div>
       )}
@@ -199,12 +224,20 @@ export const ShipmentsView: React.FC<Props> = ({ onNavigate }) => {
             <label htmlFor="ship-dispatch-order" className="block text-xs text-[var(--ordium-muted)] mb-1.5">{t('shipping.dispatch_modal.order_id', 'معرّف الطلب')}</label>
             <input id="ship-dispatch-order" value={orderId} onChange={e => setOrderId(e.target.value)} dir="ltr" autoComplete="off" required className="w-full bg-[var(--ordium-surface-raised)] border border-white/[0.12] rounded-xl px-4 py-3 min-h-11 text-sm font-mono text-white" />
           </div>
-          {dispatchError && <div role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-[var(--ordium-muted)]">{dispatchError}</div>}
+          {dispatchError && <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-[var(--ordium-muted)]">{dispatchError}</div>}
           <div className="flex flex-wrap justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setDispatchOpen(false)}>{t('common.cancel', 'إلغاء')}</Button>
-            <Button type="submit" variant="primary" size="sm" isLoading={dispatching} disabled={!orderId.trim()}>{t('shipping.dispatch_modal.submit', 'إرسال')}</Button>
+            <Button type="button" variant="outline" size="md" onClick={() => setDispatchOpen(false)}>{t('common.cancel', 'إلغاء')}</Button>
+            <Button type="submit" variant="primary" size="md" isLoading={dispatching} disabled={!orderId.trim()}>{t('shipping.dispatch_modal.submit', 'إرسال')}</Button>
           </div>
         </form>
+      </Modal>
+      <Modal isOpen={printOpen} onClose={() => setPrintOpen(false)} title={t('shipping.print_modal.title', 'ملصقات طرودي')} description={`${printable.length} ${t('shipping.print_modal.count', 'ملصقات جاهزة للطباعة')}`}>
+        <ul className="space-y-2">
+          {printable.map(r => (
+            <li key={r.id}><a href={r.label_url as string} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-3 min-h-11 px-3 rounded-xl border border-white/10 hover:bg-white/5 text-sm text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ordium-signal)]"><span dir="ltr" className="font-mono truncate">{r.external_order_id ?? r.order_id.slice(0, 8)}</span><Printer className="w-4 h-4 text-[var(--ordium-muted)] shrink-0" aria-hidden="true" /></a></li>
+          ))}
+        </ul>
+        <p className="text-xs text-[var(--ordium-subtle)] mt-4">{t('shipping.print_modal.note', 'يشمل هذا الصفحة الحالية فقط.')}</p>
       </Modal>
       <ToastContainer toasts={toasts} onDismiss={id => setToasts(prev => prev.filter(x => x.id !== id))} />
     </div>

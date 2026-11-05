@@ -34,7 +34,7 @@ export const shippingApi = {
   deleteRoute: (routeId: string) =>
     ordiumFetch<void>(withStore(`/shipping/routes/${id(routeId)}`), json('DELETE')),
 
-  listShipments: (query: { status?: string; source?: string; q?: string; page?: number; limit?: number } = {}) =>
+  listShipments: (query: { status?: string; source?: string; origin?: string; q?: string; page?: number; limit?: number } = {}) =>
     ordiumFetch<ShipmentListResponse>(withStore('/shipping/shipments', query)),
   getShipment: (shipmentId: string) =>
     ordiumFetch<Shipment>(withStore(`/shipping/shipments/${id(shipmentId)}`)),

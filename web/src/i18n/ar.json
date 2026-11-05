@@ -1960,8 +1960,8 @@
       "carrier": "مستودع الشركة",
       "merchant": "من متجري"
     },
-    "source_all": "كل المصادر",
-    "source_filter": "مصدر الطلب",
+    "source_all": "الكل",
+    "source_filter": "المصدر",
     "tabs_label": "حالة الشحنة",
     "title": "الشحنات",
     "tab": {
@@ -1972,12 +1972,6 @@
       "done": "سُلِّم",
       "ret": "مرتجع",
       "fail": "لم يُرسل"
-    },
-    "order_source": {
-      "api": "API",
-      "shopify": "Shopify",
-      "woocommerce": "WooCommerce",
-      "youcan": "YouCan"
     },
     "delivery_type": {
       "home": "إلى المنزل",
@@ -2021,6 +2015,11 @@
       "unmapped_product": "منتج غير مرتبط بالمخزون.",
       "mixed_source": "منتجات من مصادر مخزون مختلفة.",
       "no_store": "الطلب غير مرتبط بمتجر."
+    },
+    "print_modal": {
+      "title": "ملصقات طرودي",
+      "count": "ملصقات جاهزة للطباعة",
+      "note": "يشمل هذا الصفحة الحالية فقط."
     }
   }
 }

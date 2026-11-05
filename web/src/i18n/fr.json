@@ -1945,8 +1945,8 @@
       "carrier": "Entrepôt du transporteur",
       "merchant": "Depuis ma boutique"
     },
-    "source_all": "Toutes les sources",
-    "source_filter": "Source de la commande",
+    "source_all": "Tous",
+    "source_filter": "Origine",
     "tabs_label": "Statut de l'expédition",
     "title": "Expéditions",
     "tab": {
@@ -1957,12 +1957,6 @@
       "done": "Livrées",
       "ret": "Retours",
       "fail": "Non envoyées"
-    },
-    "order_source": {
-      "api": "API",
-      "shopify": "Shopify",
-      "woocommerce": "WooCommerce",
-      "youcan": "YouCan"
     },
     "delivery_type": {
       "home": "À domicile",
@@ -2006,6 +2000,11 @@
       "unmapped_product": "Produit non associé au stock.",
       "mixed_source": "Produits issus de sources de stock différentes.",
       "no_store": "La commande n'est liée à aucune boutique."
+    },
+    "print_modal": {
+      "title": "Mes étiquettes",
+      "count": "étiquettes prêtes à imprimer",
+      "note": "Ceci ne concerne que la page actuelle."
     }
   }
 }

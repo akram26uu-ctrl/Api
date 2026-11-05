@@ -105,6 +105,19 @@ def test_counts_match_status_groups():
     assert exact["pagination"]["total"] == 1
 
 
+def test_origin_filter_merchant_and_warehouse_scoped():
+    w = _world()
+    own = _shipment(w, status="accepted", fulfillment="merchant")
+    wh = _shipment(w, status="accepted", warehouse_id=w["warehouse"])
+    _shipment(w, status="accepted")
+    ids = lambda q: {s["id"] for s in client.get(f"{API}/shipments?origin={q}", headers=w["h"]).json()["data"]}
+    assert ids("merchant") == {str(own)}
+    assert ids(str(w["warehouse"])) == {str(wh)}
+    other = _world()
+    assert client.get(f"{API}/shipments?origin={other['warehouse']}", headers=w["h"]).status_code == 422
+    assert client.get(f"{API}/shipments?origin=nope", headers=w["h"]).status_code == 422
+
+
 def test_shipments_isolated_by_env_store_merchant():
     w = _world()
     mine = _shipment(w, status="accepted")

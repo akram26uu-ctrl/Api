@@ -104,14 +104,14 @@ export const ShipmentDetailDrawer: React.FC<Props> = ({ shipment, isOpen, onClos
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ShipmentStatusBadge status={s.status} />
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" isLoading={busy === 'refresh'} onClick={() => void load('refresh')} leftIcon={<RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.actions.refresh', 'تحديث الحالة الآن')}</Button>
-          {s.label_url && <a href={s.label_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-2 text-xs font-medium rounded-lg border border-white/15 text-[#F8FAFC] hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ordium-signal)]"><Printer className="w-3.5 h-3.5" aria-hidden="true" />{t('shipping.actions.label', 'طباعة الملصق')}</a>}
-          {s.status === 'dispatch_failed' && <Button variant="primary" size="sm" isLoading={busy === 'retry'} onClick={() => void doRetry()} leftIcon={<RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.actions.retry', 'إعادة المحاولة')}</Button>}
-          {CANCELLABLE.includes(s.status) && <Button variant="danger" size="sm" onClick={() => setConfirmCancel(true)} leftIcon={<Ban className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.actions.cancel', 'إلغاء الشحنة')}</Button>}
+          <Button variant="outline" size="md" isLoading={busy === 'refresh'} onClick={() => void load('refresh')} leftIcon={<RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.actions.refresh', 'تحديث الحالة الآن')}</Button>
+          {s.label_url && <a href={s.label_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 text-sm font-medium rounded-lg border border-white/15 text-[#F8FAFC] hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ordium-signal)]"><Printer className="w-3.5 h-3.5" aria-hidden="true" />{t('shipping.actions.label', 'طباعة الملصق')}</a>}
+          {s.status === 'dispatch_failed' && <Button variant="primary" size="md" isLoading={busy === 'retry'} onClick={() => void doRetry()} leftIcon={<RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.actions.retry', 'إعادة المحاولة')}</Button>}
+          {CANCELLABLE.includes(s.status) && <Button variant="danger" size="md" onClick={() => setConfirmCancel(true)} leftIcon={<Ban className="w-3.5 h-3.5" aria-hidden="true" />}>{t('shipping.actions.cancel', 'إلغاء الشحنة')}</Button>}
         </div>
       </div>
 
-      {error && <div role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs text-[var(--ordium-muted)]">{error}</div>}
+      {error && <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-xs text-[var(--ordium-muted)]">{error}</div>}
 
       {s.last_error && (s.status === 'dispatch_failed' || s.status === 'pending_dispatch') && (
         <div className="rounded-xl border border-[var(--ordium-danger)]/30 bg-[var(--ordium-danger)]/5 p-4 flex gap-3 text-start">
@@ -168,8 +168,8 @@ export const ShipmentDetailDrawer: React.FC<Props> = ({ shipment, isOpen, onClos
 
       <Modal isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} title={t('shipping.cancel_modal.title', 'إلغاء الشحنة؟')} description={t('shipping.cancel_modal.desc', 'سيُطلب من شركة التوصيل إلغاء هذا الطرد. لا يمكن التراجع عن ذلك.')}>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => setConfirmCancel(false)}>{t('shipping.cancel_modal.keep', 'إبقاء الشحنة')}</Button>
-          <Button variant="danger" size="sm" isLoading={busy === 'cancel'} onClick={() => void doCancel()}>{t('shipping.cancel_modal.confirm', 'نعم، ألغِ الشحنة')}</Button>
+          <Button variant="outline" size="md" onClick={() => setConfirmCancel(false)}>{t('shipping.cancel_modal.keep', 'إبقاء الشحنة')}</Button>
+          <Button variant="danger" size="md" isLoading={busy === 'cancel'} onClick={() => void doCancel()}>{t('shipping.cancel_modal.confirm', 'نعم، ألغِ الشحنة')}</Button>
         </div>
       </Modal>
     </Drawer>

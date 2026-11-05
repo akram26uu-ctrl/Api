@@ -169,7 +169,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
                 {activeTab === 'confirmation' && <ConfirmationView onOpenOrders={() => navigateTab('orders')} />}
                 {activeTab === 'orders' && <OrdersView storeName={stores.find(store => store.id === selectedStoreId)?.name} onOpenSimulator={() => navigateTab('simulator')} onOpenConfirmation={() => navigateTab('confirmation')} />}
                 {(activeTab === 'pending' || activeTab === 'inventory') && <div className="dashboard-content"><EmptyState title={getTabTitle()} description={t('shipping.coming_soon', 'هذه الصفحة قيد الإعداد وستتوفر قريبًا.')} /></div>}
-                {activeTab === 'shipments' && <ShipmentsView onNavigate={navigateTab} />}
+                {activeTab === 'shipments' && <ShipmentsView environment={environment} onNavigate={navigateTab} />}
                 {activeTab === 'integrations' && <IntegrationsView storeId={selectedStoreId} />}
                 {activeTab === 'network' && <IdentityNetworkView />}
                 {activeTab === 'rules' && <RulesEngineView />}
