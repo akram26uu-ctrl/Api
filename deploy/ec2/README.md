@@ -52,6 +52,13 @@ The webhook dispatcher is deliberately opt-in to prevent duplicate live deliveri
 
 API and Control Plane use separate migration histories. Do not reuse one database URL for both.
 
+## Shipping, tracking and inventory (migration f3c9a1d7e2b5)
+
+- Migration `f3c9a1d7e2b5` (after `e8b3f5a2c1d9`) is additive: new shipping/inventory tables, `orders.delivery_type` (server default `home`) and `orders.stop_desk_id`, and it appends `shipping:read`, `shipping:write`, `inventory:read`, `inventory:write` to existing dashboard session keys (`key_kind='system'`, name `Dashboard session%`) only. Downgrade removes exactly those. Verified on PostgreSQL 16 (upgrade → downgrade → upgrade).
+- The `webhook-worker` loop now also runs `scripts.dispatch_shipments` every cycle, `scripts.sync_shipments` every 30 minutes and `scripts.sync_inventory` every 60 minutes (gated by timestamp files in `/tmp` inside the container).
+- Only the `sandbox` courier exists and it is accepted in the TEST environment only; LIVE merchants see "no couriers available yet" and no shipments are created for them. Real couriers are added later as one adapter module each under `api/app/services/carriers/`.
+- Courier tracking webhooks are received at `POST /api/v1/carriers/{carrier_code}/webhook/{account_id}` (signature verified by the adapter).
+
 ## ARM64 versus x86
 
 All three Dockerfiles use multi-architecture base images. CI builds Linux AMD64 and ARM64 images. Before selecting `t4g.medium`, test the actual dependency stack on ARM64. If dependencies or runtime behavior fail, use the x86 AMD option `t3a.medium` and recheck costs.
