@@ -26,7 +26,8 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(["merchant_id"], ["merchants.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["store_id"], ["stores.id"], ondelete="CASCADE"),
+        # The FK to stores is added by 4b8d2f6a1c90, which creates the stores
+        # table; referencing it here broke building a database from scratch.
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("platform", "external_store_id", name="uq_store_integrations_platform_external_store"),
     )

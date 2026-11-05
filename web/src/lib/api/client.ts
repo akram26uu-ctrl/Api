@@ -4,10 +4,11 @@
  * Demo/mock data is available only when VITE_ORDIUM_DEMO_MODE=true.
  */
 import { CONTROL_PLANE_CONFIG } from './controlPlane';
+import { notifySessionExpired } from './sessionEvents';
 import {
   ApiErrorResponse, ApiKey, CreateOrderRequest, Environment, IdentityGraphData,
   MetricsSummary, Order, OrderListQuery, OrderOutcome, RiskAssessment, RiskCategoryBreakdown, RiskSignal, DashboardNotification, NotificationPage,
-  UsageQuota, WebhookDeliveryLog, WebhookEndpoint, Store, IntegrationConnection, CreatedIntegrationConnection, OrderStatus, OrderConfirmationAttempt, OrderConfirmationHistory, OrderConfirmationMetrics,
+  UsageQuota, WebhookDeliveryLog, WebhookEndpoint, Store, IntegrationConnection, CreatedIntegrationConnection, IntegrationPlatform, OrderStatus, OrderConfirmationAttempt, OrderConfirmationHistory, OrderConfirmationMetrics, ConfirmationSettings,
 } from './types';
 import { MockDatabase } from './mockDatabase';
 
@@ -22,7 +23,7 @@ export class OrdiumApiError extends Error {
     super(message); this.name = 'OrdiumApiError'; this.statusCode = statusCode; this.code = code; this.requestId = requestId; this.field = field;
   }
   static fromStatus(status: number, customMessage?: string, field?: string, requestId?: string) {
-    const reqId = requestId || `req_${Date.now()}`;
+    const reqId = requestId || '';
     const messages: Record<number, [string, string]> = {
       401: ['UNAUTHORIZED', 'Invalid or missing API credential.'],
       403: ['FORBIDDEN', 'Your API credential does not have permission for this resource.'],
@@ -55,6 +56,7 @@ export async function ordiumFetch<T>(endpoint: string, options: RequestInit = {}
   if (!headers.has('X-Ordium-Environment')) headers.set('X-Ordium-Environment', activeEnvironmentForRequest === 'live' ? 'live' : 'test');
   if (!headers.has('X-Ordium-Store-ID') && activeStoreId) headers.set('X-Ordium-Store-ID', activeStoreId);
   const response = await fetch(url, { ...options, headers, credentials: 'include' });
+  if (response.status === 401) notifySessionExpired();
   if (!response.ok) {
     let payload: ApiErrorResponse | null = null;
     try { payload = await response.json(); } catch { /* ignore */ }
@@ -185,13 +187,22 @@ class OrdiumClientService {
 
   async createIntegrationConnection(payload: {
     store_id: string;
-    platform: 'custom' | 'woocommerce';
+    platform: IntegrationPlatform;
     external_store_id: string;
     display_name: string;
+    webhook_secret?: string;
   }): Promise<CreatedIntegrationConnection> {
     return ordiumFetch<CreatedIntegrationConnection>('/integrations/connections', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  }
+
+  /** Save the signing secret issued by Shopify/YouCan for an existing connection. */
+  async setIntegrationSigningSecret(id: string, webhookSecret: string): Promise<IntegrationConnection> {
+    return ordiumFetch<IntegrationConnection>(`/integrations/connections/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ webhook_secret: webhookSecret }),
     });
   }
 
@@ -221,12 +232,13 @@ class OrdiumClientService {
     return response.data.map(mapOrder);
   }
 
-  async listOrders(query: OrderListQuery & { status?: string } = {}): Promise<{data: Order[]; pagination: {total:number; page:number; limit:number; total_pages:number}}> {
+  async listOrders(query: OrderListQuery & { status?: string; sort?: 'newest' | 'risk' } = {}): Promise<{data: Order[]; pagination: {total:number; page:number; limit:number; total_pages:number}}> {
     if (DEMO_MODE) { const data = MockDatabase.getOrders(normalizeEnvironment(query.environment || this.activeEnvironment)); return { data, pagination: { total: data.length, page: query.page || 1, limit: query.limit || 20, total_pages: Math.max(1, Math.ceil(data.length / (query.limit || 20))) } }; }
     const qs = new URLSearchParams({ page: String(query.page || 1), limit: String(query.limit || 20) });
     if (query.decision && query.decision !== 'ALL') qs.set('decision', String(query.decision).toLowerCase());
     if (query.status && query.status !== 'all') qs.set('status', query.status);
     if (query.search?.trim()) qs.set('search', query.search.trim());
+    if ((query as any).sort) qs.set('sort', String((query as any).sort));
     if (activeStoreId) qs.set('store_id', activeStoreId);
     const response = await ordiumFetch<{ data: any[]; pagination: any }>(`/orders?${qs.toString()}`);
     return { data: response.data.map(mapOrder), pagination: response.pagination };
@@ -271,6 +283,16 @@ class OrdiumClientService {
     return ordiumFetch<OrderConfirmationHistory>(`/orders/${encodeURIComponent(orderId)}/confirmation-attempts${activeStoreId ? `?store_id=${encodeURIComponent(activeStoreId)}` : ''}`);
   }
 
+  async getConfirmationSettings(): Promise<ConfirmationSettings> {
+    if (DEMO_MODE) return { whatsapp_enabled: false, decisions: ['allow', 'review'], auto_update_status: true, provider_configured: false };
+    return ordiumFetch<ConfirmationSettings>('/confirmation-settings');
+  }
+
+  async updateConfirmationSettings(payload: Pick<ConfirmationSettings, 'whatsapp_enabled' | 'decisions' | 'auto_update_status'>): Promise<ConfirmationSettings> {
+    if (DEMO_MODE) return { ...payload, provider_configured: false };
+    return ordiumFetch<ConfirmationSettings>('/confirmation-settings', { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
   async recordConfirmationAttempt(orderId: string, payload: { channel: 'whatsapp' | 'manual_call'; outcome: OrderConfirmationAttempt['outcome']; notes?: string }): Promise<OrderConfirmationAttempt> {
     const result = DEMO_MODE
       ? { id: `demo-${Date.now()}`, order_id: orderId, channel: payload.channel, outcome: payload.outcome, notes: payload.notes || null, created_at: new Date().toISOString() } as OrderConfirmationAttempt
@@ -279,16 +301,16 @@ class OrdiumClientService {
     return result;
   }
 
-  async updateOrderOutcome(orderId: string, outcome: OrderOutcome): Promise<Order> {
+  async updateOrderOutcome(orderId: string, outcome: OrderOutcome, reason?: string): Promise<Order> {
     if (DEMO_MODE) { const updated = MockDatabase.updateOrderOutcome(orderId, outcome); if (!updated) throw OrdiumApiError.fromStatus(404); return updated; }
     const statusMap: Record<string, string> = { legitimate: 'delivered', chargeback: 'cancelled', false_positive: 'returned', delivered: 'delivered', cancelled: 'cancelled', returned: 'returned', cancelled_fraud: 'cancelled', return_abusive: 'returned' };
     const outcomeStatus = statusMap[outcome] || 'returned';
     const basePath = `/orders/${encodeURIComponent(orderId)}/outcome${activeStoreId ? `?store_id=${encodeURIComponent(activeStoreId)}` : ''}`;
     try {
-      await ordiumFetch(basePath, { method: 'POST', body: JSON.stringify({ outcome_status: outcomeStatus, source: 'dashboard' }) });
+      await ordiumFetch(basePath, { method: 'POST', body: JSON.stringify({ outcome_status: outcomeStatus, source: 'dashboard', ...(reason ? { reason } : {}) }) });
     } catch (error) {
       if (!(error instanceof OrdiumApiError) || error.statusCode !== 409) throw error;
-      await ordiumFetch(basePath, { method: 'PUT', body: JSON.stringify({ outcome_status: outcomeStatus, source: 'dashboard' }) });
+      await ordiumFetch(basePath, { method: 'PUT', body: JSON.stringify({ outcome_status: outcomeStatus, source: 'dashboard', reason: reason ?? null }) });
     }
     return this.getOrder(orderId);
   }

@@ -1,90 +1,86 @@
 /**
- * ORDIUM Fraud Cluster Section
- * "Detect patterns before they become losses."
- * Explains and visualizes how single isolated suspicious orders
- * connect into multi-actor syndicates.
+ * ORDIUM linked-orders section: how three unremarkable orders become one visible group
+ * once their shared address and device are linked. Example data, labelled as such.
  */
 
+import { LazySecurityShield3D as SecurityShield3D } from '../3d/lazy';
+import { Model3DPanel } from './Model3DPanel';
 import React from 'react';
-import { SecurityShield3D } from '../3d/SecurityShield3D';
-import { FraudNetwork3D } from '../3d/FraudNetwork3D';
-import { ShieldCheck, Share2, Layers, AlertCircle, TrendingDown } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 
 export const FraudClusterSection: React.FC = () => {
   const { t } = useLanguage();
 
+  const steps = [
+    { title: t('mkt.cluster.s1_t', 'الطلب الأول يبدو طبيعيًا'), desc: t('mkt.cluster.s1_d', 'اسم جديد، ورقم جزائري صحيح، وعنوان كامل. لا شيء لافت.') },
+    { title: t('mkt.cluster.s2_t', 'الطلبات التالية تشترك في التفاصيل'), desc: t('mkt.cluster.s2_d', 'خلال ساعتين يصل طلبان آخران بأسماء وأرقام مختلفة، لكن من الجهاز نفسه وإلى العنوان نفسه.') },
+    { title: t('mkt.cluster.s3_t', 'تجمعها ORDIUM وترفع درجتها'), desc: t('mkt.cluster.s3_d', 'تظهر الطلبات المرتبطة معًا وترتفع درجتها، فتتأكد مع العميل قبل شحن أي منها.') },
+  ];
+  const orders = [
+    { id: '2201', name: 'Amine K.', phone: '0661 20 45 18', time: '14:02' },
+    { id: '2207', name: 'Yacine M.', phone: '0770 88 13 02', time: '14:51' },
+    { id: '2210', name: 'Sofiane B.', phone: '0552 47 90 36', time: '15:37' },
+  ];
+
   return (
-    <section className="py-24 border-t border-white/5 bg-[#0D1320]/40 relative">
+    <section className="py-20 sm:py-24 border-t border-white/5 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D1320] border border-white/10 text-xs font-mono text-[#EF4444]">
-            <span>{t('fraud_cluster.badge', 'CROSS-ORDER SYNDICATE DETECTION')}</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-            {t('fraud_cluster.title', 'Detect patterns before they become losses.')}
+        <div className="max-w-3xl mb-12 sm:mb-14 text-start">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight rtl:tracking-normal text-balance">
+            {t('mkt.cluster.title', 'الطلبات الوهمية نادرًا ما تأتي وحدها')}
           </h2>
-          <p className="text-base text-[#94A3B8] leading-relaxed">
-            {t('fraud_cluster.subtitle', 'A single suspicious order might pass a traditional basic check. But when ORDIUM joins phone numbers, device IDs, and IP subnets across multiple transactions, the fraudulent ring becomes instantly apparent.')}
+          <p className="mt-5 text-base sm:text-lg text-[var(--ordium-muted)] leading-relaxed max-w-[65ch] text-pretty">
+            {t('mkt.cluster.subtitle', 'قد يمر طلب واحد من كل الفحوص. لكن عندما تربط ORDIUM أرقام الهواتف والعناوين والأجهزة بين الطلبات، يظهر النمط.')}
           </p>
         </div>
 
-        {/* 3D Shield & Cluster Diagram */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          
-          {/* Left: 3D Shield Defense Visualizer */}
-          <div className="lg:col-span-6 bg-[#080B12] border border-white/10 rounded-2xl p-2 shadow-2xl relative overflow-hidden">
-            <div className="h-[440px] w-full rounded-xl overflow-hidden">
-              <SecurityShield3D />
+        <Model3DPanel className="mb-10" caption={t('mkt.model.shield_caption', 'توضيح: الطلبات المرتبطة بمجموعة مشبوهة تُوقف قبل الشحن.')}>
+          <SecurityShield3D />
+        </Model3DPanel>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+          <figure className="lg:col-span-6 rounded-2xl border border-white/10 bg-[var(--ordium-surface)] p-5 sm:p-6 text-start">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="rounded-md border border-white/15 px-2.5 py-0.5 text-xs font-medium text-[var(--ordium-muted)]">{t('mkt.hero.example', 'مثال توضيحي')}</span>
+              <span className="text-sm font-semibold text-[var(--ordium-warning)]">{t('mkt.cluster.v_group', 'مجموعة مرتبطة · 3 طلبات')}</span>
             </div>
-            <div className="p-4 border-t border-white/5 flex items-center justify-between text-xs font-mono text-[#94A3B8]">
-              <span>{t('fraud_cluster.barrier_label', 'BARRIER: ZERO-TRUST SHIELD')}</span>
-              <span className="text-[#10B981]">{t('fraud_cluster.auto_deflect', 'AUTOMATIC THREAT DEFLECTION')}</span>
-            </div>
+            <ul className="mt-3">
+              {orders.map(order => (
+                <li key={order.id} className="py-4 border-t border-white/[0.07] first:border-t-0">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm font-semibold text-white" dir="ltr">#{order.id} · {order.name}</span>
+                    <span className="text-xs text-[var(--ordium-subtle)] tabular-nums" dir="ltr">{order.time}</span>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                    <dt className="text-[var(--ordium-subtle)]">{t('mkt.cluster.v_phone', 'الهاتف')}</dt>
+                    <dd className="text-[#D5DCE6] tabular-nums"><span dir="ltr">{order.phone}</span></dd>
+                    <dt className="text-[var(--ordium-subtle)]">{t('mkt.cluster.v_address', 'العنوان')}</dt>
+                    <dd className="text-[var(--ordium-signal)]">{t('mkt.cluster.v_address_value', 'حي 500 مسكن، العمارة C، البليدة')}</dd>
+                    <dt className="text-[var(--ordium-subtle)]">{t('mkt.cluster.v_device', 'الجهاز')}</dt>
+                    <dd className="text-[var(--ordium-signal)]">{t('mkt.cluster.v_device_value', 'الجهاز نفسه')}</dd>
+                  </dl>
+                </li>
+              ))}
+            </ul>
+            <figcaption className="mt-4 text-sm text-[var(--ordium-subtle)] leading-relaxed">{t('mkt.cluster.v_caption', 'مثال: ثلاثة طلبات بأسماء وأرقام مختلفة، من الجهاز نفسه وإلى العنوان نفسه خلال ساعتين.')}</figcaption>
+          </figure>
+
+          <div className="lg:col-span-6 text-start">
+            <ol>
+              {steps.map((step, idx) => (
+                <li key={step.title} className="flex items-start gap-4 py-5 border-t border-white/[0.07] first:border-t-0 first:pt-0">
+                  <span aria-hidden="true" className="mt-0.5 w-7 h-7 rounded-full border border-white/15 flex items-center justify-center text-xs font-semibold text-[var(--ordium-muted)] tabular-nums shrink-0">{idx + 1}</span>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">{step.title}</h3>
+                    <p className="mt-1.5 text-sm sm:text-base text-[var(--ordium-muted)] leading-relaxed max-w-[60ch]">{step.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-4 pt-5 border-t border-white/[0.07] text-sm text-[var(--ordium-muted)] leading-relaxed max-w-[60ch]">
+              {t('mkt.cluster.outcome', 'نتائج التوصيل التي تسجلها (سُلِّم، رُفض، أُرجع) تُستعمل لضبط الدرجات في متجرك.')}
+            </p>
           </div>
-
-          {/* Right: Explanatory cluster timeline */}
-          <div className="lg:col-span-6 space-y-6 text-start">
-            <div className="p-5 rounded-xl bg-[#080B12]/80 border border-white/5 space-y-2">
-              <div className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#EF4444]/20 text-[#EF4444] flex items-center justify-center font-mono text-xs font-bold shrink-0">1</span>
-                <h4 className="text-sm font-semibold text-white">{t('fraud_cluster.step1_title', 'Isolated Order Appears Legitimate')}</h4>
-              </div>
-              <p className="text-xs text-[#94A3B8] ps-9 leading-relaxed">
-                {t('fraud_cluster.step1_desc', 'Order #1 uses a clean synthetic email and passes standard postal address formatting checks. Single-point filters see no red flags.')}
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-[#080B12]/80 border border-white/5 space-y-2">
-              <div className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#F59E0B]/20 text-[#F59E0B] flex items-center justify-center font-mono text-xs font-bold shrink-0">2</span>
-                <h4 className="text-sm font-semibold text-white">{t('fraud_cluster.step2_title', 'Entity Links Collide in ORDIUM Graph')}</h4>
-              </div>
-              <p className="text-xs text-[#94A3B8] ps-9 leading-relaxed">
-                {t('fraud_cluster.step2_desc', 'Within 2 hours, Orders #2 and #3 arrive with different cardholder names but match the same hardware fingerprint and VoIP phone trunk.')}
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-[#080B12]/80 border border-[#EF4444]/30 space-y-2">
-              <div className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#EF4444] text-white flex items-center justify-center font-mono text-xs font-bold shrink-0">3</span>
-                <h4 className="text-sm font-semibold text-white">{t('fraud_cluster.step3_title', 'Cluster #CL-441 Locked & Blocked')}</h4>
-              </div>
-              <p className="text-xs text-[#94A3B8] ps-9 leading-relaxed">
-                {t('fraud_cluster.step3_desc', 'ORDIUM automatically groups all 4 related identities into a high-risk syndicate cluster, elevating risk score to 82+ and neutralizing further attempts.')}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#10B981]/10 border border-[#10B981]/20 flex items-center gap-3 text-xs text-[#10B981]">
-              <ShieldCheck className="w-5 h-5 shrink-0" />
-              <span>{t('fraud_cluster.outcome_feedback', 'Outcome impact is measured from merchant-reported delivery, return, and chargeback feedback.')}</span>
-            </div>
-          </div>
-
         </div>
-
       </div>
     </section>
   );

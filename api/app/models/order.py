@@ -90,6 +90,8 @@ class Order(Base):
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True, index=True)
     user_agent: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="api", index=True)
+    delivery_type: Mapped[str] = mapped_column(String(20), nullable=False, default="home", server_default="home")
+    stop_desk_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     identity_confidence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     identity_match_reasons: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(

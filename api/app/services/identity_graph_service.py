@@ -1,8 +1,10 @@
+from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.risk_config import SHARED_IP_WINDOW_DAYS, is_mobile_network
 from app.models.order import Order
 
 
@@ -12,7 +14,7 @@ class IdentityGraphService:
     def __init__(self, db: Session):
         self.db = db
 
-    def summarize_order(self, order: Order) -> dict:
+    def summarize_order(self, order: Order, network_result=None) -> dict:
         nodes = {
             "customer": bool(order.customer_id),
             "phone": bool(order.phone_identifier_id),
@@ -33,7 +35,10 @@ class IdentityGraphService:
                 counts[key] = len(customer_ids)
                 connected_customers.update(customer_ids)
 
-        if order.ip_address:
+        # A mobile-carrier IP joins unrelated subscribers; it is not an
+        # identity link.
+        ip_is_link = bool(order.ip_address) and not is_mobile_network(network_result)
+        if ip_is_link:
             customer_ids = self._ip_customer_ids(order)
             counts["ip_customers"] = len(customer_ids)
             connected_customers.update(customer_ids)
@@ -44,6 +49,7 @@ class IdentityGraphService:
             # Count unique connected customers, not the sum of overlapping
             # relationship counts. This avoids inflating clusters when the
             # same customer appears through several identifiers.
+            # The buyer's own past orders are history, not other identities.
             "identity_cluster_size": len(connected_customers),
         }
 
@@ -55,6 +61,8 @@ class IdentityGraphService:
             column == value,
             Order.customer_id.is_not(None),
             Order.id != order.id,
+            # The buyer's own past orders are history, not other identities.
+            Order.customer_id.is_distinct_from(order.customer_id),
         )
         return {customer_id for customer_id in self.db.scalars(statement).all() if customer_id is not None}
 
@@ -65,5 +73,9 @@ class IdentityGraphService:
             Order.ip_address == order.ip_address,
             Order.customer_id.is_not(None),
             Order.id != order.id,
+            Order.customer_id.is_distinct_from(order.customer_id),
         )
+        created_at = getattr(order, "created_at", None)
+        if created_at is not None:
+            statement = statement.where(Order.created_at >= created_at - timedelta(days=SHARED_IP_WINDOW_DAYS))
         return {customer_id for customer_id in self.db.scalars(statement).all() if customer_id is not None}

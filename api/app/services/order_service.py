@@ -1,11 +1,11 @@
 import hashlib
+import logging
 import json
 from decimal import Decimal
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 import re
-import unicodedata
 from app.utils.json import to_json_safe
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -29,9 +29,9 @@ from app.services.identity_service import IdentityService
 from app.services.risk_service import RiskResult, RiskService
 from app.services.audit_service import AuditService
 from app.services.webhook_service import WebhookService
-from app.services.identity_graph_service import IdentityGraphService
 from app.core.business_context import normalize_category
 from app.core.config import settings
+from app.core.text import fold
 from app.services.usage_service import enforce_live_quota
 
 
@@ -55,7 +55,6 @@ class OrderService:
         self.assessment_repository = RiskAssessmentRepository(db)
         self.audit_service = AuditService(db)
         self.webhook_service = WebhookService(db)
-        self.graph_service = IdentityGraphService(db)
 
     def create_order(
         self,
@@ -83,13 +82,40 @@ class OrderService:
         if store_id is None:
             raise ValueError("store_id is required")
         request_hash = self._request_hash(data, device_fingerprint)
+        if idempotency_key is not None:
+            idempotency_key = idempotency_key.strip()
+            if not idempotency_key or len(idempotency_key) > 255:
+                raise ValueError("Invalid Idempotency-Key")
+
+        if ip_address:
+            # Only when a paid external lookup is about to run: a replay, a
+            # duplicate order number or an exhausted quota must not wait for
+            # (or pay for) it. Read-only; the authoritative checks run again
+            # inside the transaction.
+            if idempotency_key is not None:
+                # get() already drops expired records.
+                pending = self.idempotency_repository.get(merchant_id, environment, idempotency_key)
+                if pending is not None and pending.order_id is not None:
+                    return self._replay_or_reject(pending, request_hash)
+            if self.order_repository.get_by_external_id(
+                merchant_id=merchant_id,
+                external_order_id=data.external_order_id,
+                environment=environment,
+                store_id=store_id,
+            ) is not None:
+                raise ValueError("An order with this external order number already exists")
+            if environment == "live":
+                from app.services.usage_service import live_quota_exhausted
+                if live_quota_exhausted(self.db, merchant_id):
+                    raise ValueError("usage_quota_exceeded")
+
+            # External IP intelligence runs before any write so a slow
+            # provider never holds row locks / an open write transaction.
+            self.db.commit()
+        network_result = self.risk_service.lookup_network(ip_address)
 
         try:
             if idempotency_key is not None:
-                idempotency_key = idempotency_key.strip()
-                if not idempotency_key or len(idempotency_key) > 255:
-                    raise ValueError("Invalid Idempotency-Key")
-
                 now = datetime.now(timezone.utc)
                 self.idempotency_repository.delete_expired_for_merchant(
                     merchant_id,
@@ -181,6 +207,8 @@ class OrderService:
                 status=OrderStatus.PENDING,
                 total_amount=data.total_amount,
                 currency=data.currency,
+                delivery_type=data.delivery_type,
+                stop_desk_id=data.stop_desk_id,
                 first_name=data.first_name,
                 last_name=data.last_name,
                 ip_address=ip_address,
@@ -210,7 +238,10 @@ class OrderService:
                 self.db.rollback()
                 raise ValueError("An order with this external order number already exists") from exc
 
-            risk_result = self.risk_service.assess_order(order)
+            risk_result = self.risk_service.assess_order(
+                order, network_result=network_result, submitted_address=data.address,
+            )
+            engine_decision = risk_result.decision
 
             # Shadow mode: when enabled, the merchant observes rejections without
             # being blocked. Downgrade REJECT to REVIEW before the response body,
@@ -224,16 +255,41 @@ class OrderService:
                 and risk_result.decision is RiskDecision.REJECT
             ):
                 risk_result.assessment.decision = RiskDecision.REVIEW
+                # Keep the engine's real decision for calibration and audit.
+                snapshot = risk_result.assessment.feature_snapshot
+                if snapshot is not None:
+                    snapshot.features = {
+                        **(snapshot.features or {}),
+                        "engine_decision": engine_decision.value,
+                        "shadow_mode": True,
+                    }
                 risk_result = RiskResult(
                     score=risk_result.score,
                     decision=RiskDecision.REVIEW,
                     assessment=risk_result.assessment,
                     events=risk_result.events,
+                    graph_summary=risk_result.graph_summary,
                 )
 
-            graph_summary = self.graph_service.summarize_order(order)
+            # Automatic WhatsApp confirmation: outbox row in this same transaction;
+            # the dispatcher sends it only after the order commits.
+            from app.services.whatsapp_service import enqueue_for_order
+            enqueue_for_order(self.db, order, merchant, risk_result.decision, data.phone)
+
+            # Shipment creation/holds. Never allowed to fail the order or change the response.
+            try:
+                from app.services.shipping_service import ShippingService
+                with self.db.begin_nested():
+                    ShippingService(self.db).on_decision(order, merchant, risk_result.decision)
+            except Exception:
+                logging.getLogger(__name__).exception("shipping hook failed for order %s", order.id)
+
+            # Same summary the score was computed from.
+            graph_summary = risk_result.graph_summary or {}
 
             response_body = to_json_safe(self._build_response_body(order, risk_result, graph_summary))
+            response_body["risk"]["engine_decision"] = engine_decision.value
+            response_body["risk"]["shadow_mode"] = engine_decision is not risk_result.decision
 
             if idempotency_key is not None:
                 record = self.idempotency_repository.get(merchant_id, environment, idempotency_key)
@@ -246,7 +302,7 @@ class OrderService:
             self.audit_service.record(
                 action="order.created", resource_type="order", resource_id=order.id,
                 merchant_id=merchant_id, api_key_id=api_key.id if api_key else None,
-                environment=environment, metadata={"decision": risk_result.decision.value, "score": str(risk_result.score) if isinstance(risk_result.score, Decimal) else risk_result.score},
+                environment=environment, metadata={"decision": risk_result.decision.value, "engine_decision": engine_decision.value, "score": str(risk_result.score) if isinstance(risk_result.score, Decimal) else risk_result.score},
             )
             self.webhook_service.enqueue(
                 merchant_id, environment, "order.risk_assessed",
@@ -381,7 +437,9 @@ class OrderService:
     @staticmethod
     def _request_hash(data: OrderCreate, device_fingerprint: str | None) -> str:
         payload = {
-            "order": data.model_dump(mode="json"),
+            # customer_ip may arrive via header on one attempt and not another;
+            # it does not change which order this is.
+            "order": data.model_dump(mode="json", exclude={"customer_ip"}),
             "device_fingerprint": device_fingerprint,
         }
         serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
@@ -389,8 +447,7 @@ class OrderService:
 
     @staticmethod
     def _normalize_address(address: str, commune: str, wilaya: str) -> str:
-        value = unicodedata.normalize("NFKC", f"{address}, {commune}, {wilaya}").casefold()
-        value = "".join(ch for ch in unicodedata.normalize("NFKD", value) if not unicodedata.combining(ch))
+        value = fold(f"{address}, {commune}, {wilaya}")
         value = re.sub(r"[^\w\s,]", " ", value, flags=re.UNICODE)
         value = re.sub(r"\s*,\s*", ",", value)
         value = re.sub(r"\s+", " ", value).strip(" ,")

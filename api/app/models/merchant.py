@@ -63,6 +63,19 @@ class Merchant(Base):
         Boolean, nullable=False, default=True, server_default="true"
     )
 
+    # Automatic WhatsApp order confirmation (Ordium-managed number). Off by default.
+    whatsapp_confirmation_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    # Comma-separated risk decisions that trigger a confirmation message.
+    whatsapp_confirmation_decisions: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="allow,review", server_default="allow,review"
+    )
+    # When true, a customer's button reply moves the order to CONFIRMED/CANCELLED.
+    whatsapp_auto_update_status: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+
     status: Mapped[MerchantStatus] = mapped_column(
         SqlEnum(
             MerchantStatus,

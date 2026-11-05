@@ -50,3 +50,29 @@ def _legacy_store_compatibility(monkeypatch):
         return original(self, merchant, name, environment, scopes, key_kind, store_id)
 
     monkeypatch.setattr(ApiKeyService, "create_key", create_key_with_test_store)
+
+
+FIRST_ORDER_CHECK_SCORES = ("low_quality_identity_score", "suspicious_phone_score", "address_location_mismatch_score")
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "first_order_checks: keep the typed-data signals (junk name/address, fake phone, "
+        "wilaya/commune mismatch) at their production weights",
+    )
+
+
+@pytest.fixture(autouse=True)
+def _first_order_checks_off_by_default(request, monkeypatch):
+    """Older tests use placeholder fixtures ("Test Customer", 0555555555) to
+    exercise *other* rules and assert exact scores. Real traffic gets the
+    production defaults (see test_order_quality_signals.py); tests opt in
+    with @pytest.mark.first_order_checks."""
+    if request.node.get_closest_marker("first_order_checks"):
+        return
+    import dataclasses
+    from app.core import risk_config
+    from app.services import risk_service
+    off = dataclasses.replace(risk_config.DEFAULT_RISK_PROFILE, **{name: 0 for name in FIRST_ORDER_CHECK_SCORES})
+    monkeypatch.setattr(risk_service, "DEFAULT_RISK_PROFILE", off)

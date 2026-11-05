@@ -3,10 +3,11 @@ import hashlib
 import hmac
 import json
 import logging
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from pydantic import ValidationError
 from app.core.config import settings
 from app.schemas.order import OrderCreate, OrderItemCreate
@@ -60,20 +61,78 @@ def _required_text(value, label: str, maximum: int = 255) -> str:
 
 
 def _money(value, label: str) -> Decimal:
+    from app.core.dz_input import AmountError, cents
     try:
-        amount = Decimal(str(value))
-    except (InvalidOperation, ValueError, TypeError) as exc:
+        # Rounded to cents: platforms derive unit prices as line_total / quantity
+        # (2500 / 3 = 833.3333 after a discount).
+        amount = cents(value)
+    except (AmountError, InvalidOperation, ValueError, TypeError, AttributeError) as exc:
         raise HTTPException(422, f"Order has an invalid amount: {label}") from exc
-    if not amount.is_finite() or amount <= 0:
+    if amount <= 0:
         raise HTTPException(422, f"Order has an invalid amount: {label}")
     return amount
+
+
+def _quantity(value) -> int:
+    try:
+        number = Decimal(str(value if value is not None else 1).strip())
+    except (InvalidOperation, ValueError, TypeError, AttributeError) as exc:
+        raise HTTPException(422, "Order contains an invalid item quantity") from exc
+    if not number.is_finite() or number != number.to_integral_value() or number <= 0:
+        raise HTTPException(422, "Order contains an invalid item quantity")
+    return int(number)
+
+
+def _is_zero_amount(value) -> bool:
+    try:
+        return Decimal(str(value)) == 0
+    except (InvalidOperation, ValueError, TypeError):
+        return False
+
+
+def _normalize_dz_phone(value):
+    """Accept the common store formats of Algerian mobile numbers (e.g. '550 12 34 56')."""
+    from app.core.dz_input import normalize_dz_phone
+    if value is None:
+        return None
+    return normalize_dz_phone(value) or value
+
+
+_STOP_DESK_MARKERS = ("stop", "desk", "bureau", "مكتب")
+
+
+def _delivery_type(payload: dict) -> tuple[str, str | None]:
+    """stop_desk when the platform's shipping method/line title names a pickup
+    office; home otherwise (including when the payload carries no such info)."""
+    candidates: list = []
+    for key in ("delivery_type", "shipping_method", "shipping_method_title", "shipping_title", "shipping_option"):
+        candidates.append(payload.get(key))
+    for key in ("shipping_lines", "shipping_line", "shipping"):
+        lines = payload.get(key)
+        for line in (lines if isinstance(lines, list) else [lines]):
+            if isinstance(line, dict):
+                candidates.extend(
+                    line.get(k) for k in ("title", "method_title", "name", "code", "method_id", "method", "delivery_type")
+                )
+    text = " ".join(str(c).lower() for c in candidates if isinstance(c, (str, int)) and str(c).strip())
+    desk = None
+    if any(marker in text for marker in _STOP_DESK_MARKERS):
+        for key in ("stop_desk_id", "stopdesk_id", "pickup_point_id", "desk_id"):
+            if payload.get(key):
+                desk = str(payload[key])[:100]
+                break
+        return "stop_desk", desk
+    return "home", None
 
 
 def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
     # Accommodate common native Shopify/YouCan-style fields and WooCommerce's
     # billing/shipping shape. Prefer a real shipping address, falling back to
     # billing only when the store did not provide a usable shipping address.
-    billing = payload.get("billing") if isinstance(payload.get("billing"), dict) else {}
+    billing = next(
+        (payload[key] for key in ("billing", "billing_address", "billingAddress") if isinstance(payload.get(key), dict)),
+        {},
+    )
     customer = payload.get("customer") if isinstance(payload.get("customer"), dict) else {}
     customer = customer or billing
     address = (
@@ -89,9 +148,31 @@ def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
         address = billing or address
     first_name = address.get("first_name") or address.get("firstName") or customer.get("first_name") or customer.get("firstName")
     last_name = address.get("last_name") or address.get("lastName") or customer.get("last_name") or customer.get("lastName")
+    if not first_name or not last_name:
+        # Some platforms (and many custom checkouts) only send a single full-name field.
+        full_name = str(
+            address.get("name") or address.get("full_name") or address.get("fullName")
+            or customer.get("full_name") or customer.get("fullName") or customer.get("name") or ""
+        ).strip()
+        parts = full_name.split()
+        if parts:
+            first_name = first_name or parts[0]
+            last_name = last_name or (" ".join(parts[1:]) if len(parts) > 1 else parts[0])
     phone = address.get("phone") or customer.get("phone") or billing.get("phone") or payload.get("phone")
+    phone = _normalize_dz_phone(phone)
     city = address.get("city") or address.get("commune") or address.get("town") or customer.get("city")
-    province = address.get("province") or address.get("province_code") or address.get("wilaya") or address.get("state") or customer.get("state")
+    province = (
+        address.get("province") or address.get("province_code") or address.get("wilaya")
+        or address.get("state") or address.get("region") or customer.get("state") or customer.get("region")
+    )
+    if not province:
+        # Shopify and several checkouts have no wilaya field for Algeria. An Algerian postal
+        # code starts with the wilaya number (31000 = Oran); otherwise the city is the best
+        # available location rather than rejecting an otherwise valid order.
+        from app.core.algeria_geo import resolve_wilaya, wilaya_name
+        postal = address.get("zip") or address.get("postcode") or address.get("postal_code") or address.get("zipCode")
+        postal_code = resolve_wilaya(str(postal)) if postal and str(postal).strip().isdigit() and len(str(postal).strip()) == 5 else None
+        province = wilaya_name(postal_code) if postal_code else city
     street = (
         address.get("address1") or address.get("address_1") or address.get("address")
         or address.get("street") or address.get("address_line1")
@@ -100,7 +181,8 @@ def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
     if address2:
         street = f"{street}, {address2}" if street else address2
 
-    currency = str(payload.get("currency") or payload.get("currency_code") or "DZD").upper()
+    from app.core.dz_input import normalize_currency
+    currency = normalize_currency(payload.get("currency") or payload.get("currency_code") or "DZD")
     if currency != "DZD":
         raise HTTPException(422, "ORDIUM currently accepts DZD orders only")
 
@@ -111,12 +193,11 @@ def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
     for item in raw_items:
         if not isinstance(item, dict):
             raise HTTPException(422, "Order contains an invalid item")
-        quantity = item.get("quantity", 1)
-        try:
-            quantity = int(quantity)
-        except (ValueError, TypeError) as exc:
-            raise HTTPException(422, "Order contains an invalid item quantity") from exc
-        unit_price = item.get("price") or item.get("unit_price")
+        quantity = _quantity(item.get("quantity", 1))
+        unit_price = item.get("price") if item.get("price") is not None else item.get("unit_price")
+        if _is_zero_amount(unit_price):
+            # Free items (gifts, samples) carry no monetary risk; skip them instead of rejecting the order.
+            continue
         items.append(OrderItemCreate(
             product_name=_required_text(item.get("title") or item.get("name") or item.get("product_name"), "item name"),
             sku=str(item["sku"])[:100] if item.get("sku") else None,
@@ -127,18 +208,42 @@ def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
         ))
 
     total = payload.get("total_price") or payload.get("total_amount") or payload.get("total")
+    delivery_type, stop_desk_id = _delivery_type(payload)
     return OrderCreate(
         external_order_id=external_order_id,
         first_name=_required_text(first_name, "first name", 100),
         last_name=_required_text(last_name, "last name", 100),
-        phone=_required_text(phone, "phone", 20),
+        phone=_required_text(phone, "phone", 32),
         wilaya=_required_text(province, "wilaya/province", 100),
         commune=_required_text(city, "commune/city", 100),
         address=_required_text(street, "shipping address", 500),
         total_amount=_money(total, "total"),
         currency=currency,
         items=items,
+        customer_ip=_shopper_ip(payload),
+        delivery_type=delivery_type,
+        stop_desk_id=stop_desk_id,
     )
+
+
+def _shopper_ip(payload: dict) -> str | None:
+    """Shopper IP as reported by the store platform (WooCommerce
+    customer_ip_address, Shopify browser_ip / client_details.browser_ip).
+    Invalid or private values are ignored rather than failing ingestion."""
+    from app.schemas.order import normalize_customer_ip
+    client_details = payload.get("client_details") if isinstance(payload.get("client_details"), dict) else {}
+    for raw in (
+        payload.get("customer_ip"),
+        payload.get("customer_ip_address"),
+        payload.get("browser_ip"),
+        client_details.get("browser_ip"),
+    ):
+        if isinstance(raw, str) and raw.strip():
+            try:
+                return normalize_customer_ip(raw)
+            except ValueError:
+                continue
+    return None
 
 
 def _ingest(payload: dict, merchant_id: UUID, store_id: UUID, event_id: str):
@@ -148,7 +253,12 @@ def _ingest(payload: dict, merchant_id: UUID, store_id: UUID, event_id: str):
     try:
         normalized = _normalize_order(order, external_id)
     except ValidationError as exc:
-        raise HTTPException(422, "Order payload does not match ORDIUM required fields") from exc
+        # Name the failing fields (never the submitted values) so merchants can fix their store setup.
+        problems = sorted({
+            f"{'.'.join(str(part) for part in error.get('loc', ())) or 'order'}: {error.get('msg', 'invalid')}"
+            for error in exc.errors()
+        })
+        raise HTTPException(422, "Order payload does not match ORDIUM required fields: " + "; ".join(problems)[:500]) from exc
     from app.db.database import SessionLocal
     from app.models.store import Store
     with SessionLocal() as db:
@@ -168,14 +278,16 @@ def _ingest(payload: dict, merchant_id: UUID, store_id: UUID, event_id: str):
                 idempotency_key=event_id[:255],
                 request_id=None,
                 device_fingerprint=None,
-                ip_address=None,
+                ip_address=normalized.customer_ip,
                 user_agent="ORDIUM store integration",
             )
             return {"accepted": True, "order_id": result.response_body.get("order_id"), "replayed": result.replayed}
         except ValueError as exc:
             db.rollback()
-            if "already exists" in str(exc).lower():
-                # A different delivery ID may describe an order already ingested.
+            message = str(exc).lower()
+            if "already exists" in message or "already used with a different request" in message:
+                # The same store order was delivered again (retry, or a resend with refreshed
+                # metadata). It is already ingested, so acknowledge it instead of failing.
                 return {"accepted": True, "duplicate": True}
             raise HTTPException(422, str(exc)) from exc
 
@@ -204,7 +316,7 @@ async def shopify_webhook(
     if not isinstance(payload, dict):
         raise HTTPException(400, "Invalid Shopify order payload")
     event_id = f"shopify:{domain}:{webhook_id or payload.get('id') or hashlib.sha256(raw_body).hexdigest()}"
-    return _ingest(payload, merchant_id, store_id, event_id)
+    return await run_in_threadpool(_ingest_acknowledged, payload, merchant_id, store_id, event_id)
 
 
 @router.post("/omniterra/webhook")
@@ -263,7 +375,30 @@ async def omniterra_webhook(
     stable_event_id = event_id_header or payload.get("id") or payload.get("webhook_id") or external_id
     if not stable_event_id:
         stable_event_id = hashlib.sha256(raw_body).hexdigest()
-    return _ingest(order_payload, merchant_id, store_id, f"omniterra:{external_store}:{stable_event_id}")
+    return await run_in_threadpool(_ingest_acknowledged, order_payload, merchant_id, store_id, f"omniterra:{external_store}:{stable_event_id}")
+
+
+def _ingest_acknowledged(payload: dict, merchant_id: UUID, store_id: UUID, event_id: str) -> dict:
+    """_ingest for authenticated store deliveries: an unprocessable order is
+    acknowledged (2xx) so the platform does not disable the webhook after
+    repeated failures; transient server errors still raise."""
+    try:
+        return _ingest(payload, merchant_id, store_id, event_id)
+    except HTTPException as exc:
+        if exc.status_code >= 500:
+            raise
+        logger.warning("legacy store webhook rejected event=%s status=%s reason=%s", event_id[:80], exc.status_code, exc.detail)
+        from app.db.database import SessionLocal
+        from app.services.store_delivery_service import handle_unprocessable_delivery
+        order = payload.get("order") if isinstance(payload.get("order"), dict) else payload
+        external_id = order.get("id") or order.get("order_id") or order.get("name")
+        platform = event_id.split(":", 1)[0]
+        with SessionLocal() as db:
+            return handle_unprocessable_delivery(
+                db, merchant_id=merchant_id, store_id=store_id, platform=platform, source_name=platform,
+                external_order_id=str(external_id) if external_id is not None else None,
+                event_id=event_id, reason=str(exc.detail), payload=payload,
+            )
 
 
 @router.get("/status")

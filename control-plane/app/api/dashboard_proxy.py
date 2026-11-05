@@ -16,6 +16,7 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard Proxy"])
 _ALLOWED = (
     re.compile(r"^/orders(?:/[0-9a-fA-F-]{36})?(?:/outcome|/confirmation-attempts)?$"),
     re.compile(r"^/order-confirmations/metrics$"),
+    re.compile(r"^/confirmation-settings$"),
     re.compile(r"^/metrics/(summary|risk-performance|risk-calibration|risk-attribution|risk-backtest|risk-quality)$"),
     re.compile(r"^/api-keys(?:/[0-9a-fA-F-]{36}/(?:revoke|rotate))?$"),
     re.compile(r"^/stores(?:/[0-9a-fA-F-]{36})?$") ,
@@ -29,6 +30,16 @@ _ALLOWED = (
     re.compile(r"^/notifications/[0-9a-fA-F-]{36}/read$"),
     re.compile(r"^/notifications/read-all$"),
     re.compile(r"^/audit-logs$"),
+    re.compile(r"^/shipping/carriers(?:/[0-9a-fA-F-]{36}(?:/(test|disable|warehouses))?)?$"),
+    re.compile(r"^/shipping/routes(?:/[0-9a-fA-F-]{36})?$"),
+    re.compile(r"^/shipping/settings$"),
+    re.compile(r"^/shipping/shipments(?:/[0-9a-fA-F-]{36}(?:/(retry|cancel))?)?$"),
+    re.compile(r"^/shipping/next-pickups$"),
+    re.compile(r"^/shipping/pending(?:/[0-9a-fA-F-]{36}/(approve|reject|restore|archive|dispatch-from))?$"),
+    re.compile(r"^/inventory/products(?:/[0-9a-fA-F-]{36}(?:/links)?)?$"),
+    re.compile(r"^/inventory/(stock|movements)$"),
+    re.compile(r"^/inventory/deposits(?:/[0-9a-fA-F-]{36}/status)?$"),
+    re.compile(r"^/inventory/products/unmapped$"),
 )
 
 def _allowed(path: str) -> bool:
@@ -55,6 +66,8 @@ async def proxy_dashboard(path: str, request: Request, response: Response, sessi
         or path.startswith("/orders/")
         or path.startswith("/api-keys/")
         or path.startswith("/webhooks/")
+        or path.startswith("/shipping/")
+        or path.startswith("/inventory/")
     ):
         from urllib.parse import parse_qsl, urlencode
         params = parse_qsl(query, keep_blank_values=True)

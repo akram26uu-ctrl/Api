@@ -17,7 +17,11 @@ export interface IntegrationConnection {
   webhook_url: string;
   created_at: string;
   last_event_at: string | null;
+  /** False for Shopify connections until the merchant pastes the Shopify-issued signing secret. */
+  signing_secret_configured?: boolean;
 }
+
+export type IntegrationPlatform = 'shopify' | 'youcan' | 'woocommerce' | 'custom';
 
 export interface CreatedIntegrationConnection extends IntegrationConnection {
   webhook_secret?: string | null;
@@ -120,9 +124,31 @@ export interface OrderConfirmationAttempt {
   created_at: string;
 }
 
+export type ConfirmationDecision = 'allow' | 'review' | 'reject';
+
+export interface ConfirmationSettings {
+  whatsapp_enabled: boolean;
+  decisions: ConfirmationDecision[];
+  auto_update_status: boolean;
+  provider_configured: boolean;
+}
+
+export interface AutomaticConfirmationStatus {
+  channel: 'whatsapp';
+  status: 'queued' | 'processing' | 'sent' | 'delivered' | 'read' | 'replied' | 'failed' | 'expired' | 'simulated';
+  reply_outcome: 'confirmed' | 'cancelled' | 'needs_review' | 'no_answer' | null;
+  created_at: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+  replied_at: string | null;
+  failed: boolean;
+}
+
 export interface OrderConfirmationHistory {
   status: string;
   data: OrderConfirmationAttempt[];
+  automatic?: AutomaticConfirmationStatus | null;
 }
 
 export interface OrderConfirmationMetrics {
@@ -229,7 +255,7 @@ export interface IdentityGraphData {
 export interface ApiKey {
   id: string;
   name: string;
-  key_prefix: string; // e.g. "ord_test_8f29..."
+  key_prefix: string; // e.g. "ordium_test_8f29..."
   environment: Environment;
   scopes: string[];
   created_at: string;
@@ -475,3 +501,250 @@ export interface RiskFeature {
   importance: number;
 }
 
+
+// ---- Shipping & inventory ----
+export type ShipmentStatus =
+  | 'pending_dispatch' | 'dispatch_failed' | 'accepted' | 'picked_up' | 'in_transit'
+  | 'out_for_delivery' | 'delivery_attempt_failed' | 'delivered' | 'returning' | 'returned' | 'cancelled';
+
+export type HoldReason =
+  | 'review' | 'rejected' | 'no_answer' | 'awaiting_confirmation'
+  | 'out_of_stock' | 'unmapped_product' | 'mixed_source' | 'no_store';
+
+export interface ShipmentEvent {
+  id: string;
+  status: ShipmentStatus;
+  raw_status: string | null;
+  location: string | null;
+  occurred_at: string;
+  source: string;
+}
+
+export interface ShipmentOrderSummary {
+  id: string;
+  external_order_id: string | null;
+  customer_name: string | null;
+  wilaya: string | null;
+  total_amount: number | null;
+  currency: string | null;
+  status: string;
+  phone: string | null;
+  items: { product_name: string; sku: string | null; quantity: number; unit_price: number | null }[];
+}
+
+export interface Shipment {
+  id: string;
+  order_id: string;
+  store_id: string | null;
+  environment: string;
+  carrier_account_id: string | null;
+  carrier_code: string | null;
+  warehouse_id: string | null;
+  fulfillment: 'carrier' | 'merchant';
+  status: ShipmentStatus;
+  hold_reason: HoldReason | null;
+  tracking_number: string | null;
+  label_url: string | null;
+  cod_amount: number | null;
+  delivery_type: string | null;
+  attempts: number;
+  next_attempt_at: string | null;
+  last_error: string | null;
+  dispatched_at: string | null;
+  delivered_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+  meta: Record<string, unknown>;
+  external_order_id: string | null;
+  customer_name: string | null;
+  wilaya: string | null;
+  currency: string | null;
+  // Present on detail responses only.
+  events?: ShipmentEvent[];
+  allocations?: Record<string, unknown>[];
+  order?: ShipmentOrderSummary | null;
+}
+
+export interface ShipmentActionResponse {
+  shipment: Shipment;
+  outcome: 'dispatched' | 'retried' | 'failed' | 'fell_back' | 'held' | 'skipped';
+}
+
+export interface ShipmentListResponse {
+  data: Shipment[];
+  counts: Record<string, number>;
+  pagination: { total: number; page: number; limit: number; total_pages: number };
+}
+
+export interface CarrierAccount {
+  id: string;
+  store_id: string;
+  environment: string;
+  carrier_code: string;
+  display_name: string;
+  status: string;
+  last_sync_at: string | null;
+  last_error: string | null;
+  created_at: string;
+}
+
+export interface AvailableCarrier {
+  code: string;
+  display_name: string;
+  capabilities: { webhooks: boolean; warehouses: boolean; stop_desks: boolean; cancel: boolean };
+}
+
+export interface CarrierListResponse {
+  accounts: CarrierAccount[];
+  available: AvailableCarrier[];
+}
+
+export interface CarrierWarehouse {
+  id: string;
+  external_id: string;
+  name: string;
+  wilaya_code: string | null;
+  commune: string | null;
+  is_active: boolean;
+}
+
+export interface ShippingSettings {
+  store_id: string;
+  auto_dispatch: boolean;
+  dispatch_trigger: 'after_confirmation' | 'on_allow';
+  hold_minutes: number;
+  confirmation_timeout_hours: number;
+  retry_max: number;
+  retry_interval_minutes: number;
+  fallback_enabled: boolean;
+  out_of_stock_policy: 'hold' | 'backorder' | 'other_warehouse';
+  low_stock_days: number;
+  reserve_on_accept: boolean;
+  disable_product_when_out: boolean;
+  pickup_name: string | null;
+  pickup_wilaya: string | null;
+  pickup_commune: string | null;
+  pickup_phone: string | null;
+  label_size: 'a6' | 'a4_4' | 'a4_1';
+  notify_on_hold: boolean;
+  notify_on_failure: boolean;
+  notify_on_low_stock: boolean;
+}
+
+export type ShippingSettingsUpdate = Partial<Omit<ShippingSettings, 'store_id'>>;
+
+export interface ShippingRoute {
+  id: string;
+  store_id: string;
+  wilaya_codes: string[];
+  carrier_account_id: string;
+  fallback_carrier_account_id: string | null;
+  priority: number;
+}
+
+export interface ShippingRouteWrite {
+  wilaya_codes: string[];
+  carrier_account_id: string;
+  fallback_carrier_account_id?: string | null;
+  priority?: number;
+}
+
+export interface NextPickup {
+  carrier_account_id: string;
+  carrier_code: string;
+  display_name: string;
+  pickup_time: string;
+  merchant_parcels: number;
+  warehouse_parcels: number;
+}
+
+export interface PendingItem {
+  shipment_id: string;
+  order_id: string;
+  external_order_id: string | null;
+  customer_name: string | null;
+  wilaya: string | null;
+  cod_amount: number | null;
+  currency: string | null;
+  created_at: string;
+  hold_reason: HoldReason;
+  risk_score: number | null;
+  risk_decision: string | null;
+  reasons: string[];
+  available_warehouses: { id: string; carrier_account_id: string; name: string; wilaya_code: string | null }[];
+}
+
+export interface PendingListResponse {
+  data: PendingItem[];
+  counts: { review: number; stock: number; rejected: number } & Record<string, number>;
+  pagination: { total: number; page: number; limit: number; total_pages: number };
+}
+
+export type PendingAction = 'approve' | 'reject' | 'restore' | 'archive' | 'dispatch-from';
+
+export interface Product {
+  id: string;
+  store_id: string;
+  sku: string;
+  name: string;
+  fulfillment: 'carrier' | 'merchant';
+  weight_grams: number | null;
+  created_at: string;
+}
+
+export interface UnmappedProduct {
+  sku: string | null;
+  display_sku: string | null;
+  name: string;
+}
+
+export interface StockLocation {
+  warehouse_id: string | null;
+  warehouse_name: string | null;
+  on_hand: number;
+  reserved: number;
+  inbound: number;
+}
+
+export interface StockRow {
+  product_id: string;
+  store_id: string;
+  sku: string;
+  name: string;
+  fulfillment: 'carrier' | 'merchant';
+  locations: StockLocation[];
+  total_on_hand: number;
+  total_reserved: number;
+  total_inbound: number;
+  total_available: number;
+  is_low: boolean;
+  status: 'ok' | 'low' | 'out' | 'merchant' | 'unmapped';
+}
+
+export interface DepositLine { sku: string; quantity: number }
+
+export interface Deposit {
+  id: string;
+  carrier_account_id: string;
+  warehouse_id: string | null;
+  reference: string;
+  status: 'in_transit' | 'counting' | 'received';
+  lines: DepositLine[];
+  created_at: string;
+}
+
+export interface Movement {
+  id: string;
+  product_id: string;
+  warehouse_id: string | null;
+  delta: number;
+  reason: string;
+  shipment_id: string | null;
+  deposit_id: string | null;
+  occurred_at: string;
+}
+
+export interface MovementPage {
+  data: Movement[];
+  pagination: { total: number; page: number; limit: number; total_pages: number };
+}

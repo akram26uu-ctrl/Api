@@ -43,6 +43,10 @@ class RiskProfileResponse(BaseModel):
     vpn_score: int
     proxy_score: int
 
+    low_quality_identity_score: int
+    suspicious_phone_score: int
+    address_location_mismatch_score: int
+
     review_threshold: int
     reject_threshold: int
     max_score: int
@@ -64,6 +68,9 @@ class RiskProfileUpdate(BaseModel):
     new_device_score: int | None = Field(default=None, ge=0, le=100)
     vpn_score: int | None = Field(default=None, ge=0, le=100)
     proxy_score: int | None = Field(default=None, ge=0, le=100)
+    low_quality_identity_score: int | None = Field(default=None, ge=0, le=100)
+    suspicious_phone_score: int | None = Field(default=None, ge=0, le=100)
+    address_location_mismatch_score: int | None = Field(default=None, ge=0, le=100)
 
     @model_validator(mode="after")
     def validate_thresholds(self):

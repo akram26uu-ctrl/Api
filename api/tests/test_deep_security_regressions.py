@@ -63,6 +63,7 @@ def test_identity_cluster_counts_unique_customers():
     from app.services.identity_graph_service import IdentityGraphService
 
     customer = uuid4()
+    neighbour = uuid4()
     order = SimpleNamespace(
         id=uuid4(), merchant_id=uuid4(), environment="live",
         customer_id=customer, phone_identifier_id=uuid4(),
@@ -76,7 +77,8 @@ def test_identity_cluster_counts_unique_customers():
 
     class FakeDB:
         def scalars(self, statement):
-            return FakeScalar([customer])
+            # One *other* customer reached through every identifier.
+            return FakeScalar([neighbour])
 
     summary = IdentityGraphService(FakeDB()).summarize_order(order)
     assert summary["counts"] == {

@@ -2,6 +2,7 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { authApi } from './lib/api/auth';
+import { broadcastSignOut, onSessionEnded } from './lib/api/sessionEvents';
 import { AuthSession } from './lib/api/types';
 import { DataStreamCanvas } from './components/3d/DataStreamCanvas';
 import { Navbar } from './components/common/Navbar';
@@ -14,13 +15,20 @@ import { FraudClusterSection } from './components/marketing/FraudClusterSection'
 import { ManualConfirmationSection } from './components/marketing/ManualConfirmationSection';
 import { DeveloperSection } from './components/marketing/DeveloperSection';
 import { RoadmapSection } from './components/marketing/RoadmapSection';
-import { LanguageProvider } from './i18n/LanguageContext';
+import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+
+declare const __ORDIUM_VERCEL_ANALYTICS__: boolean;
+const VERCEL_ANALYTICS_ENABLED = typeof __ORDIUM_VERCEL_ANALYTICS__ !== 'undefined' && __ORDIUM_VERCEL_ANALYTICS__;
+
+const PUBLIC_ROUTES = ['/', '/platform', '/intelligence', '/security', '/developers', '/pricing', '/docs', '/company', '/terms', '/privacy'];
 
 const PricingPage = lazy(() => import('./components/pages/PricingPage').then(m => ({ default: m.PricingPage })));
 const DocsPage = lazy(() => import('./components/pages/DocsPage').then(m => ({ default: m.DocsPage })));
 const SecurityPage = lazy(() => import('./components/pages/SecurityPage').then(m => ({ default: m.SecurityPage })));
 const PlatformPage = lazy(() => import('./components/pages/PlatformPage').then(m => ({ default: m.PlatformPage })));
 const CompanyPage = lazy(() => import('./components/pages/CompanyPage').then(m => ({ default: m.CompanyPage })));
+const LegalPage = lazy(() => import('./components/pages/LegalPage').then(m => ({ default: m.LegalPage })));
 const LoginPage = lazy(() => import('./components/pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./components/pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
 const VerifyEmailPage = lazy(() => import('./components/pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
@@ -28,6 +36,7 @@ const ErrorPage = lazy(() => import('./components/pages/ErrorPage').then(m => ({
 const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
 
 export function AppContent() {
+  const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<'website' | 'dashboard'>(() => typeof window !== 'undefined' && window.location.pathname === '/dashboard' ? 'dashboard' : 'website');
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [authChecking, setAuthChecking] = useState(false);
@@ -43,6 +52,15 @@ export function AppContent() {
     }).finally(() => { if (active) setAuthChecking(false); });
     return () => { active = false; };
   }, [viewMode, authSession]);
+
+  // Session expired mid-use (any 401) or signed out in another tab: return to sign-in with a notice
+  // instead of leaving the dashboard showing errors.
+  useEffect(() => onSessionEnded(reason => {
+    setAuthSession(null);
+    setViewMode('website');
+    setCurrentPath('/login');
+    try { window.history.pushState(null, '', `/login?session=${reason}`); } catch { /* Restricted environments. */ }
+  }), []);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -75,9 +93,9 @@ export function AppContent() {
   };
 
   if (viewMode === 'dashboard') {
-    if (authChecking) return <div className="min-h-screen bg-[#080B12] text-white flex items-center justify-center font-mono" role="status">Authenticating ORDIUM session…</div>;
-    if (!authSession) return <div className="min-h-screen bg-[#080B12] text-white flex items-center justify-center px-6"><div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0D1320] p-6 text-center shadow-2xl"><h1 className="text-base font-semibold">ORDIUM Dashboard</h1><p className="mt-2 text-sm text-[#A1AEC1]">Your session could not be restored. Please sign in again.</p><button type="button" className="mt-5 min-h-11 rounded-lg bg-[#22D3EE] px-4 py-2 text-sm font-semibold text-[#061018]" onClick={() => { setViewMode('website'); setCurrentPath('/login'); window.history.replaceState(null, '', '/login'); }}>Sign in</button></div></div>;
-    return <DashboardLayout session={authSession} onLogout={() => { void authApi.logout(); setAuthSession(null); handleExitToWebsite(); }} />;
+    if (authChecking) return <FullScreenStatus label={t('ui.authenticating', 'Restoring your ORDIUM session…')} />;
+    if (!authSession) return <div className="min-h-screen bg-[#080B12] text-white flex items-center justify-center px-6"><div className="ordium-auth-card w-full max-w-md p-6 text-center"><h1 className="text-lg font-semibold">{t('ui.dashboard_title', 'ORDIUM Dashboard')}</h1><p className="mt-2 text-sm text-[#A1AEC1]">{t('ui.session_lost', 'Your session could not be restored. Please sign in again.')}</p><button type="button" className="mt-5 min-h-11 rounded-lg bg-[#22D3EE] px-4 py-2 text-sm font-semibold text-[#061018] hover:bg-[#67E8F9]" onClick={() => { setViewMode('website'); setCurrentPath('/login'); window.history.replaceState(null, '', '/login'); }}>{t('nav.sign_in', 'Sign in')}</button></div></div>;
+    return <DashboardLayout session={authSession} onLogout={() => { void authApi.logout().finally(broadcastSignOut); setAuthSession(null); handleExitToWebsite(); }} />;
   }
 
   const errorRoutes: Record<string, number> = { '/403': 403, '/forbidden': 403, '/404': 404, '/not-found': 404, '/429': 429, '/500': 500, '/503': 503, '/service-unavailable': 503 };
@@ -90,9 +108,10 @@ export function AppContent() {
   if (currentPath === '/register') return <RegisterPage onNavigate={navigateTo} onLaunchConsole={handleLaunchDashboard} />;
 
   return <div className="marketing-shell min-h-screen bg-[#080B12] text-[#F8FAFC] flex flex-col relative selection:bg-[#6C5CE7]/30 selection:text-white">
+    <a href="#main-content" className="ordium-skip-link">{t('ui.skip_to_content', 'Skip to main content')}</a>
     <DataStreamCanvas />
     <Navbar currentPath={currentPath} onNavigate={navigateTo} onOpenDashboard={handleLaunchDashboard} />
-    <main className="flex-1 relative z-10">
+    <main id="main-content" tabIndex={-1} className="flex-1 relative z-10 outline-none">
       {currentPath === '/' && <><HeroSection onStart={handleLaunchDashboard} onExploreApi={() => navigateTo('/docs')} /><IdentitySection /><PipelineSection /><ExplainableCard /><FraudClusterSection /><ManualConfirmationSection /><DeveloperSection onViewDocs={() => navigateTo('/docs')} /><RoadmapSection /></>}
       {currentPath === '/platform' && <PlatformPage />}
       {currentPath === '/intelligence' && <div className="py-8"><IdentitySection /><FraudClusterSection /></div>}
@@ -101,12 +120,26 @@ export function AppContent() {
       {currentPath === '/pricing' && <PricingPage onSelectPlan={() => handleLaunchDashboard()} onOpenDashboard={handleLaunchDashboard} />}
       {currentPath === '/docs' && <DocsPage />}
       {currentPath === '/company' && <CompanyPage />}
+      {currentPath === '/terms' && <LegalPage doc="terms" onNavigate={navigateTo} />}
+      {currentPath === '/privacy' && <LegalPage doc="privacy" onNavigate={navigateTo} />}
+      {!PUBLIC_ROUTES.includes(currentPath) && <ErrorPage statusCode={404} onNavigate={navigateTo} embedded />}
     </main>
-    {currentPath !== '/' && !['/platform', '/intelligence', '/security', '/developers', '/pricing', '/docs', '/company'].includes(currentPath) && <ErrorPage statusCode={404} onNavigate={navigateTo} />}
     <Footer onNavigate={navigateTo} />
   </div>;
 }
 
+const FullScreenStatus: React.FC<{ label: string }> = ({ label }) => (
+  <div className="min-h-screen bg-[#080B12] text-white flex flex-col items-center justify-center gap-4" role="status" aria-live="polite">
+    <span aria-hidden="true" className="h-8 w-8 rounded-full border-2 border-white/10 border-t-[#52D9E8] animate-spin" />
+    <span className="text-sm text-[#A5B1C3]">{label}</span>
+  </div>
+);
+
+const AppLoading: React.FC = () => {
+  const { t } = useLanguage();
+  return <FullScreenStatus label={t('ui.loading_app', 'Loading ORDIUM…')} />;
+};
+
 export default function App() {
-  return <LanguageProvider><Suspense fallback={<div className="min-h-screen bg-[#080B12] text-white flex items-center justify-center" role="status">جارٍ تحميل ORDIUM…</div>}><AppContent /></Suspense><Analytics /></LanguageProvider>;
+  return <LanguageProvider><ErrorBoundary variant="page"><Suspense fallback={<AppLoading />}><AppContent /></Suspense></ErrorBoundary>{VERCEL_ANALYTICS_ENABLED && <Analytics />}</LanguageProvider>;
 }

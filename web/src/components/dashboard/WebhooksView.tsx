@@ -111,15 +111,15 @@ export const WebhooksView: React.FC = () => {
     <div className="dashboard-content space-y-6 sm:space-y-8">
       <section className="dashboard-page-heading">
         <div className="relative z-10 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-[#9D96FF] uppercase">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold tracking-[0.12em] text-[#9D96FF] uppercase">
             <Webhook className="h-4 w-4" />
             <span>{t('dashboard.webhooks.eyebrow', 'تسليم الأحداث')}</span>
-            <span className="rounded-full border border-[#52D9E8]/20 bg-[#52D9E8]/[0.08] px-2.5 py-1 text-[#52D9E8] tracking-normal">
+            <span className="rounded-full border border-[var(--ordium-signal)]/20 bg-[var(--ordium-signal)]/[0.08] px-2.5 py-1 text-[var(--ordium-signal)] tracking-normal">
               {t('dashboard.webhooks.signed_delivery', 'HMAC · توقيع آمن')}
             </span>
           </div>
           <h2 className="mt-3 flex items-center gap-3">
-            <Send className="h-6 w-6 shrink-0 text-[#52D9E8]" />
+            <Send className="h-6 w-6 shrink-0 text-[var(--ordium-signal)]" />
             {t('dashboard.webhooks.title', 'Webhooks · توجيه الأحداث')}
           </h2>
           <p className="mt-2 text-sm">
@@ -127,14 +127,14 @@ export const WebhooksView: React.FC = () => {
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-[#C7D2E0]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#52D9E8]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--ordium-signal)]" />
               {loading ? '—' : endpoints.length.toLocaleString()} {t('dashboard.webhooks.summary_total', 'نقطة اتصال')}
             </span>
-            <span className="inline-flex items-center gap-2 rounded-xl border border-[#48D6A0]/20 bg-[#48D6A0]/[0.06] px-3 py-2 text-[#8AE7BD]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#48D6A0]" />
+            <span className="inline-flex items-center gap-2 rounded-xl border border-[var(--ordium-success)]/20 bg-[var(--ordium-success)]/[0.06] px-3 py-2 text-[#8AE7BD]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--ordium-success)]" />
               {loading ? '—' : endpoints.filter(ep => ep.status === 'active').length.toLocaleString()} {t('dashboard.webhooks.summary_active', 'نشطة')}
             </span>
-            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-[#A5B1C3]">
+            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-[var(--ordium-muted)]">
               <Shield className="h-3.5 w-3.5" />
               {t('dashboard.webhooks.summary_signature', 'توقيع HMAC-SHA256')}
             </span>
@@ -148,7 +148,7 @@ export const WebhooksView: React.FC = () => {
       </section>
 
       {testStatus && (
-        <div className="p-3 rounded-xl bg-[#0D1320] border border-[#22D3EE]/40 text-xs font-mono text-[#22D3EE] flex items-center gap-2 animate-in fade-in">
+        <div className="p-3 rounded-xl bg-[var(--ordium-surface)] border border-[var(--ordium-signal)]/40 text-xs font-mono text-[var(--ordium-signal)] flex items-center gap-2 animate-in fade-in">
           <Send className="w-4 h-4" />
           <span>{testStatus}</span>
         </div>
@@ -173,17 +173,19 @@ export const WebhooksView: React.FC = () => {
         description={t('dashboard.webhooks.secret_modal_desc', 'Store this secret securely. It will not be shown again.')}
       >
         <div className="space-y-4 text-xs font-mono text-start">
-          <p className="text-[#94A3B8]">
+          <p className="text-[var(--ordium-muted)]">
             {t('dashboard.webhooks.secret_hint', 'Use this secret to verify incoming HTTP request signatures using HMAC-SHA256:')}
           </p>
-          <div className="p-3 bg-[#080B12] border border-white/10 rounded-xl text-[#22D3EE] break-all select-all flex items-center justify-between gap-2" dir="ltr">
+          <div className="p-3 bg-[var(--ordium-canvas)] border border-white/10 rounded-xl text-[var(--ordium-signal)] break-all select-all flex items-center justify-between gap-2" dir="ltr">
             <span>{createdSecret}</span>
             <button
-              onClick={() => navigator.clipboard.writeText(createdSecret || '')}
-              className="p-1 hover:text-white"
-              title="Copy"
+              type="button"
+              onClick={() => { void navigator.clipboard?.writeText(createdSecret || '').catch(() => undefined); }}
+              className="inline-flex min-w-10 min-h-10 items-center justify-center rounded-lg hover:text-white hover:bg-white/5"
+              title={t('ui.copy', 'Copy')}
+              aria-label={t('dashboard.webhooks.copy_secret', 'Copy signing secret')}
             >
-              <Copy className="w-4 h-4 shrink-0" />
+              <Copy aria-hidden="true" className="w-4 h-4 shrink-0" />
             </button>
           </div>
           <Button
@@ -197,7 +199,7 @@ export const WebhooksView: React.FC = () => {
         </div>
       </Modal>
 
-      {loadError && <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs text-red-300 flex items-center justify-between gap-3"><span>{loadError}</span><Button variant="outline" size="sm" onClick={() => void fetchWebhooks()}>Retry</Button></div>}
+      {loadError && <div role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs text-red-300 flex items-center justify-between gap-3"><span>{loadError}</span><Button variant="outline" size="sm" onClick={() => void fetchWebhooks()}>{t('common.retry', 'Retry')}</Button></div>}
 
       {/* Endpoints List */}
       {loading ? (
@@ -208,7 +210,7 @@ export const WebhooksView: React.FC = () => {
           description={t('dashboard.webhooks.empty_desc', 'Register your first HTTPS URL to stream risk signals and decisions directly into your backend or order management platform.')}
           actionText={t('dashboard.webhooks.add_endpoint', 'Add Webhook Endpoint')}
           onAction={() => setIsCreateModalOpen(true)}
-          icon={<Webhook className="w-8 h-8 text-[#94A3B8]" />}
+          icon={<Webhook className="w-8 h-8 text-[var(--ordium-muted)]" />}
         />
       ) : (
         <div className="space-y-4">
@@ -221,12 +223,12 @@ export const WebhooksView: React.FC = () => {
                 <div className="flex min-w-0 items-start gap-3">
                   <span
                     className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${
-                      ep.status === 'active' ? 'bg-[#10B981] animate-pulse' : 'bg-[#EF4444]'
+                      ep.status === 'active' ? 'bg-[var(--ordium-success)] animate-pulse' : 'bg-[var(--ordium-danger)]'
                     }`}
                   />
                   <div className="min-w-0">
                     <h3 className="text-sm sm:text-base font-semibold text-white font-mono break-all" dir="ltr">{ep.url}</h3>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[#94A3B8]">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--ordium-muted)]">
                       {t('dashboard.apikeys.created', 'Created')} {new Date(ep.created_at).toLocaleDateString()} · {t('dashboard.webhooks.failure_rate', 'Failure rate')}: {ep.failure_rate}%
                     </div>
                   </div>
@@ -238,7 +240,7 @@ export const WebhooksView: React.FC = () => {
                     size="sm"
                     className="w-full justify-center sm:w-auto"
                     onClick={() => handleTestDispatch(ep.id)}
-                    leftIcon={<Send className="w-3.5 h-3.5 text-[#22D3EE]" />}
+                    leftIcon={<Send className="w-3.5 h-3.5 text-[var(--ordium-signal)]" />}
                   >
                     {t('dashboard.webhooks.send_test', 'Send Test Ping')}
                   </Button>
@@ -258,9 +260,9 @@ export const WebhooksView: React.FC = () => {
 
               {/* Subscribed events */}
               <div className="pt-4 border-t border-white/[0.08] flex flex-wrap items-center gap-2 text-xs">
-                <span className="text-[#94A3B8] text-[11px]">{t('dashboard.webhooks.subscribed_events', 'Subscribed Events:')}</span>
+                <span className="text-[var(--ordium-muted)] text-xs">{t('dashboard.webhooks.subscribed_events', 'Subscribed Events:')}</span>
                 {ep.events.map(ev => (
-                  <span key={ev} className="rounded-lg border border-[#52D9E8]/15 bg-[#52D9E8]/[0.06] px-2.5 py-1 text-[#78E3EC] text-[11px] font-mono" dir="ltr">
+                  <span key={ev} className="rounded-lg border border-[var(--ordium-signal)]/15 bg-[var(--ordium-signal)]/[0.06] px-2.5 py-1 text-[#78E3EC] text-xs font-mono" dir="ltr">
                     {ev}
                   </span>
                 ))}
@@ -278,7 +280,7 @@ export const WebhooksView: React.FC = () => {
         description={t('dashboard.webhooks.disable_confirm', 'Event delivery to this endpoint will stop immediately. You can create a new endpoint later.')}
       >
         <div className="space-y-4 text-xs font-mono text-start">
-          <div className="p-3 bg-[#080B12] border border-white/10 rounded-xl text-[#22D3EE] break-all" dir="ltr">
+          <div className="p-3 bg-[var(--ordium-canvas)] border border-white/10 rounded-xl text-[var(--ordium-signal)] break-all" dir="ltr">
             {disableTarget?.url}
           </div>
           {disableError && <p className="text-red-300" role="alert">{disableError}</p>}
@@ -291,7 +293,7 @@ export const WebhooksView: React.FC = () => {
               size="sm"
               isLoading={isDisabling}
               onClick={() => void handleDisable()}
-              className="!bg-red-500 hover:!bg-red-600 text-white"
+              className="!bg-[var(--ordium-danger-fill)] hover:!bg-red-600 text-white"
             >
               {t('dashboard.webhooks.disable', 'Disable Webhook')}
             </Button>
@@ -308,9 +310,9 @@ export const WebhooksView: React.FC = () => {
         maxWidth="lg"
       >
         <form className="space-y-5 text-start" onSubmit={event => { event.preventDefault(); void handleCreateWebhook(); }}>
-          <div className="rounded-xl border border-[#52D9E8]/15 bg-[#52D9E8]/[0.045] p-3.5 text-sm leading-relaxed text-[#B8C7D8]">
+          <div className="rounded-xl border border-[var(--ordium-signal)]/15 bg-[var(--ordium-signal)]/[0.045] p-3.5 text-sm leading-relaxed text-[#B8C7D8]">
             <div className="mb-1.5 flex items-center gap-2 font-semibold text-white">
-              <Shield className="h-4 w-4 text-[#52D9E8]" />
+              <Shield className="h-4 w-4 text-[var(--ordium-signal)]" />
               {t('dashboard.webhooks.signed_delivery', 'تسليم آمن للأحداث')}
             </div>
             {t('dashboard.webhooks.signing_hint', 'سيُعرض سر التوقيع مرة واحدة بعد الإنشاء. خزّنه في خادمك واستخدمه للتحقق من توقيع HMAC-SHA256.')}
@@ -329,15 +331,15 @@ export const WebhooksView: React.FC = () => {
               placeholder="https://api.yourstore.com/webhooks/ordium"
               value={newUrl}
               onChange={event => setNewUrl(event.target.value)}
-              className="w-full min-h-12 rounded-xl border border-white/10 bg-[#080B12] px-4 py-3 text-sm text-white placeholder:text-[#718096] focus:outline-none focus:border-[#52D9E8] focus:ring-2 focus:ring-[#52D9E8]/15"
+              className="w-full min-h-12 rounded-xl border border-white/10 bg-[var(--ordium-canvas)] px-4 py-3 text-sm text-white placeholder:text-[var(--ordium-subtle)] focus:outline-none focus:border-[var(--ordium-signal)] focus:ring-2 focus:ring-[var(--ordium-signal)]/15"
               dir="ltr"
             />
-            <p className="mt-1.5 text-[11px] text-[#718096]">{t('dashboard.webhooks.https_hint', 'استخدم نقطة HTTPS عامة يمكن لخوادم ORDIUM الوصول إليها.')}</p>
+            <p className="mt-1.5 text-xs text-[var(--ordium-subtle)]">{t('dashboard.webhooks.https_hint', 'استخدم نقطة HTTPS عامة يمكن لخوادم ORDIUM الوصول إليها.')}</p>
           </div>
           <fieldset className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <legend className="text-sm font-semibold text-[#E6EDF6]">{t('dashboard.webhooks.subscribe_events', 'الأحداث المراد استقبالها')}</legend>
-              <span className="text-[11px] text-[#A5B1C3]">{newEvents.length} {t('dashboard.webhooks.events_selected', 'أحداث محددة')}</span>
+              <span className="text-xs text-[var(--ordium-muted)]">{newEvents.length} {t('dashboard.webhooks.events_selected', 'أحداث محددة')}</span>
             </div>
             <div className="space-y-2">
               {[
@@ -347,7 +349,7 @@ export const WebhooksView: React.FC = () => {
               ].map(ev => {
                 const checked = newEvents.includes(ev.id);
                 return (
-                  <label key={ev.id} className={"flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors " + (checked ? 'border-[#52D9E8]/30 bg-[#52D9E8]/[0.06]' : 'border-white/[0.09] bg-black/10 hover:border-white/20')}>
+                  <label key={ev.id} className={"flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors " + (checked ? 'border-[var(--ordium-signal)]/30 bg-[var(--ordium-signal)]/[0.06]' : 'border-white/[0.09] bg-black/10 hover:border-white/20')}>
                     <input
                       type="checkbox"
                       checked={checked}
@@ -355,12 +357,12 @@ export const WebhooksView: React.FC = () => {
                         if (event.target.checked) return ev.id === '*' ? ['*'] : [...prev.filter(item => item !== '*'), ev.id].filter((item, index, all) => all.indexOf(item) === index);
                         return prev.filter(item => item !== ev.id);
                       })}
-                      className="mt-1 h-4 w-4 shrink-0 rounded border-white/20 bg-[#080B12] text-[#52D9E8] focus:ring-2 focus:ring-[#52D9E8]/40"
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-white/20 bg-[var(--ordium-canvas)] text-[var(--ordium-signal)] focus:ring-2 focus:ring-[var(--ordium-signal)]/40"
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold text-[#E6EDF6]">{ev.title}</span>
                       <span className="mt-0.5 block text-xs leading-relaxed text-[#8D9AAF]">{ev.desc}</span>
-                      <code className="mt-1.5 inline-block text-[10px] text-[#52D9E8]" dir="ltr">{ev.code}</code>
+                      <code className="mt-1.5 inline-block text-xs text-[var(--ordium-signal)]" dir="ltr">{ev.code}</code>
                     </span>
                   </label>
                 );

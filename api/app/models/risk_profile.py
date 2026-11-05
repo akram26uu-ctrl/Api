@@ -304,6 +304,12 @@ class RiskProfile(Base):
     unusual_quantity_score: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
     unusual_value_score: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
 
+    # First-order checks on what the buyer typed (app/core/order_quality.py,
+    # app/core/algeria_geo.py).
+    low_quality_identity_score: Mapped[int] = mapped_column(Integer, nullable=False, default=20, server_default="20")
+    suspicious_phone_score: Mapped[int] = mapped_column(Integer, nullable=False, default=20, server_default="20")
+    address_location_mismatch_score: Mapped[int] = mapped_column(Integer, nullable=False, default=15, server_default="15")
+
     # ---------------------------------------------------------
     # Decision thresholds
     # ---------------------------------------------------------

@@ -1,4 +1,3 @@
-import base64
 import hashlib
 import ipaddress
 import socket
@@ -14,12 +13,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.secret_crypto import fernet as shared_fernet
 from app.models.webhook_delivery import WebhookDelivery
 from app.models.webhook_endpoint import WebhookEndpoint
 
 
 class WebhookService:
-    ALLOWED_EVENTS = {"*", "order.risk_assessed", "order.outcome.updated"}
+    ALLOWED_EVENTS = {"*", "order.risk_assessed", "order.outcome.updated", "order.confirmation.updated"}
 
     def __init__(self, db: Session):
         self.db = db
@@ -65,8 +65,7 @@ class WebhookService:
 
     @staticmethod
     def _fernet() -> Fernet:
-        key = base64.urlsafe_b64encode(hashlib.sha256(settings.secret_key.encode("utf-8")).digest())
-        return Fernet(key)
+        return shared_fernet()
 
     @classmethod
     def _encrypt_secret(cls, secret: str) -> bytes:

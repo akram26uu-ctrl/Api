@@ -38,11 +38,68 @@ class RiskResult:
     decision: RiskDecision
     assessment: RiskAssessment
     events: list[RiskEvent]
+    graph_summary: dict | None = None
+
+
+# Signals that describe the *same* underlying fact are capped as a group so
+# one observation cannot be counted several times (e.g. a Tor exit node is
+# usually also flagged VPN, bot and high-reputation by the provider).
+SCORE_GROUPS: dict[str, frozenset[RiskEventType]] = {
+    "network": frozenset({
+        RiskEventType.VPN_DETECTED,
+        RiskEventType.PROXY_DETECTED,
+        RiskEventType.TOR_DETECTED,
+        RiskEventType.HIGH_IP_REPUTATION,
+        RiskEventType.BOT_ACTIVITY,
+    }),
+    "identity_reuse": frozenset({
+        RiskEventType.PHONE_REUSED,
+        RiskEventType.DEVICE_REUSED,
+        RiskEventType.ADDRESS_REUSED,
+        RiskEventType.MULTIPLE_CUSTOMERS_SAME_PHONE,
+        RiskEventType.MULTIPLE_PHONES_SAME_DEVICE,
+        RiskEventType.MULTIPLE_CUSTOMERS_SAME_ADDRESS,
+        RiskEventType.MULTIPLE_CUSTOMERS_SAME_DEVICE,
+    }),
+    # One person placing orders quickly trips customer, phone and device
+    # velocity at once: it is one burst, not three independent facts.
+    "velocity": frozenset({
+        RiskEventType.HIGH_CUSTOMER_VELOCITY,
+        RiskEventType.HIGH_PHONE_VELOCITY,
+        RiskEventType.HIGH_DEVICE_VELOCITY,
+    }),
+    # What the buyer typed: junk names/addresses and fake-looking phones are
+    # usually the same hurried fake order.
+    "typed_data": frozenset({
+        RiskEventType.LOW_QUALITY_IDENTITY,
+        RiskEventType.SUSPICIOUS_PHONE_NUMBER,
+    }),
+    # Three views of "this IP is shared/busy".
+    "shared_ip": frozenset({
+        RiskEventType.MULTIPLE_CUSTOMERS_SAME_IP,
+        RiskEventType.HIGH_IP_FREQUENCY,
+        RiskEventType.BURST_NETWORK_ACTIVITY,
+    }),
+}
+
+# Signals that only measure "this identity placed many orders". For a proven
+# buyer (TRUSTED_CUSTOMER_HISTORY) that is loyalty, so they are dropped.
+TRUST_SUPPRESSED: frozenset[RiskEventType] = frozenset({
+    RiskEventType.PHONE_REUSED,
+    RiskEventType.DEVICE_REUSED,
+    RiskEventType.ADDRESS_REUSED,
+    RiskEventType.NEW_DEVICE,
+    # Delivered, paid orders prove the number is real.
+    RiskEventType.SUSPICIOUS_PHONE_NUMBER,
+})
+
+_UNSET = object()
 
 
 class RiskService:
-    MODEL_VERSION = "rules-v4"
-    RULES_VERSION = "2026-09-global-reputation-v4"
+    MODEL_VERSION = "rules-v8"
+    RULES_VERSION = "2026-11-first-order-signals-v8"
+    SCORE_GROUP_CAPS: dict[str, int] = {"network": 35, "identity_reuse": 45, "velocity": 22, "shared_ip": 30, "typed_data": 30}
 
     def __init__(
         self,
@@ -223,6 +280,9 @@ class RiskService:
             business_context_value_multiplier=defaults.business_context_value_multiplier,
             unusual_quantity_score=defaults.unusual_quantity_score,
             unusual_value_score=defaults.unusual_value_score,
+            low_quality_identity_score=defaults.low_quality_identity_score,
+            suspicious_phone_score=defaults.suspicious_phone_score,
+            address_location_mismatch_score=defaults.address_location_mismatch_score,
 
             review_threshold=defaults.review_threshold,
             reject_threshold=defaults.reject_threshold,
@@ -247,24 +307,50 @@ class RiskService:
             return existing
         return profile
 
+    def lookup_network(self, ip_address: str | None) -> NetworkIntelResult | None:
+        """External lookup. Call it *before* writing the order so a slow
+        provider never holds an open write transaction."""
+        if not ip_address:
+            return None
+        return self.network_provider.lookup(ip_address)
+
+    @classmethod
+    def _apply_group_caps(cls, events: list[RiskEvent]) -> tuple[int, dict[str, dict[str, int]]]:
+        group_raw: dict[str, int] = {}
+        group_max: dict[str, int] = {}
+        score = 0
+        for event in events:
+            group = next((name for name, members in SCORE_GROUPS.items() if event.event_type in members), None)
+            if group is None:
+                score += event.score_impact
+            else:
+                group_raw[group] = group_raw.get(group, 0) + event.score_impact
+                group_max[group] = max(group_max.get(group, 0), event.score_impact)
+        applied: dict[str, dict[str, int]] = {}
+        for group, raw in group_raw.items():
+            # A cap limits stacking; it never cuts one signal below the weight
+            # the merchant gave it.
+            cap = max(cls.SCORE_GROUP_CAPS.get(group, raw), group_max.get(group, 0))
+            score += min(raw, cap)
+            if raw > cap:
+                applied[group] = {"raw": raw, "cap": cap}
+        return score, applied
+
     def assess_order(
         self,
         order: Order,
+        network_result: NetworkIntelResult | None | object = _UNSET,
+        submitted_address: str | None = None,
     ) -> RiskResult:
         started_at = time.perf_counter()
         profile = self._get_or_create_profile(
             order.merchant_id,
         )
 
-        score = 0
         events: list[RiskEvent] = []
 
-        network_result: NetworkIntelResult | None = None
-
-        if order.ip_address:
-            network_result = self.network_provider.lookup(
-                order.ip_address,
-            )
+        if network_result is _UNSET:
+            network_result = self.lookup_network(order.ip_address)
 
         business_context = self.business_context_service.build(
             order,
@@ -282,15 +368,21 @@ class RiskService:
             order,
             network_result,
             business_context=business_context,
+            submitted_address=submitted_address,
         )
 
-        graph_summary = self.graph_service.summarize_order(order)
+        graph_summary = self.graph_service.summarize_order(order, network_result)
 
         for result in rule_results:
-            score += result.score
-
             if result.event is not None:
                 events.append(result.event)
+
+        if any(event.event_type is RiskEventType.TRUSTED_CUSTOMER_HISTORY for event in events):
+            suppressed = sorted(e.event_type.value for e in events if e.event_type in TRUST_SUPPRESSED)
+            events = [e for e in events if e.event_type not in TRUST_SUPPRESSED]
+            for event in events:
+                if event.event_type is RiskEventType.TRUSTED_CUSTOMER_HISTORY:
+                    event.event_data = {**(event.event_data or {}), "suppressed_signals": suppressed}
 
         event_types = {event.event_type for event in events}
 
@@ -312,7 +404,6 @@ class RiskService:
                     },
                 )
             )
-            score += profile.strong_identity_combination_score
 
         if (
             graph_summary.get("identity_cluster_size", 0)
@@ -330,12 +421,9 @@ class RiskService:
                     },
                 )
             )
-            score += profile.identity_cluster_score
 
-        score = min(
-            score,
-            profile.max_score,
-        )
+        score, caps_applied = self._apply_group_caps(events)
+        score = max(0, min(score, profile.max_score))
 
         decision = self._get_decision(
             score,
@@ -377,6 +465,7 @@ class RiskService:
                     events=events,
                     graph_summary=graph_summary,
                     business_context=business_context,
+                    caps_applied=caps_applied,
                 ),
             )
         )
@@ -388,6 +477,7 @@ class RiskService:
             decision=decision,
             assessment=assessment,
             events=events,
+            graph_summary=graph_summary,
         )
 
     @staticmethod
@@ -397,6 +487,7 @@ class RiskService:
         events: list[RiskEvent],
         graph_summary: dict | None = None,
         business_context: dict | None = None,
+        caps_applied: dict | None = None,
     ) -> dict:
         network = None
 
@@ -413,6 +504,7 @@ class RiskService:
                 "recent_abuse": network_result.recent_abuse,
                 "fraud_score": network_result.fraud_score,
                 "usage_type": network_result.usage_type,
+                "mobile": network_result.mobile,
             }
 
         snapshot = {
@@ -434,6 +526,7 @@ class RiskService:
             "business_context": business_context or {},
             "feature_schema_version": "features-business-context-v3",
             "network": network,
+            "score_caps_applied": caps_applied or {},
             "signals": [
                 {
                     "event_type": event.event_type.value,

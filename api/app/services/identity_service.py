@@ -19,6 +19,7 @@ from app.repositories.merchant_customer_repository import (
 from app.repositories.phone_identifier_repository import (
     PhoneIdentifierRepository,
 )
+from app.core.name_matching import names_match
 from app.services.identity_confidence import calculate_identity_confidence
 
 
@@ -86,10 +87,28 @@ class IdentityService:
             normalized_name=normalized_name,
         )
 
+        # ---------------------------------------------------------
+        # 3. Same phone, same person written another way
+        # ---------------------------------------------------------
+        # "أمينة بن علي" / "Amina Benali" / "BENALI Amina" on one phone is one
+        # buyer. Treating each spelling as a new customer made the
+        # "several customers on one phone" signal fire on honest repeat buyers.
+        similar_name = False
+        if customer is None and not is_new_phone:
+            submitted = f"{first_name} {last_name}"
+            for candidate in self.merchant_customer_repository.list_customers_by_phone(
+                merchant_id=merchant_id,
+                phone_identifier_id=phone_identifier.id,
+            ):
+                if names_match(submitted, f"{candidate.first_name} {candidate.last_name}"):
+                    customer = candidate
+                    similar_name = True
+                    break
+
         is_new_customer = customer is None
 
         # ---------------------------------------------------------
-        # 4. If no exact match, create a new customer
+        # 4. If no match, create a new customer
         # ---------------------------------------------------------
         if customer is None:
             customer = Customer(
@@ -149,6 +168,7 @@ class IdentityService:
             # historical merchant-scoped data. A newly created row is not a
             # historical match.
             exact_name=(not is_new_customer) and customer.normalized_name == normalized_name,
+            similar_name=similar_name,
         )
 
         self.db.flush()

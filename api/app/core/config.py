@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     enable_docs: bool = Field(default=True, alias="ENABLE_DOCS")
     cors_allowed_origins: str = Field(default="", alias="CORS_ALLOWED_ORIGINS")
     ordium_internal_shared_secret: str = Field(default="", alias="ORDIUM_INTERNAL_SHARED_SECRET")
+    # Public origin merchants use to reach store webhook receivers (e.g. https://api.ordium.dev).
+    # Requests reach the API through internal hops, so request.base_url is not a public address.
+    public_api_base_url: str = Field(default="", alias="PUBLIC_API_BASE_URL")
     shopify_webhook_secret: str = Field(default="", alias="SHOPIFY_WEBHOOK_SECRET")
     shopify_store_map: str = Field(default="", alias="SHOPIFY_STORE_MAP")
     omniterra_webhook_secret: str = Field(default="", alias="OMNITERRA_WEBHOOK_SECRET")
@@ -49,6 +52,19 @@ class Settings(BaseSettings):
     db_max_overflow: int = Field(default=10, alias="DB_MAX_OVERFLOW", ge=0, le=100)
     db_pool_timeout_seconds: int = Field(default=10, alias="DB_POOL_TIMEOUT_SECONDS", ge=1, le=120)
     db_pool_recycle_seconds: int = Field(default=1800, alias="DB_POOL_RECYCLE_SECONDS", ge=60, le=86_400)
+
+    # WhatsApp order confirmation (Meta WhatsApp Cloud API, one Ordium-managed number).
+    whatsapp_enabled: bool = Field(default=False, alias="WHATSAPP_ENABLED")
+    whatsapp_api_base_url: str = Field(default="https://graph.facebook.com", alias="WHATSAPP_API_BASE_URL")
+    whatsapp_api_version: str = Field(default="v21.0", alias="WHATSAPP_API_VERSION", pattern=r"^v\d+\.\d+$")
+    whatsapp_phone_number_id: str = Field(default="", alias="WHATSAPP_PHONE_NUMBER_ID")
+    whatsapp_access_token: str = Field(default="", alias="WHATSAPP_ACCESS_TOKEN")
+    whatsapp_app_secret: str = Field(default="", alias="WHATSAPP_APP_SECRET")
+    whatsapp_verify_token: str = Field(default="", alias="WHATSAPP_VERIFY_TOKEN")
+    whatsapp_template_name: str = Field(default="order_confirmation", alias="WHATSAPP_TEMPLATE_NAME")
+    whatsapp_template_language: str = Field(default="ar", alias="WHATSAPP_TEMPLATE_LANGUAGE")
+    whatsapp_timeout_seconds: float = Field(default=10.0, alias="WHATSAPP_TIMEOUT_SECONDS", gt=0, le=30)
+    whatsapp_reply_window_hours: int = Field(default=24, alias="WHATSAPP_REPLY_WINDOW_HOURS", ge=1, le=168)
 
     @model_validator(mode="after")
     def validate_provider_configuration(self):
@@ -77,6 +93,19 @@ class Settings(BaseSettings):
                 raise ValueError("ORDIUM_INTERNAL_SHARED_SECRET is required in production")
             self._validate_trusted_proxy_networks()
             self._validate_production_dependency_versions()
+        if self.whatsapp_enabled:
+            missing = [
+                name for name, value in (
+                    ("WHATSAPP_PHONE_NUMBER_ID", self.whatsapp_phone_number_id),
+                    ("WHATSAPP_ACCESS_TOKEN", self.whatsapp_access_token),
+                    ("WHATSAPP_APP_SECRET", self.whatsapp_app_secret),
+                    ("WHATSAPP_VERIFY_TOKEN", self.whatsapp_verify_token),
+                ) if not value.strip()
+            ]
+            if missing:
+                raise ValueError("WHATSAPP_ENABLED=true requires " + ", ".join(missing))
+            if environment == "production" and len(self.whatsapp_verify_token) < 16:
+                raise ValueError("WHATSAPP_VERIFY_TOKEN must be at least 16 characters in production")
         return self
 
 

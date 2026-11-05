@@ -69,7 +69,8 @@ class OrdiumProvisioningClient:
                 headers=self.headers,
                 json={"name": f"Dashboard session ({environment})", "environment": environment, "scopes": [
                     "orders:read", "orders:write", "outcomes:write", "keys:manage",
-                    "webhooks:manage", "risk_profile:read", "risk_profile:write", "risk_features:read", "audit:read", "metrics:read"
+                    "webhooks:manage", "risk_profile:read", "risk_profile:write", "risk_features:read", "audit:read", "metrics:read",
+                    "shipping:read", "shipping:write", "inventory:read", "inventory:write"
                 ]},
             )
         if response.status_code >= 400:

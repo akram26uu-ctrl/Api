@@ -1,166 +1,69 @@
 /**
- * ORDIUM Explainable Risk Assessment Card
- * "Built for explainable decisions."
- * Demonstrates the exact explainable signal breakdown with 0 black-box ambiguity.
+ * ORDIUM explainable decision: one example order whose score is the sum of the reasons shown.
  */
 
 import React from 'react';
-import { ShieldAlert, AlertTriangle, CheckCircle2, ChevronRight, HelpCircle, Activity } from 'lucide-react';
 import { RiskBadge } from '../common/RiskBadge';
-import { RiskScoreGauge } from '../common/RiskScoreGauge';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { bidiIsolate } from './Bidi';
 
 export const ExplainableCard: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
 
-  const sampleSignals = [
-    { name: t('explainable.sig_net_name', 'Network Reputation'), code: 'NETWORK_REPUTATION', severity: 'critical', desc: t('explainable.sig_net_desc', 'IP mapped directly to active Tor exit node registry.') },
-    { name: t('explainable.sig_dev_name', 'Device Reuse'), code: 'DEVICE_REUSE', severity: 'critical', desc: t('explainable.sig_dev_desc', 'Hardware fingerprint dev_8f0a observed across 3 distinct cards in 2h.') },
-    { name: t('explainable.sig_cluster_name', 'Identity Cluster Anomaly'), code: 'IDENTITY_CLUSTER', severity: 'high', desc: t('explainable.sig_cluster_desc', 'Phone and shipping address linked to multi-actor cluster #CL-441.') },
-    { name: t('explainable.sig_velo_name', 'High IP Velocity'), code: 'HIGH_IP_VELOCITY', severity: 'high', desc: t('explainable.sig_velo_desc', '14 rapid checkout attempts observed on subnet in past 60 minutes.') },
-    { name: t('explainable.sig_cancel_name', 'High إلغاءlation Rate'), code: 'HIGH_CANCELLATION_RATE', severity: 'medium', desc: t('explainable.sig_cancel_desc', 'Connected drop address has an 80% past cancellation/chargeback rate.') }
+  // Impacts add up to the score shown (82), as in a real assessment.
+  const reasons = [
+    { text: t('mkt.explain.r1', 'رُفض طردان سابقان لهذا الرقم'), impact: 30 },
+    { text: t('mkt.explain.r2', 'الجهاز نفسه استُعمل بثلاثة أسماء مختلفة هذا الأسبوع'), impact: 25 },
+    { text: t('mkt.explain.r3', '4 طلبات من الرقم نفسه خلال ساعتين'), impact: 15 },
+    { text: t('mkt.explain.r4', 'الاتصال عبر VPN'), impact: 12 },
   ];
 
   return (
-    <section className="py-24 border-t border-white/5 bg-[#080B12] relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D1320] border border-white/10 text-xs font-mono text-[#F59E0B]">
-            <span>{t('explainable.badge', 'INSPECTABLE RISK REASONING')}</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-            {t('explainable.title', 'Built for explainable decisions.')}
+    <section className="py-20 sm:py-24 border-t border-white/5 relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+        <div className="lg:col-span-5 text-start">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight rtl:tracking-normal text-balance">
+            {t('mkt.explain.title', 'كل درجة تأتي مع أسبابها')}
           </h2>
-          <p className="text-base text-[#94A3B8] leading-relaxed">
-            {t('explainable.subtitle', 'Risk decisions expose the persisted signals, rule version, and evaluation metadata available to the merchant.')}
+          <p className="mt-5 text-base sm:text-lg text-[var(--ordium-muted)] leading-relaxed max-w-[60ch] text-pretty">
+            {t('mkt.explain.subtitle', 'ترى أي إشارة رفعت الدرجة وبكم، ويمكنك تغيير وزن كل إشارة وحدود المراجعة والرفض.')}
           </p>
         </div>
 
-        {/* Realistic Assessment Card Container */}
-        <div className="max-w-4xl mx-auto">
-          {/* Top Sample Flag */}
-          <div className="flex items-center justify-between px-4 py-2 bg-[#0D1320] border-t border-x border-white/10 rounded-t-2xl text-[11px] font-mono text-[#94A3B8]">
-            <span className="flex items-center gap-1.5 text-[#22D3EE]">
-              <Activity className="w-3.5 h-3.5" />
-              {t('explainable.snapshot_label', 'ORDIUM ASSESSMENT DEMO SNAPSHOT')}
-            </span>
-            <span>RULES: ordium-rules-v2.4</span>
+        <figure className="lg:col-span-7 rounded-2xl border border-white/10 bg-[var(--ordium-surface)] p-5 sm:p-7 text-start">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="rounded-md border border-white/15 px-2.5 py-0.5 text-xs font-medium text-[var(--ordium-muted)]">{t('mkt.hero.example', 'مثال توضيحي')}</span>
+            <span className="text-sm text-[var(--ordium-muted)]">{t('mkt.explain.order_line', 'طلب رقم 1057 · قسنطينة · 12400 دج · الدفع عند الاستلام')}</span>
           </div>
 
-          <div className="bg-[#0D1320]/90 border border-white/10 rounded-b-2xl p-6 sm:p-8 shadow-2xl space-y-8 backdrop-blur-md text-start">
-            
-            {/* Upper Section: Score & Decision */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-white/10">
-              <div className="flex items-center gap-6">
-                <RiskScoreGauge score={82} size="lg" />
-                <div className="space-y-1 text-start">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-[#94A3B8]">{t('explainable.decision_title', 'DECISION:')}</span>
-                    <RiskBadge decision="REJECT" size="lg" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white">{t('explainable.high_confidence_flag', 'High Confidence Fraud Flag')}</h3>
-                  <p className="text-xs text-[#94A3B8] max-w-sm">
-                    {t('explainable.reject_rationale', 'Aggregated risk exceeds the merchant reject threshold of 75. Order blocked from payment authorization.')}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-1 gap-2 text-xs font-mono bg-white/5 p-4 rounded-xl shrink-0 w-full sm:w-auto">
-                <div className="flex justify-between gap-4">
-                  <span className="text-[#94A3B8]">{t('explainable.exec_time', 'Execution Time:')}</span>
-                  <span className="font-bold text-white" dir="ltr">38ms</span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-[#94A3B8]">{t('explainable.confidence', 'Confidence:')}</span>
-                  <span className="font-bold text-[#10B981]" dir="ltr">94%</span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-[#94A3B8]">{t('explainable.order_id', 'Order ID:')}</span>
-                  <span className="font-bold text-white font-mono" dir="ltr">ORD-77402</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Dimensional Score Breakdown Bar */}
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-5 pb-6 border-b border-white/[0.07]">
+            <p dir="ltr" className="shrink-0 tabular-nums text-[var(--ordium-danger)] rtl:text-end">
+              <span className="text-5xl font-extrabold">82</span><span className="text-base text-[var(--ordium-subtle)]"> / 100</span>
+            </p>
             <div className="space-y-2">
-              <h4 className="text-xs font-mono uppercase tracking-wider text-[#94A3B8]">
-                {t('explainable.dimension_title', 'Risk Dimension Scores')}
-              </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div className="p-3 bg-[#080B12] rounded-lg border border-white/5">
-                  <div className="text-[11px] text-[#94A3B8]">{t('explainable.dim_identity', 'Identity Risk')}</div>
-                  <div className="text-lg font-bold font-mono text-[#EF4444] mt-0.5" dir="ltr">88/100</div>
-                </div>
-                <div className="p-3 bg-[#080B12] rounded-lg border border-white/5">
-                  <div className="text-[11px] text-[#94A3B8]">{t('explainable.dim_network', 'Network Risk')}</div>
-                  <div className="text-lg font-bold font-mono text-[#EF4444] mt-0.5" dir="ltr">92/100</div>
-                </div>
-                <div className="p-3 bg-[#080B12] rounded-lg border border-white/5">
-                  <div className="text-[11px] text-[#94A3B8]">{t('explainable.dim_velocity', 'Velocity Risk')}</div>
-                  <div className="text-lg font-bold font-mono text-[#EF4444] mt-0.5" dir="ltr">80/100</div>
-                </div>
-                <div className="p-3 bg-[#080B12] rounded-lg border border-white/5">
-                  <div className="text-[11px] text-[#94A3B8]">{t('explainable.dim_historical', 'Historical Risk')}</div>
-                  <div className="text-lg font-bold font-mono text-[#F59E0B] mt-0.5" dir="ltr">74/100</div>
-                </div>
-                <div className="p-3 bg-[#080B12] rounded-lg border border-white/5">
-                  <div className="text-[11px] text-[#94A3B8]">{t('explainable.dim_behavioral', 'Behavioral')}</div>
-                  <div className="text-lg font-bold font-mono text-[#F59E0B] mt-0.5" dir="ltr">65/100</div>
-                </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <RiskBadge decision="REJECT" size="md" />
+                <h3 className="text-base font-semibold text-white">{t('mkt.explain.verdict_title', 'أعلى من حد الرفض')}</h3>
               </div>
+              <p className="text-sm text-[var(--ordium-muted)] leading-relaxed max-w-[60ch]">{t('mkt.explain.verdict_desc', 'الدرجة 82 وحد الرفض في هذا المتجر 80. يبقى الطلب معلّقًا، ويمكنك تأكيده مع العميل وقبوله إن أردت.')}</p>
             </div>
-
-            {/* Triggered Signals List */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-mono uppercase tracking-wider text-[#94A3B8] flex items-center justify-between">
-                <span>{t('explainable.triggered_signals', 'Triggered Heuristic Signals')} ({sampleSignals.length})</span>
-                <span className="text-[10px] text-[#EF4444]">{t('explainable.all_explainable', 'All factors explainable')}</span>
-              </h4>
-
-              <div className="space-y-2">
-                {sampleSignals.map((sig, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-xl bg-[#080B12]/80 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="flex items-start gap-2.5">
-                      <span
-                        className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                          sig.severity === 'critical' ? 'bg-[#EF4444]' : (sig.severity === 'high' ? 'bg-[#F59E0B]' : 'bg-[#22D3EE]')
-                        }`}
-                      />
-                      <div>
-                        <div className="font-semibold text-white flex items-center gap-2">
-                          <span>{sig.name}</span>
-                          <span className="font-mono text-[10px] text-[#94A3B8] bg-white/5 px-1.5 py-0.5 rounded" dir="ltr">
-                            {sig.code}
-                          </span>
-                        </div>
-                        <p className="text-[#94A3B8] mt-0.5">{sig.desc}</p>
-                      </div>
-                    </div>
-
-                    <span
-                      className={`font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded self-start sm:self-center shrink-0 ${
-                        sig.severity === 'critical'
-                          ? 'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30'
-                          : sig.severity === 'high'
-                          ? 'bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/30'
-                          : 'bg-white/10 text-white'
-                      }`}
-                    >
-                      {sig.severity}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
           </div>
-        </div>
 
+          <h3 className="mt-6 text-sm font-semibold text-white">{t('mkt.explain.reasons_title', 'لماذا 82؟')}</h3>
+          <ul className="mt-3 divide-y divide-white/[0.06]">
+            {reasons.map(reason => (
+              <li key={reason.impact} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
+                <span className="text-[#D5DCE6] leading-snug">{bidiIsolate(reason.text, isRTL)}</span>
+                <span dir="ltr" className="shrink-0 tabular-nums font-semibold text-[var(--ordium-warning)]">+{reason.impact}</span>
+              </li>
+            ))}
+            <li className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
+              <span className="font-semibold text-white">{t('mkt.explain.total', 'المجموع')}</span>
+              <span dir="ltr" className="shrink-0 tabular-nums font-bold text-white">82</span>
+            </li>
+          </ul>
+          <figcaption className="mt-4 text-sm text-[var(--ordium-subtle)]">{t('mkt.explain.weights', 'يمكنك تغيير وزن كل إشارة من إعدادات المخاطر.')}</figcaption>
+        </figure>
       </div>
     </section>
   );

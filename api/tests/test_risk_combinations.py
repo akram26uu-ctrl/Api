@@ -148,7 +148,10 @@ def test_medium_risk_combination():
                 phone_identifier_id=phone.id,
                 device_identifier_id=device.id,
                 address_identifier_id=None,
-                status=OrderStatus.DELIVERED,
+                # Not yet delivered: a proven buyer (delivered history) is
+                # trusted and its reuse signals are dropped; see
+                # test_trusted_history.py.
+                status=OrderStatus.PENDING,
                 external_order_id=f"MEDIUM-HIST-{index}",
                 created_at=historical_time,
             )
@@ -270,7 +273,7 @@ def test_high_risk_combination():
             current_order,
         )
 
-        assert result.score == 100
+        assert result.score == 95  # identity_reuse group capped at 45 (rules-v5)
         assert result.decision == RiskDecision.REJECT
         assert any(event.event_type.value == "strong_identity_combination" for event in result.events)
 

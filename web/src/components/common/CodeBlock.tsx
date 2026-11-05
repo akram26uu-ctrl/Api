@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Check, Copy, Terminal } from 'lucide-react';
 
 interface TabItem {
@@ -28,6 +29,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
   className = ''
 }) => {
   const [activeTab, setActiveTab] = useState(0);
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
   const activeCode = tabs ? tabs[activeTab]?.code || '' : singleCode;
@@ -44,13 +46,13 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
   };
 
   return (
-    <div className={`bg-[#080B12] border border-white/10 rounded-xl overflow-hidden shadow-2xl font-mono text-xs ${className}`}>
+    <div className={`bg-[var(--ordium-canvas)] border border-white/10 rounded-xl overflow-hidden shadow-2xl font-mono text-xs ${className}`}>
       {/* Header / Tabs */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-[#0D1320] border-b border-white/5">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[var(--ordium-surface)] border-b border-white/5">
         <div className="flex items-center gap-2">
           {title ? (
-            <span className="text-[#94A3B8] font-medium flex items-center gap-2">
-              <Terminal className="w-3.5 h-3.5 text-[#22D3EE]" />
+            <span className="text-[var(--ordium-muted)] font-medium flex items-center gap-2">
+              <Terminal className="w-3.5 h-3.5 text-[var(--ordium-signal)]" />
               {title}
             </span>
           ) : (
@@ -62,15 +64,17 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
           )}
 
           {tabs && (
-            <div className="flex gap-1 ml-4">
+            <div className="flex gap-1 ms-4" dir="ltr">
               {tabs.map((tab, idx) => (
                 <button
                   key={tab.label}
+                  type="button"
+                  aria-pressed={activeTab === idx}
                   onClick={() => setActiveTab(idx)}
                   className={`px-2.5 py-1 rounded text-xs transition-colors ${
                     activeTab === idx
-                      ? 'bg-[#6C5CE7]/20 text-[#22D3EE] font-semibold border border-[#6C5CE7]/40'
-                      : 'text-[#94A3B8] hover:text-white'
+                      ? 'bg-[var(--ordium-accent)]/20 text-[var(--ordium-signal)] font-semibold border border-[var(--ordium-accent)]/40'
+                      : 'text-[var(--ordium-muted)] hover:text-white'
                   }`}
                 >
                   {tab.label}
@@ -81,28 +85,31 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
         </div>
 
         <button
+          type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors px-2 py-1 rounded hover:bg-white/5"
-          title="Copy code"
+          className="flex items-center gap-1.5 text-xs text-[var(--ordium-muted)] hover:text-white transition-colors px-2 py-1 rounded hover:bg-white/5"
+          title={t('ui.copy_code', 'Copy code')}
+          aria-label={copied ? t('ui.copied', 'Copied') : t('ui.copy_code', 'Copy code')}
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-[#10B981]" />
-              <span className="text-[#10B981]">Copied</span>
+              <Check className="w-3.5 h-3.5 text-[var(--ordium-success)]" />
+              <span className="text-[var(--ordium-success)]" role="status">{t('ui.copied', 'Copied')}</span>
             </>
           ) : (
             <>
               <Copy className="w-3.5 h-3.5" />
-              <span>Copy</span>
+              <span>{t('ui.copy', 'Copy')}</span>
             </>
           )}
         </button>
       </div>
 
       {/* Code Area */}
-      <div className="p-4 overflow-x-auto text-[#F8FAFC] leading-relaxed max-h-[420px]">
-        <pre className="selection:bg-[#6C5CE7]/40">
-          <code>{activeCode}</code>
+      {/* Code is always left-to-right, even inside Arabic pages; long lines scroll inside the block. */}
+      <div dir="ltr" className="p-4 overflow-auto text-[#F8FAFC] leading-relaxed max-h-[420px] text-left">
+        <pre dir="ltr" className="m-0 w-max min-w-full text-left whitespace-pre [unicode-bidi:isolate] selection:bg-[var(--ordium-accent)]/40">
+          <code dir="ltr" className="[unicode-bidi:isolate]">{activeCode}</code>
         </pre>
       </div>
     </div>

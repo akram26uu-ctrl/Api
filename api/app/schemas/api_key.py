@@ -13,6 +13,10 @@ AVAILABLE_API_KEY_SCOPES = {
     "keys:manage",
     "webhooks:manage",
     "audit:read",
+    "shipping:read",
+    "shipping:write",
+    "inventory:read",
+    "inventory:write",
 }
 
 

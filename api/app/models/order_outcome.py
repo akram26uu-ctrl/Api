@@ -52,6 +52,8 @@ class OrderOutcome(Base):
         default="merchant",
     )
 
+    reason: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+
     note: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,

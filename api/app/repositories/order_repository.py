@@ -1,12 +1,46 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.enums import OrderStatus
+from app.core.outcomes import BAD_OUTCOME_STATUSES, NON_BAD_REASONS
+from app.models.enums import MerchantStatus, OrderStatus
+from app.models.merchant import Merchant
 from app.models.order import Order
 from app.models.order_outcome import OrderOutcome
+
+# Minimum merchant age before its outcomes may influence cross-merchant
+# (global) reputation. Blocks fresh throw-away accounts from poisoning the
+# network reputation of an arbitrary phone/device/IP.
+GLOBAL_REPUTATION_MIN_MERCHANT_AGE_DAYS = 14
+
+
+def _bad_outcome_condition():
+    """SQL form of app.core.outcomes.is_bad_outcome for an OrderOutcome join."""
+    return and_(
+        OrderOutcome.outcome_status.in_(tuple(BAD_OUTCOME_STATUSES)),
+        or_(OrderOutcome.reason.is_(None), OrderOutcome.reason.not_in(tuple(NON_BAD_REASONS))),
+    )
+
+
+def _local_bad_order_condition():
+    """Order-level form of app.core.outcomes.is_bad_outcome for merchant-local
+    history: a cancelled/returned order, unless its outcome reason explains it
+    without blaming the buyer (stock, Ordium's own decision)."""
+    explained = exists().where(
+        OrderOutcome.order_id == Order.id,
+        OrderOutcome.reason.in_(tuple(NON_BAD_REASONS)),
+    )
+    return and_(Order.status.in_((OrderStatus.CANCELLED, OrderStatus.RETURNED)), ~explained)
+
+
+def _trusted_merchant_scope(statement):
+    cutoff = datetime.now(timezone.utc) - timedelta(days=GLOBAL_REPUTATION_MIN_MERCHANT_AGE_DAYS)
+    return statement.join(Merchant, Merchant.id == Order.merchant_id).where(
+        Merchant.status == MerchantStatus.ACTIVE,
+        Merchant.created_at <= cutoff,
+    )
 
 
 class OrderRepository:
@@ -75,28 +109,62 @@ class OrderRepository:
 
         return self.db.scalar(statement) or 0
 
-    def count_customer_cancelled_orders(
+    def customer_outcome_counts(
         self,
         merchant_id: UUID,
         customer_id: UUID,
         exclude_order_id: UUID | None = None,
         environment: str = "live",
-    ) -> int:
+    ) -> tuple[int, int, int]:
+        """(previous orders, orders with a known outcome, bad orders) in one query.
+
+        "Known outcome" (delivered, or a bad cancel/return) is the denominator
+        of the cancel/return rate: pending or in-transit orders say nothing
+        about the buyer yet, and counting them let a fraudster dilute their own
+        rate by placing more orders.
+        """
+        bad = _local_bad_order_condition()
         statement = select(
             func.count(Order.id),
+            func.count(Order.id).filter(or_(Order.status == OrderStatus.DELIVERED, bad)),
+            func.count(Order.id).filter(bad),
         ).where(
             Order.merchant_id == merchant_id,
             Order.environment == environment,
             Order.customer_id == customer_id,
-            Order.status == OrderStatus.CANCELLED,
         )
-
         if exclude_order_id is not None:
-            statement = statement.where(
-                Order.id != exclude_order_id,
-            )
+            statement = statement.where(Order.id != exclude_order_id)
+        previous, finalized, bad_count = self.db.execute(statement).one()
+        return int(previous or 0), int(finalized or 0), int(bad_count or 0)
 
-        return self.db.scalar(statement) or 0
+    def buyer_outcome_history(
+        self,
+        merchant_id: UUID,
+        customer_id: UUID,
+        phone_identifier_id: UUID,
+        exclude_order_id: UUID | None = None,
+        environment: str = "live",
+    ) -> tuple[int, int]:
+        """(delivered, bad) orders of this customer on this phone at this merchant.
+
+        Both must match: a known-good phone typed under someone else's name is
+        not that buyer's history.
+        """
+        bad = _local_bad_order_condition()
+        statement = select(
+            func.count(Order.id).filter(Order.status == OrderStatus.DELIVERED),
+            func.count(Order.id).filter(bad),
+        ).where(
+            Order.merchant_id == merchant_id,
+            Order.environment == environment,
+            Order.customer_id == customer_id,
+            Order.phone_identifier_id == phone_identifier_id,
+        )
+        if exclude_order_id is not None:
+            statement = statement.where(Order.id != exclude_order_id)
+        delivered, bad_count = self.db.execute(statement).one()
+        return int(delivered or 0), int(bad_count or 0)
 
     def count_phone_orders(
         self,
@@ -170,6 +238,7 @@ class OrderRepository:
         phone_identifier_id: UUID,
         exclude_order_id: UUID | None = None,
         environment: str = "live",
+        exclude_customer_id: UUID | None = None,
     ) -> int:
         statement = select(
             func.count(
@@ -187,6 +256,8 @@ class OrderRepository:
                 Order.id != exclude_order_id,
             )
 
+        if exclude_customer_id is not None:
+            statement = statement.where(Order.customer_id.is_distinct_from(exclude_customer_id))
         return self.db.scalar(statement) or 0
 
     def count_distinct_phones_for_device(
@@ -195,6 +266,7 @@ class OrderRepository:
         device_identifier_id: UUID,
         exclude_order_id: UUID | None = None,
         environment: str = "live",
+        exclude_phone_identifier_id: UUID | None = None,
     ) -> int:
         statement = select(
             func.count(
@@ -212,6 +284,8 @@ class OrderRepository:
                 Order.id != exclude_order_id,
             )
 
+        if exclude_phone_identifier_id is not None:
+            statement = statement.where(Order.phone_identifier_id.is_distinct_from(exclude_phone_identifier_id))
         return self.db.scalar(statement) or 0
 
     def count_orders_since(
@@ -234,6 +308,21 @@ class OrderRepository:
                 Order.id != exclude_order_id,
             )
 
+        return self.db.scalar(statement) or 0
+
+    def count_orders_in_ranges(
+        self,
+        merchant_id: UUID,
+        ranges: list[tuple[datetime, datetime]],
+        environment: str = "live",
+    ) -> int:
+        if not ranges:
+            return 0
+        statement = select(func.count(Order.id)).where(
+            Order.merchant_id == merchant_id,
+            Order.environment == environment,
+            or_(*(and_(Order.created_at >= start, Order.created_at < end) for start, end in ranges)),
+        )
         return self.db.scalar(statement) or 0
 
     def count_customer_orders_with_device(
@@ -267,6 +356,7 @@ class OrderRepository:
         exclude_order_id: UUID | None = None,
         environment: str = "live",
         since: datetime | None = None,
+        exclude_customer_id: UUID | None = None,
     ) -> int:
         statement = select(
             func.count(
@@ -287,6 +377,8 @@ class OrderRepository:
                 Order.id != exclude_order_id,
             )
 
+        if exclude_customer_id is not None:
+            statement = statement.where(Order.customer_id.is_distinct_from(exclude_customer_id))
         return self.db.scalar(statement) or 0
 
     def count_orders_for_ip_since(
@@ -347,6 +439,7 @@ class OrderRepository:
         since: datetime,
         environment: str = "live",
         exclude_order_id: UUID | None = None,
+        exclude_phone_identifier_id: UUID | None = None,
     ) -> int:
         statement = select(
             func.count(func.distinct(Order.phone_identifier_id))
@@ -361,6 +454,8 @@ class OrderRepository:
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
 
+        if exclude_phone_identifier_id is not None:
+            statement = statement.where(Order.phone_identifier_id.is_distinct_from(exclude_phone_identifier_id))
         return self.db.scalar(statement) or 0
 
     def count_customer_orders_since(
@@ -408,6 +503,7 @@ class OrderRepository:
     def count_distinct_customers_for_address(
         self, merchant_id: UUID, address_identifier_id: UUID,
         exclude_order_id: UUID | None = None, environment: str = "live",
+        exclude_customer_id: UUID | None = None,
     ) -> int:
         statement = select(func.count(func.distinct(Order.customer_id))).where(
             Order.merchant_id == merchant_id,
@@ -417,11 +513,14 @@ class OrderRepository:
         )
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
+        if exclude_customer_id is not None:
+            statement = statement.where(Order.customer_id.is_distinct_from(exclude_customer_id))
         return self.db.scalar(statement) or 0
 
     def count_distinct_customers_for_device(
         self, merchant_id: UUID, device_identifier_id: UUID,
         exclude_order_id: UUID | None = None, environment: str = "live",
+        exclude_customer_id: UUID | None = None,
     ) -> int:
         statement = select(func.count(func.distinct(Order.customer_id))).where(
             Order.merchant_id == merchant_id,
@@ -431,6 +530,8 @@ class OrderRepository:
         )
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
+        if exclude_customer_id is not None:
+            statement = statement.where(Order.customer_id.is_distinct_from(exclude_customer_id))
         return self.db.scalar(statement) or 0
 
     def create(
@@ -448,6 +549,7 @@ class OrderRepository:
             Order.environment == "live",
             Order.data_origin == "real",
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -462,6 +564,7 @@ class OrderRepository:
                 Order.data_origin == "real",
             )
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -474,9 +577,10 @@ class OrderRepository:
                 Order.phone_identifier_id == phone_identifier_id,
                 Order.environment == "live",
                 Order.data_origin == "real",
-                OrderOutcome.outcome_status.in_(("cancelled", "returned")),
+                _bad_outcome_condition(),
             )
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -489,9 +593,10 @@ class OrderRepository:
                 Order.phone_identifier_id == phone_identifier_id,
                 Order.environment == "live",
                 Order.data_origin == "real",
-                OrderOutcome.outcome_status.in_(("cancelled", "returned")),
+                _bad_outcome_condition(),
             )
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -502,6 +607,7 @@ class OrderRepository:
             Order.environment == "live",
             Order.data_origin == "real",
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -512,6 +618,7 @@ class OrderRepository:
             Order.environment == "live",
             Order.data_origin == "real",
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -526,6 +633,7 @@ class OrderRepository:
                 Order.data_origin == "real",
             )
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -538,9 +646,10 @@ class OrderRepository:
                 Order.device_identifier_id == device_identifier_id,
                 Order.environment == "live",
                 Order.data_origin == "real",
-                OrderOutcome.outcome_status.in_(("cancelled", "returned")),
+                _bad_outcome_condition(),
             )
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -553,9 +662,10 @@ class OrderRepository:
                 Order.device_identifier_id == device_identifier_id,
                 Order.environment == "live",
                 Order.data_origin == "real",
-                OrderOutcome.outcome_status.in_(("cancelled", "returned")),
+                _bad_outcome_condition(),
             )
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -566,6 +676,7 @@ class OrderRepository:
             Order.environment == "live",
             Order.data_origin == "real",
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -576,6 +687,7 @@ class OrderRepository:
             Order.environment == "live",
             Order.data_origin == "real",
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -590,6 +702,7 @@ class OrderRepository:
                 Order.data_origin == "real",
             )
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -602,9 +715,10 @@ class OrderRepository:
                 Order.ip_address == ip_address,
                 Order.environment == "live",
                 Order.data_origin == "real",
-                OrderOutcome.outcome_status.in_(("cancelled", "returned")),
+                _bad_outcome_condition(),
             )
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -617,9 +731,10 @@ class OrderRepository:
                 Order.ip_address == ip_address,
                 Order.environment == "live",
                 Order.data_origin == "real",
-                OrderOutcome.outcome_status.in_(("cancelled", "returned")),
+                _bad_outcome_condition(),
             )
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0
@@ -630,6 +745,7 @@ class OrderRepository:
             Order.environment == "live",
             Order.data_origin == "real",
         )
+        statement = _trusted_merchant_scope(statement)
         if exclude_order_id is not None:
             statement = statement.where(Order.id != exclude_order_id)
         return self.db.scalar(statement) or 0

@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
+from app.core.algeria_geo import location_mismatch
+from app.core.order_quality import identity_quality_issues, phone_issues
+from app.core.risk_config import SHARED_IP_WINDOW_DAYS, is_mobile_network
 from app.models.enums import RiskEventType
 from app.models.order import Order
 from app.models.risk_event import RiskEvent
@@ -24,6 +27,56 @@ class RiskRules:
         self.order_repository = order_repository
         self.profile = profile
 
+    # Merchant-wide frequency is only suspicious relative to the merchant's own
+    # normal traffic at the same time of day over the previous 7 days.
+    TRAFFIC_BASELINE_DAYS = 7
+    TRAFFIC_SPIKE_MULTIPLIER = 3.0
+    # Without comparable history (new merchant, quiet night hours) a flood is
+    # most anomalous, not least: fire on a large absolute burst instead.
+    COLD_START_BURST_MULTIPLIER = 3
+
+
+    # A phone that already paid for several delivered COD orders at this
+    # merchant is a proven buyer: its repeat usage is loyalty, not risk.
+    TRUSTED_MIN_DELIVERED = 3
+    TRUSTED_MAX_BAD_RATE = 0.20
+    TRUSTED_HISTORY_SCORE = -10
+
+    def evaluate_trusted_history(self, order: Order) -> RiskRuleResult:
+        if order.phone_identifier_id is None or order.customer_id is None:
+            return RiskRuleResult(score=0)
+        delivered, bad = self.order_repository.buyer_outcome_history(
+            merchant_id=order.merchant_id,
+            environment=order.environment,
+            customer_id=order.customer_id,
+            phone_identifier_id=order.phone_identifier_id,
+            exclude_order_id=order.id,
+        )
+        if delivered < self.TRUSTED_MIN_DELIVERED:
+            return RiskRuleResult(score=0)
+        bad_rate = bad / (delivered + bad)
+        if bad_rate > self.TRUSTED_MAX_BAD_RATE:
+            return RiskRuleResult(score=0)
+        return RiskRuleResult(
+            score=self.TRUSTED_HISTORY_SCORE,
+            event=RiskEvent(
+                event_type=RiskEventType.TRUSTED_CUSTOMER_HISTORY,
+                score_impact=self.TRUSTED_HISTORY_SCORE,
+                event_data={
+                    "delivered_orders": delivered,
+                    "bad_orders": bad,
+                    "bad_rate": round(bad_rate, 3),
+                    "minimum_delivered": self.TRUSTED_MIN_DELIVERED,
+                },
+            ),
+        )
+
+    @staticmethod
+    def _self_count(identifier) -> int:
+        """Distinct-entity counts are "other entities + the current one", so
+        the result no longer depends on whether this customer has history."""
+        return 1 if identifier is not None else 0
+
     def evaluate_high_cancel_rate(
         self,
         order: Order,
@@ -31,17 +84,8 @@ class RiskRules:
         if order.customer_id is None:
             return RiskRuleResult(score=0)
 
-        total_orders = (
-            self.order_repository.count_customer_orders(
-                merchant_id=order.merchant_id,
-                environment=order.environment,
-                customer_id=order.customer_id,
-                exclude_order_id=order.id,
-            )
-        )
-
-        cancelled_orders = (
-            self.order_repository.count_customer_cancelled_orders(
+        previous_orders, total_orders, cancelled_orders = (
+            self.order_repository.customer_outcome_counts(
                 merchant_id=order.merchant_id,
                 environment=order.environment,
                 customer_id=order.customer_id,
@@ -64,7 +108,8 @@ class RiskRules:
             event_type=RiskEventType.HIGH_CANCEL_RATE,
             score_impact=self.profile.high_cancel_rate_score,
             event_data={
-                "previous_orders": total_orders,
+                "previous_orders": previous_orders,
+                "finalized_orders": total_orders,
                 "cancelled_orders": cancelled_orders,
                 "cancellation_rate": cancellation_rate,
                 "threshold": self.profile.high_cancel_rate_threshold,
@@ -189,8 +234,9 @@ class RiskRules:
                 environment=order.environment,
                 phone_identifier_id=order.phone_identifier_id,
                 exclude_order_id=order.id,
+                exclude_customer_id=order.customer_id,
             )
-        )
+        ) + self._self_count(order.customer_id)
 
         if (
             customer_count
@@ -229,8 +275,9 @@ class RiskRules:
                 environment=order.environment,
                 device_identifier_id=order.device_identifier_id,
                 exclude_order_id=order.id,
+                exclude_phone_identifier_id=order.phone_identifier_id,
             )
-        )
+        ) + self._self_count(order.phone_identifier_id)
 
         if (
             phone_count
@@ -278,6 +325,29 @@ class RiskRules:
         if order_count < self.profile.high_order_frequency_count:
             return RiskRuleResult(score=0)
 
+        # Same time-of-day window on each of the previous N days, so normal
+        # daily peaks are part of the baseline.
+        baseline_orders = self.order_repository.count_orders_in_ranges(
+            merchant_id=order.merchant_id,
+            environment=order.environment,
+            ranges=[
+                (window_start - timedelta(days=day), order.created_at - timedelta(days=day))
+                for day in range(1, self.TRAFFIC_BASELINE_DAYS + 1)
+            ],
+        )
+        count = self.profile.high_order_frequency_count
+        expected_per_window = baseline_orders / self.TRAFFIC_BASELINE_DAYS
+        # With little comparable history a launch/promo cannot be told from
+        # an attack at the normal bar, so demand a larger absolute burst. The
+        # extra margin shrinks linearly to zero as history reaches `count`,
+        # so one more historical order never moves the bar by a jump.
+        history_gap = max(0.0, 1.0 - baseline_orders / count) if count else 0.0
+        cold_start_floor = count * self.COLD_START_BURST_MULTIPLIER * history_gap
+        spike_threshold = max(expected_per_window * self.TRAFFIC_SPIKE_MULTIPLIER, cold_start_floor, count - 1)
+        baseline_status = "available" if history_gap == 0 else "insufficient"
+        if order_count <= spike_threshold:
+            return RiskRuleResult(score=0)
+
         event = RiskEvent(
             event_type=RiskEventType.HIGH_ORDER_FREQUENCY,
             score_impact=self.profile.high_order_frequency_score,
@@ -289,6 +359,10 @@ class RiskRules:
                 "threshold": (
                     self.profile.high_order_frequency_count
                 ),
+                "expected_orders_in_window": round(expected_per_window, 3),
+                "spike_multiplier": self.TRAFFIC_SPIKE_MULTIPLIER,
+                "baseline": baseline_status,
+                "spike_threshold": round(spike_threshold, 3),
             },
         )
 
@@ -356,8 +430,14 @@ class RiskRules:
     def evaluate_multiple_customers_same_ip(
         self,
         order: Order,
+        network_result: NetworkIntelResult | None = None,
     ) -> RiskRuleResult:
         if not order.ip_address:
+            return RiskRuleResult(score=0)
+        # Mobile carriers put many unrelated shoppers behind one address
+        # (CGNAT). Over a 7-day window that is normal; the short-window burst
+        # rule still catches a real ring on one mobile IP.
+        if is_mobile_network(network_result):
             return RiskRuleResult(score=0)
 
         customer_count = (
@@ -367,8 +447,10 @@ class RiskRules:
                 environment=order.environment,
                 ip_address=order.ip_address,
                 exclude_order_id=order.id,
+                exclude_customer_id=order.customer_id,
+                since=order.created_at - timedelta(days=SHARED_IP_WINDOW_DAYS),
             )
-        )
+        ) + self._self_count(order.customer_id)
 
         if (
             customer_count
@@ -384,6 +466,7 @@ class RiskRules:
                 "threshold": (
                     self.profile.multiple_customers_same_ip_threshold
                 ),
+                "window_days": SHARED_IP_WINDOW_DAYS,
             },
         )
 
@@ -489,14 +572,16 @@ class RiskRules:
             ip_address=order.ip_address,
             since=window_start,
             exclude_order_id=order.id,
-        )
+            exclude_customer_id=order.customer_id,
+        ) + self._self_count(order.customer_id)
         distinct_phones = self.order_repository.count_distinct_phones_for_ip_since(
             merchant_id=order.merchant_id,
             ip_address=order.ip_address,
             since=window_start,
             environment=order.environment,
             exclude_order_id=order.id,
-        )
+            exclude_phone_identifier_id=order.phone_identifier_id,
+        ) + self._self_count(order.phone_identifier_id)
 
         if (
             distinct_customers < self.profile.burst_ip_customer_threshold
@@ -580,7 +665,8 @@ class RiskRules:
         count = self.order_repository.count_distinct_customers_for_address(
             merchant_id=order.merchant_id, address_identifier_id=order.address_identifier_id,
             exclude_order_id=order.id, environment=order.environment,
-        )
+            exclude_customer_id=order.customer_id,
+        ) + self._self_count(order.customer_id)
         if count < self.profile.multiple_customers_same_address_threshold:
             return RiskRuleResult(score=0)
         return RiskRuleResult(
@@ -598,7 +684,8 @@ class RiskRules:
         count = self.order_repository.count_distinct_customers_for_device(
             merchant_id=order.merchant_id, device_identifier_id=order.device_identifier_id,
             exclude_order_id=order.id, environment=order.environment,
-        )
+            exclude_customer_id=order.customer_id,
+        ) + self._self_count(order.customer_id)
         if count < self.profile.multiple_customers_same_device_threshold:
             return RiskRuleResult(score=0)
         return RiskRuleResult(
@@ -703,8 +790,12 @@ class RiskRules:
             ),
         )
 
-    def evaluate_global_ip_reputation(self, order: Order) -> RiskRuleResult:
+    def evaluate_global_ip_reputation(self, order: Order, network_result: NetworkIntelResult | None = None) -> RiskRuleResult:
         if not order.ip_address or order.environment != "live":
+            return RiskRuleResult(score=0)
+        # A CGNAT mobile address is shared by a whole region's subscribers;
+        # its cross-merchant history is not this shopper's history.
+        if is_mobile_network(network_result):
             return RiskRuleResult(score=0)
         total = self.order_repository.count_global_evaluated_orders_for_ip(order.ip_address, exclude_order_id=order.id)
         merchants = self.order_repository.count_global_merchants_for_ip(order.ip_address, exclude_order_id=order.id)
@@ -828,6 +919,58 @@ class RiskRules:
             ),
         )
 
+    def evaluate_identity_quality(self, order: Order, submitted_address: str | None = None) -> RiskRuleResult:
+        if self.profile.low_quality_identity_score <= 0:  # disabled by the merchant
+            return RiskRuleResult(score=0)
+        # The street exactly as typed (the stored address key is normalized and
+        # joined with commune/wilaya, so it cannot be judged reliably).
+        issues = identity_quality_issues(order.first_name, order.last_name, submitted_address)
+        if not issues:
+            return RiskRuleResult(score=0)
+        score = self.profile.low_quality_identity_score
+        return RiskRuleResult(
+            score=score,
+            event=RiskEvent(
+                event_type=RiskEventType.LOW_QUALITY_IDENTITY,
+                score_impact=score,
+                event_data={"issues": issues},
+            ),
+        )
+
+    def evaluate_phone_pattern(self, order: Order) -> RiskRuleResult:
+        if self.profile.suspicious_phone_score <= 0:
+            return RiskRuleResult(score=0)
+        phone = order.phone_identifier.phone if order.phone_identifier is not None else None
+        issues = phone_issues(phone or "")
+        if not issues:
+            return RiskRuleResult(score=0)
+        score = self.profile.suspicious_phone_score
+        return RiskRuleResult(
+            score=score,
+            event=RiskEvent(
+                event_type=RiskEventType.SUSPICIOUS_PHONE_NUMBER,
+                score_impact=score,
+                event_data={"issues": issues},
+            ),
+        )
+
+    def evaluate_address_location(self, order: Order) -> RiskRuleResult:
+        address = order.address_identifier
+        if address is None or self.profile.address_location_mismatch_score <= 0:
+            return RiskRuleResult(score=0)
+        evidence = location_mismatch(address.wilaya, address.commune)
+        if evidence is None:
+            return RiskRuleResult(score=0)
+        score = self.profile.address_location_mismatch_score
+        return RiskRuleResult(
+            score=score,
+            event=RiskEvent(
+                event_type=RiskEventType.ADDRESS_LOCATION_MISMATCH,
+                score_impact=score,
+                event_data={"wilaya": address.wilaya, "commune": address.commune, **evidence},
+            ),
+        )
+
     def evaluate_vpn(
         self,
         order: Order,
@@ -881,6 +1024,7 @@ class RiskRules:
         order: Order,
         network_result: NetworkIntelResult | None = None,
         business_context: dict | None = None,
+        submitted_address: str | None = None,
     ) -> list[RiskRuleResult]:
         return [
             self.evaluate_high_cancel_rate(order),
@@ -891,7 +1035,7 @@ class RiskRules:
             self.evaluate_multiple_phones_same_device(order),
             self.evaluate_high_order_frequency(order),
             self.evaluate_new_device(order),
-            self.evaluate_multiple_customers_same_ip(order),
+            self.evaluate_multiple_customers_same_ip(order, network_result),
             self.evaluate_high_ip_frequency(order),
             self.evaluate_duplicate_order_pattern(order),
             self.evaluate_burst_network_activity(order),
@@ -907,7 +1051,11 @@ class RiskRules:
             self.evaluate_bot_activity(order, network_result),
             self.evaluate_global_phone_reputation(order),
             self.evaluate_global_device_reputation(order),
-            self.evaluate_global_ip_reputation(order),
+            self.evaluate_global_ip_reputation(order, network_result),
             self.evaluate_unusual_order_quantity(order, business_context),
             self.evaluate_unusual_order_value(order, business_context),
+            self.evaluate_trusted_history(order),
+            self.evaluate_identity_quality(order, submitted_address),
+            self.evaluate_phone_pattern(order),
+            self.evaluate_address_location(order),
         ]

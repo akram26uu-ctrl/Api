@@ -1,12 +1,12 @@
 /**
- * ORDIUM Risk Badge
- * Displays ALLOW (emerald), REVIEW (amber), and REJECT (red) decisions
- * with restrained, high-end technical styling.
+ * ORDIUM Risk Badge — the engine's decision in the merchant's language.
+ * Icon + text carry the meaning; color only reinforces it.
  */
 
 import React from 'react';
 import { RiskDecision } from '../../lib/api/types';
 import { CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface RiskBadgeProps {
   decision?: RiskDecision;
@@ -14,51 +14,22 @@ interface RiskBadgeProps {
   showIcon?: boolean;
 }
 
-export const RiskBadge: React.FC<RiskBadgeProps> = ({
-  decision = 'ALLOW',
-  size = 'md',
-  showIcon = true
-}) => {
-  const sizeClasses = {
-    sm: 'text-[10px] px-2 py-0.5 gap-1 font-mono',
-    md: 'text-xs px-2.5 py-1 gap-1.5 font-mono',
-    lg: 'text-sm px-3.5 py-1.5 gap-2 font-mono'
-  };
+const STYLES: Record<RiskDecision, { icon: typeof CheckCircle2; className: string; key: string; fallback: string }> = {
+  ALLOW: { icon: CheckCircle2, key: 'dashboard.decision.allow', fallback: 'مقبولة', className: 'bg-[var(--ordium-success)]/12 text-[var(--ordium-success)] border-[var(--ordium-success)]/30' },
+  REVIEW: { icon: AlertTriangle, key: 'dashboard.decision.review', fallback: 'مراجعة', className: 'bg-[var(--ordium-warning)]/12 text-[var(--ordium-warning)] border-[var(--ordium-warning)]/30' },
+  REJECT: { icon: XCircle, key: 'dashboard.decision.reject', fallback: 'مرفوضة', className: 'bg-[var(--ordium-danger)]/12 text-[var(--ordium-danger)] border-[var(--ordium-danger)]/30' },
+};
 
-  const iconSizes = {
-    sm: 'w-3 h-3',
-    md: 'w-3.5 h-3.5',
-    lg: 'w-4 h-4'
-  };
-
-  if (decision === 'ALLOW') {
-    return (
-      <span
-        className={`inline-flex items-center font-semibold rounded border whitespace-nowrap bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 ${sizeClasses[size]}`}
-      >
-        {showIcon && <CheckCircle2 className={iconSizes[size]} />}
-        <span>ALLOW</span>
-      </span>
-    );
-  }
-
-  if (decision === 'REVIEW') {
-    return (
-      <span
-        className={`inline-flex items-center font-semibold rounded border whitespace-nowrap bg-[#F59E0B]/15 text-[#F59E0B] border-[#F59E0B]/30 ${sizeClasses[size]}`}
-      >
-        {showIcon && <AlertTriangle className={iconSizes[size]} />}
-        <span>REVIEW</span>
-      </span>
-    );
-  }
-
+export const RiskBadge: React.FC<RiskBadgeProps> = ({ decision = 'ALLOW', size = 'md', showIcon = true }) => {
+  const { t } = useLanguage();
+  const style = STYLES[decision] ?? STYLES.REJECT;
+  const Icon = style.icon;
+  const sizeClasses = { sm: 'text-xs px-2 py-0.5 gap-1', md: 'text-xs px-2.5 py-1 gap-1.5', lg: 'text-sm px-3.5 py-1.5 gap-2' };
+  const iconSizes = { sm: 'w-3 h-3', md: 'w-3.5 h-3.5', lg: 'w-4 h-4' };
   return (
-    <span
-      className={`inline-flex items-center font-semibold rounded border whitespace-nowrap bg-[#EF4444]/15 text-[#EF4444] border-[#EF4444]/30 ${sizeClasses[size]}`}
-    >
-      {showIcon && <XCircle className={iconSizes[size]} />}
-      <span>REJECT</span>
+    <span className={`inline-flex items-center font-semibold rounded-md border whitespace-nowrap ${style.className} ${sizeClasses[size]}`}>
+      {showIcon && <Icon className={iconSizes[size]} aria-hidden="true" />}
+      <span>{t(style.key, style.fallback)}</span>
     </span>
   );
 };
