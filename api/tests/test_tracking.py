@@ -11,11 +11,12 @@ from app.db.database import SessionLocal
 from app.main import app
 from app.models.enums import OrderStatus
 from app.models.order_outcome import OrderOutcome
-from app.models.product import Product, StockLevel
+from app.models.product import Product
 from app.models.shipment import Shipment, ShipmentEvent
 from app.models.webhook_delivery import WebhookDelivery
 from app.models.webhook_endpoint import WebhookEndpoint
 from app.services import outcome_service
+from app.services.inventory_service import InventoryService
 from app.services.carrier_account_service import CarrierAccountService
 from app.services.carriers import sandbox
 from app.services.carriers.base import TrackingEvent
@@ -24,7 +25,6 @@ from app.services.tracking_service import TrackingService
 from tests.test_dispatch_worker import _world, _shipment, _product, _wh
 
 client = TestClient(app)
-T0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 
 @pytest.fixture
@@ -75,8 +75,6 @@ def test_late_in_transit_after_delivered_is_logged_not_applied(db):
 
 def test_delivered_records_outcome_and_consumes_stock(db):
     s, order, level, _a = _accepted(db, items=[("TR-1", 3)])
-    from app.services.inventory_service import InventoryService
-    from app.models.order_item import OrderItem
     p = db.query(Product).filter_by(sku="TR-1").one()
     assert s.meta["stock"] == "reserved"
     TrackingService(db).apply_events(s, [_ev("delivered")], "webhook")
@@ -90,7 +88,6 @@ def test_delivered_records_outcome_and_consumes_stock(db):
 
 def test_returned_restocks_even_with_manual_outcome(db):
     s, order, level, _a = _accepted(db, items=[("TR-2", 3)])
-    from app.services.inventory_service import InventoryService
     p = db.query(Product).filter_by(sku="TR-2").one()
     inv = InventoryService(db)
     inv.consume(s)
@@ -104,7 +101,6 @@ def test_returned_restocks_even_with_manual_outcome(db):
 
 def test_returned_with_reserved_stock_releases(db):
     s, order, level, _a = _accepted(db, items=[("TR-3", 2)])
-    from app.services.inventory_service import InventoryService
     p = db.query(Product).filter_by(sku="TR-3").one()
     assert s.meta["stock"] == "reserved"
     TrackingService(db).apply_events(s, [_ev("returned")], "webhook")
@@ -144,7 +140,6 @@ def _committed_world(token="test_tok"):
     with SessionLocal() as db:
         merchant, store, acc = _world(db)
         acc.credentials_encrypted = CarrierAccountService.encrypt_credentials({"api_token": token})
-        s, order, _l, _a = None, None, None, None
         s, order = _shipment(db, merchant, store)
         s.status, s.tracking_number, s.carrier_account_id = "accepted", f"W-{uuid4().hex[:6]}", acc.id
         db.commit()
@@ -214,7 +209,6 @@ def test_sync_inventory_isolates_account_errors(db, monkeypatch):
     merchant, store, bad = _world(db)
     from tests.test_dispatch_worker import _account
     good = _account(db, merchant, store)
-    calls = []
 
     class Fake:
         def __init__(self, fail): self.fail = fail
@@ -223,9 +217,59 @@ def test_sync_inventory_isolates_account_errors(db, monkeypatch):
                 raise CarrierUnavailable("down")
             return []
 
-    monkeypatch.setattr(CarrierAccountService, "adapter_for",
-                        lambda self, acc: Fake(acc.id == bad.id) if not calls.append(acc.id) else None)
+    def adapter_for(self, account):
+        return Fake(account.id == bad.id)
+
+    monkeypatch.setattr(CarrierAccountService, "adapter_for", adapter_for)
     counts = sync_inventory.run(db)
     assert counts["errors"] >= 1 and counts["synced"] >= 1
     db.refresh(bad); db.refresh(good)
     assert "down" in bad.last_error and good.last_error is None and good.last_sync_at is not None
+
+
+def test_returned_after_delivered_restocks_and_flips_carrier_outcome(db):
+    s, order, level, _a = _accepted(db, items=[("TR-4", 3)])
+    svc = TrackingService(db)
+    svc.apply_events(s, [_ev("delivered", -2)], "poll")
+    assert level.on_hand == 7 and order.status == OrderStatus.DELIVERED
+    svc.apply_events(s, [_ev("returning", -1)], "poll")
+    svc.apply_events(s, [_ev("returned")], "poll")
+    db.refresh(level)
+    assert s.status == "returned" and level.on_hand == 10 and s.meta["stock"] == "restocked"
+    assert order.status == OrderStatus.RETURNED
+    outcome = db.query(OrderOutcome).filter_by(order_id=order.id).one()
+    assert (outcome.outcome_status, outcome.reason, outcome.source) == ("returned", "customer_refused", "carrier")
+
+
+def test_returned_after_delivered_keeps_manual_outcome(db):
+    s, order, level, _a = _accepted(db, items=[("TR-5", 3)])
+    outcome_service.record_outcome(db, order, "delivered", source="manual")
+    InventoryService(db).consume(s)
+    s.status = "delivered"
+    db.flush()
+    TrackingService(db).apply_events(s, [_ev("returned")], "webhook")
+    db.refresh(level)
+    assert s.status == "returned" and level.on_hand == 10
+    outcome = db.query(OrderOutcome).filter_by(order_id=order.id).one()
+    assert (outcome.outcome_status, outcome.source) == ("delivered", "manual")
+    assert order.status == OrderStatus.DELIVERED
+
+
+def test_returned_not_applied_after_cancelled(db):
+    s, order, _l, _a = _accepted(db)
+    svc = TrackingService(db)
+    svc.apply_events(s, [_ev("cancelled", -1)], "webhook")
+    svc.apply_events(s, [_ev("returned")], "webhook")
+    assert s.status == "cancelled"
+
+
+def test_poll_error_does_not_touch_account_last_error(db, monkeypatch):
+    s, _order, _l, acc = _accepted(db)
+
+    def boom(self, account):
+        raise RuntimeError("nope")
+
+    monkeypatch.setattr(CarrierAccountService, "adapter_for", boom)
+    assert TrackingService(db).sync_active()["errors"] >= 1
+    db.refresh(acc)
+    assert acc.last_error is None

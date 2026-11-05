@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timezone
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.carrier_account import CarrierAccount
@@ -13,7 +14,10 @@ from app.services.carrier_account_service import CarrierAccountService
 from app.services.carriers.base import STATUS_RANK, TrackingEvent
 from app.services.dispatch_service import enqueue_shipment_updated
 from app.services.inventory_service import InventoryService
-from app.services.outcome_service import OutcomeExists, record_outcome
+from app.services.outcome_service import STATUS_MAP, OutcomeExists, record_outcome
+from app.repositories.order_outcome_repository import OrderOutcomeRepository
+from app.repositories.risk_assessment_repository import RiskAssessmentRepository
+from app.services.risk_evaluation_service import RiskEvaluationService
 from app.services.shipping_service import ShippingService
 from app.services.shipping_settings_service import ShippingSettingsService
 
@@ -21,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 POLLED_STATUSES = ("accepted", "picked_up", "in_transit", "out_for_delivery",
                    "delivery_attempt_failed", "returning")
-ERROR_LIMIT = 500
 
 
 def _aware(value: datetime) -> datetime:
@@ -43,15 +46,25 @@ class TrackingService:
                 shipment_id=shipment.id, dedupe_key=event.dedupe_key).first()
             if exists is not None:
                 continue
-            self.db.add(ShipmentEvent(
-                shipment_id=shipment.id, status=event.status, raw_status=event.raw_status,
-                location=event.location, occurred_at=event.occurred_at, source=source,
-                dedupe_key=event.dedupe_key))
-            self.db.flush()
+            try:
+                with self.db.begin_nested():
+                    self.db.add(ShipmentEvent(
+                        shipment_id=shipment.id, status=event.status, raw_status=event.raw_status,
+                        location=event.location, occurred_at=event.occurred_at, source=source,
+                        dedupe_key=event.dedupe_key))
+            except IntegrityError:
+                continue  # inserted concurrently: a duplicate
             new += 1
-            if STATUS_RANK.get(event.status, -1) > STATUS_RANK.get(shipment.status, -1):
+            if self._advances(shipment.status, event.status):
                 self._advance(shipment, event)
         return new
+
+    @staticmethod
+    def _advances(current: str, new: str) -> bool:
+        if STATUS_RANK.get(new, -1) > STATUS_RANK.get(current, -1):
+            return True
+        # Carriers correct a "delivered" parcel that was actually refused.
+        return current == "delivered" and new in ("returning", "returned")
 
     # ---- transitions --------------------------------------------------
     def _advance(self, shipment: Shipment, event: TrackingEvent) -> None:
@@ -70,7 +83,7 @@ class TrackingService:
                 self.inventory.restock(shipment)
             elif state == "reserved":
                 self.inventory.release(shipment)
-            self._outcome(order, "returned", event, reason="customer_refused")
+            self._outcome(order, "returned", event, reason="customer_refused", correct=True)
         elif event.status == "cancelled":
             self.inventory.release(shipment)
         if event.status in ("delivery_attempt_failed", "returned"):
@@ -81,14 +94,27 @@ class TrackingService:
                                      account.carrier_code if account else None)
         self.db.flush()
 
-    def _outcome(self, order: Order | None, status: str, event: TrackingEvent, reason: str | None = None) -> None:
+    def _outcome(self, order: Order | None, status: str, event: TrackingEvent, reason: str | None = None,
+                 correct: bool = False) -> None:
         if order is None:
             return
         occurred = max(_aware(event.occurred_at), _aware(order.created_at))
         try:
             record_outcome(self.db, order, status, source="carrier", reason=reason, occurred_at=occurred)
         except OutcomeExists:
-            pass
+            if correct:
+                self._correct_outcome(order, status, reason, occurred)
+
+    def _correct_outcome(self, order: Order, status: str, reason: str | None, occurred: datetime) -> None:
+        """Delivered turned out to be refused: flip a carrier-written outcome (never another source)."""
+        outcome = OrderOutcomeRepository(self.db).get_by_order_id(order.id)
+        if outcome is None or outcome.source != "carrier" or outcome.outcome_status == status:
+            return
+        outcome.outcome_status, outcome.reason, outcome.occurred_at = status, reason, occurred
+        order.status = STATUS_MAP[status]
+        self.db.flush()
+        assessment = RiskAssessmentRepository(self.db).get_latest_for_order(order.id)
+        RiskEvaluationService(self.db).record_from_outcome(order=order, assessment=assessment, outcome=outcome)
 
     def _notify_failure(self, shipment: Shipment, status: str) -> None:
         if shipment.store_id is not None and not ShippingSettingsService(self.db).get_or_default(
@@ -124,8 +150,6 @@ class TrackingService:
             except Exception as exc:
                 logger.warning("tracking poll failed shipment=%s: %s", shipment.id, exc)
                 counts["errors"] += 1
-                if account is not None:
-                    account.last_error = f"{exc.__class__.__name__}: {exc}"[:ERROR_LIMIT]
             if commit is not None:
                 commit()
         self.db.flush()

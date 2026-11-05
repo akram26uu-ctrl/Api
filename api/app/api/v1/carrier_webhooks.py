@@ -2,6 +2,7 @@
 import logging
 from uuid import UUID
 
+from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -38,22 +39,27 @@ async def receive_carrier_webhook(carrier_code: str, account_id: UUID, request: 
     except CarrierError:
         raise HTTPException(status_code=400, detail="Invalid payload")
 
-    by_tracking: dict[str, list] = {}
-    for tracking, event in parsed:
-        by_tracking.setdefault(tracking, []).append(event)
-    accepted = 0
     try:
-        service = TrackingService(db)
-        for tracking, events in by_tracking.items():
-            shipment = db.query(Shipment).filter(
-                Shipment.carrier_account_id == account.id, Shipment.tracking_number == tracking,
-            ).order_by(Shipment.created_at.desc()).first()
-            if shipment is None:
-                continue
-            accepted += service.apply_events(shipment, events, "webhook")
-        db.commit()
+        accepted = await run_in_threadpool(_apply, db, account, parsed)
     except Exception:
         db.rollback()
         logger.exception("carrier webhook processing failed")
         raise HTTPException(status_code=500, detail="Processing failed")
     return {"accepted": accepted}
+
+
+def _apply(db: Session, account: CarrierAccount, parsed: list) -> int:
+    by_tracking: dict[str, list] = {}
+    for tracking, event in parsed:
+        by_tracking.setdefault(tracking, []).append(event)
+    accepted = 0
+    service = TrackingService(db)
+    for tracking, events in by_tracking.items():
+        shipment = db.query(Shipment).filter(
+            Shipment.carrier_account_id == account.id, Shipment.tracking_number == tracking,
+        ).order_by(Shipment.created_at.desc()).first()
+        if shipment is None:
+            continue
+        accepted += service.apply_events(shipment, events, "webhook")
+    db.commit()
+    return accepted
