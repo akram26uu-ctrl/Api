@@ -1,3 +1,4 @@
+import logging
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -20,9 +21,14 @@ from app.services.carriers.base import CarrierAdapter, StockInfo
 on_stock_increased: Callable[[set], None] = lambda product_ids: None
 
 SALES_WINDOW_DAYS = 14
+logger = logging.getLogger(__name__)
 
 
 class InsufficientStock(Exception):
+    pass
+
+
+class AlreadyAllocated(Exception):
     pass
 
 
@@ -130,11 +136,35 @@ class InventoryService:
         for account in accounts:
             try:
                 self.import_carrier_stock(account, adapter_for(account).list_stock())
-            except CarrierError:
-                continue
+            except CarrierError as exc:
+                self._stock_error(account, exc)
+
+    def _stock_error(self, account: CarrierAccount, exc: Exception) -> None:
+        logger.warning("carrier stock import failed for account %s: %s", account.id, exc)
+        account.last_error = str(exc)[:500]
+        self.db.flush()
+
+    def import_for_account(self, account: CarrierAccount, adapter: CarrierAdapter) -> None:
+        from app.services.carriers.base import CarrierError
+        try:
+            stock = adapter.list_stock()
+        except CarrierError as exc:
+            self._stock_error(account, exc)
+            return
+        self.import_carrier_stock(account, stock)
 
     # ---- reservations -------------------------------------------------
+    @staticmethod
+    def _stock_state(shipment: Shipment) -> str | None:
+        return (shipment.meta or {}).get("stock")
+
+    @staticmethod
+    def _set_state(shipment: Shipment, state: str) -> None:
+        shipment.meta = {**(shipment.meta or {}), "stock": state}
+
     def reserve(self, shipment: Shipment, allocations: list[tuple[Product, UUID | None, int]]) -> None:
+        if self._stock_state(shipment) in ("reserved", "consumed"):
+            raise AlreadyAllocated(str(shipment.id))
         merged: dict[tuple, int] = defaultdict(int)
         for product, warehouse_id, qty in allocations:
             merged[(product.id, warehouse_id)] += int(qty)
@@ -148,6 +178,7 @@ class InventoryService:
             {"product_id": str(pid), "warehouse_id": str(wid) if wid else None, "quantity": qty}
             for (pid, wid), qty in merged.items()
         ]
+        self._set_state(shipment, "reserved")
         self.db.flush()
 
     @staticmethod
@@ -156,13 +187,18 @@ class InventoryService:
             yield UUID(a["product_id"]), (UUID(a["warehouse_id"]) if a.get("warehouse_id") else None), int(a["quantity"])
 
     def release(self, shipment: Shipment) -> None:
+        if self._stock_state(shipment) != "reserved":
+            return
         for product_id, warehouse_id, qty in self._parsed(shipment):
             level = self._level(product_id, warehouse_id)
             if level is not None:
                 level.reserved = max(0, level.reserved - qty)
+        self._set_state(shipment, "released")
         self.db.flush()
 
     def consume(self, shipment: Shipment) -> None:
+        if self._stock_state(shipment) != "reserved":
+            return
         for product_id, warehouse_id, qty in self._parsed(shipment):
             level = self._level(product_id, warehouse_id)
             if level is None:
@@ -170,14 +206,18 @@ class InventoryService:
             level.reserved = max(0, level.reserved - qty)
             level.on_hand = max(level.reserved, level.on_hand - qty)
             self._move(product_id, warehouse_id, -qty, "shipment", shipment_id=shipment.id)
+        self._set_state(shipment, "consumed")
         self.db.flush()
 
     def restock(self, shipment: Shipment) -> None:
+        if self._stock_state(shipment) != "consumed":
+            return
         increased: set = set()
         for product_id, warehouse_id, qty in self._parsed(shipment):
             self._level(product_id, warehouse_id, create=True).on_hand += qty
             self._move(product_id, warehouse_id, qty, "return", shipment_id=shipment.id)
             increased.add(product_id)
+        self._set_state(shipment, "restocked")
         self.db.flush()
         if increased:
             on_stock_increased(increased)
@@ -188,18 +228,23 @@ class InventoryService:
             StockLevel.product_id == product_id).scalar()
         return int(row or 0)
 
-    def daily_average(self, product: Product) -> float:
+    def daily_averages(self, store_id: UUID) -> dict[str, float]:
         since = datetime.now(timezone.utc) - timedelta(days=SALES_WINDOW_DAYS)
-        key = self.normalize_sku(product.sku)
         rows = self.db.query(OrderItem.sku, OrderItem.quantity).join(Order, Order.id == OrderItem.order_id).filter(
-            Order.store_id == product.store_id, Order.created_at >= since,
+            Order.store_id == store_id, Order.created_at >= since,
             Order.status.in_([OrderStatus.SHIPPED, OrderStatus.DELIVERED])).all()
-        total = sum(q for sku, q in rows if self.normalize_sku(sku) == key)
-        return total / SALES_WINDOW_DAYS
+        totals: dict[str, int] = defaultdict(int)
+        for sku, qty in rows:
+            key = self.normalize_sku(sku)
+            if key:
+                totals[key] += qty
+        return {k: v / SALES_WINDOW_DAYS for k, v in totals.items()}
 
-    def is_low(self, product: Product) -> bool:
+    def is_low(self, product: Product, averages: dict[str, float] | None = None) -> bool:
         from app.services.shipping_settings_service import ShippingSettingsService
-        avg = self.daily_average(product)
+        if averages is None:
+            averages = self.daily_averages(product.store_id)
+        avg = averages.get(self.normalize_sku(product.sku) or "", 0)
         if avg <= 0:
             return False
         available = self.total_available(product.id)
@@ -210,6 +255,8 @@ class InventoryService:
 
     # ---- deposits -------------------------------------------------------
     def receive_deposit(self, deposit: StockDeposit) -> None:
+        # Lock and refresh the row so a concurrent receive sees the final status.
+        self.db.query(StockDeposit).filter(StockDeposit.id == deposit.id).with_for_update().populate_existing().first()
         if deposit.status == "received":
             return
         account = self.db.get(CarrierAccount, deposit.carrier_account_id)
@@ -233,19 +280,3 @@ class InventoryService:
         if increased:
             on_stock_increased(increased)
 
-
-def _wire_on_linked() -> None:
-    from app.services import carrier_account_service
-
-    def hook(db, account, adapter):
-        from app.services.carriers.base import CarrierError
-        try:
-            stock = adapter.list_stock()
-        except CarrierError:
-            return  # linking succeeds; stock can be refreshed later
-        InventoryService(db).import_carrier_stock(account, stock)
-
-    carrier_account_service.on_linked = hook
-
-
-_wire_on_linked()

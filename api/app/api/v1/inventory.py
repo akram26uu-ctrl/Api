@@ -159,6 +159,7 @@ def list_stock(store_id: str | None = Query(default=None), refresh: int = Query(
                 continue
             levels.setdefault(level.product_id, []).append((level, wh_name))
     linked = {row[0] for row in db.query(ProductCarrierLink.product_id).filter(ProductCarrierLink.product_id.in_(ids))} if ids else set()
+    averages = {sid: service.daily_averages(sid) for sid in {p.store_id for p in products}}
     result = []
     for p in products:
         locs = sorted(levels.get(p.id, []), key=lambda x: x[1] or "")
@@ -166,7 +167,7 @@ def list_stock(store_id: str | None = Query(default=None), refresh: int = Query(
         reserved = sum(l.reserved for l, _ in locs)
         inbound = sum(l.inbound for l, _ in locs)
         available = on_hand - reserved
-        low = service.is_low(p) if p.fulfillment == "carrier" else False
+        low = service.is_low(p, averages[p.store_id]) if p.fulfillment == "carrier" else False
         if p.fulfillment == "merchant":
             state = "merchant"
         elif p.id not in linked:

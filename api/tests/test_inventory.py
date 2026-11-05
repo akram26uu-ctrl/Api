@@ -270,3 +270,67 @@ def test_unmapped_products_endpoint():
         db.commit()
     r = client.get(f"/api/v1/inventory/products/unmapped?store_id={store_id}", headers=h)
     assert r.status_code == 200 and r.json() == [{"sku": "zed-1", "name": "Zed"}]
+
+
+def _level_of(db, p):
+    db.expire_all()
+    lv = db.query(StockLevel).filter_by(product_id=p.id).one()
+    return lv.on_hand, lv.reserved
+
+
+def test_allocation_operations_are_idempotent(ctx):
+    from app.services.inventory_service import AlreadyAllocated
+    db, merchant_id, store_id, _ = ctx
+    p = _product(db, merchant_id, store_id, on_hand=10)
+    s1, _ = _shipment(db, merchant_id, store_id)
+    s2, _ = _shipment(db, merchant_id, store_id)
+    svc = InventoryService(db)
+    svc.reserve(s1, [(p, None, 2)])
+    svc.reserve(s2, [(p, None, 3)])
+    with pytest.raises(AlreadyAllocated):
+        svc.reserve(s1, [(p, None, 1)])
+    svc.release(s1)
+    svc.release(s1)  # double release must not free s2's reservation
+    assert _level_of(db, p) == (10, 3)
+    svc.consume(s1)  # after release: no-op
+    assert _level_of(db, p) == (10, 3)
+    svc.consume(s2)
+    svc.consume(s2)
+    assert _level_of(db, p) == (7, 0)
+    svc.restock(s1)  # never consumed: no-op
+    assert _level_of(db, p) == (7, 0)
+    svc.restock(s2)
+    svc.restock(s2)
+    assert _level_of(db, p) == (10, 0)
+    assert db.query(StockMovement).filter_by(shipment_id=s2.id).count() == 2
+
+
+def test_second_receive_adds_nothing(ctx):
+    db, merchant_id, store_id, _ = ctx
+    acc = _account(db, merchant_id, store_id)
+    p = _product(db, merchant_id, store_id, "ABC-1", on_hand=0)
+    dep = StockDeposit(merchant_id=merchant_id, carrier_account_id=acc.id, reference="D", status="counting",
+                       lines=[{"sku": "ABC-1", "quantity": 4}])
+    db.add(dep)
+    db.flush()
+    svc = InventoryService(db)
+    svc.receive_deposit(dep)
+    svc.receive_deposit(dep)
+    assert _level_of(db, p) == (4, 0)
+    assert db.query(StockMovement).filter_by(deposit_id=dep.id).count() == 1
+
+
+def test_stock_import_errors_are_recorded(ctx):
+    from app.services.carriers.base import CarrierError
+    db, merchant_id, store_id, _ = ctx
+    acc = _account(db, merchant_id, store_id)
+
+    class Broken:
+        def list_stock(self):
+            raise CarrierError("boom")
+
+    InventoryService(db).import_for_account(acc, Broken())
+    assert acc.last_error == "boom" and acc.status == "active"
+    acc.last_error = None
+    InventoryService(db).refresh_store(store_id, "test", lambda a: Broken())
+    assert acc.last_error == "boom" and acc.status == "active"

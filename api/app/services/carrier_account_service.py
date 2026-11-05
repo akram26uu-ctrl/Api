@@ -12,8 +12,13 @@ from app.models.carrier_warehouse import CarrierWarehouse
 from app.services.carriers.base import CarrierAdapter, CarrierAuthError, CarrierError
 from app.services.carriers.registry import get_adapter
 
-# Task 5 sets this to import carrier stock: hook(db, account, adapter).
-on_linked: Callable[[Session, CarrierAccount, CarrierAdapter], None] = lambda db, account, adapter: None
+def _import_stock_on_link(db: Session, account: CarrierAccount, adapter: CarrierAdapter) -> None:
+    from app.services.inventory_service import InventoryService
+    InventoryService(db).import_for_account(account, adapter)
+
+
+# hook(db, account, adapter) called at the end of link; default imports carrier stock.
+on_linked: Callable[[Session, CarrierAccount, CarrierAdapter], None] = _import_stock_on_link
 
 
 class CarrierAlreadyLinked(Exception):
