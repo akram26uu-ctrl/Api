@@ -273,3 +273,27 @@ def test_poll_error_does_not_touch_account_last_error(db, monkeypatch):
     assert TrackingService(db).sync_active()["errors"] >= 1
     db.refresh(acc)
     assert acc.last_error is None
+
+
+def test_sync_polls_least_recently_polled_first(db, monkeypatch):
+    a, _o, _l, _acc = _accepted(db)
+    b, _o2, _l2, _acc2 = _accepted(db)
+    a.last_polled_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    db.flush()
+    polled = []
+
+    class Fake:
+        def get_tracking(self, tracking):
+            polled.append(tracking)
+            if tracking == b.tracking_number:
+                raise RuntimeError("carrier down")  # an erroring row still moves to the back
+            return []
+
+    monkeypatch.setattr(CarrierAccountService, "adapter_for", lambda self, acc: Fake())
+    TrackingService(db).sync_active(limit=10_000)
+    ours = [t for t in polled if t in (a.tracking_number, b.tracking_number)]
+    assert ours == [b.tracking_number, a.tracking_number]
+    assert b.last_polled_at is not None and a.last_polled_at is not None
+    polled.clear()
+    TrackingService(db).sync_active(limit=10_000)
+    assert [t for t in polled if t in (a.tracking_number, b.tracking_number)] == [b.tracking_number, a.tracking_number]

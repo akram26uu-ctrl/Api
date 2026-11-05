@@ -223,3 +223,23 @@ def test_product_requires_store(db):
     db.add(Product(merchant_id=merchant.id, store_id=None, sku="X", name="P"))
     with pytest.raises(IntegrityError):
         db.flush()
+
+
+def test_shipment_event_dedupe_is_per_shipment(db):
+    from app.models.shipment import Shipment, ShipmentEvent
+
+    merchant, order = _order(db)
+    _, order2 = _order(db)
+    shipments = []
+    for o in (order, order2):
+        s = Shipment(merchant_id=o.merchant_id, order_id=o.id, environment="test", idempotency_key=uuid4().hex)
+        db.add(s)
+        db.flush()
+        shipments.append(s)
+    assert shipments[0].last_polled_at is None
+    for s in shipments:  # the same carrier key on two shipments is allowed
+        db.add(ShipmentEvent(shipment_id=s.id, status="accepted", source="poll", dedupe_key="SAME:accepted"))
+    db.flush()
+    db.add(ShipmentEvent(shipment_id=shipments[0].id, status="accepted", source="poll", dedupe_key="SAME:accepted"))
+    with pytest.raises(IntegrityError):
+        db.flush()

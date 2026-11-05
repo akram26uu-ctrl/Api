@@ -192,6 +192,7 @@ def upgrade() -> None:
         sa.Column("last_error", sa.Text(), nullable=True),
         sa.Column("dispatched_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("delivered_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("last_polled_at", sa.DateTime(timezone=True), nullable=True),
         _ts("created_at"), _ts("updated_at"),
         sa.ForeignKeyConstraint(["merchant_id"], ["merchants.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["store_id"], ["stores.id"], ondelete="SET NULL"),
@@ -248,7 +249,9 @@ def upgrade() -> None:
         sa.CheckConstraint("source IN ('webhook', 'poll', 'manual')", name="ck_shipment_events_source"),
     )
     op.create_index("ix_shipment_events_shipment_id", "shipment_events", ["shipment_id"])
-    op.create_index("uq_shipment_events_dedupe_key", "shipment_events", ["dedupe_key"], unique=True)
+    op.create_index(
+        "uq_shipment_events_shipment_dedupe", "shipment_events", ["shipment_id", "dedupe_key"], unique=True
+    )
 
     op.create_table(
         "shipping_settings", _id(),

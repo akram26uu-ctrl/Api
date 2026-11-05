@@ -133,9 +133,10 @@ class TrackingService:
                 select(Shipment)
                 .where(Shipment.status.in_(POLLED_STATUSES), Shipment.tracking_number.is_not(None),
                        Shipment.carrier_account_id.is_not(None), Shipment.id.not_in(seen))
-                .order_by(Shipment.updated_at)
+                .order_by(Shipment.last_polled_at.asc().nulls_first(), Shipment.id)
                 .limit(1)
                 .with_for_update(skip_locked=True)
+                .execution_options(populate_existing=True)
             ).first()
             if shipment is None:
                 break
@@ -150,6 +151,8 @@ class TrackingService:
             except Exception as exc:
                 logger.warning("tracking poll failed shipment=%s: %s", shipment.id, exc)
                 counts["errors"] += 1
+            shipment.last_polled_at = datetime.now(timezone.utc)  # failing rows go to the back too
+            self.db.flush()
             if commit is not None:
                 commit()
         self.db.flush()

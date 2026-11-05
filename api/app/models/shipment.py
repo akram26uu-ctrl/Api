@@ -51,6 +51,8 @@ class Shipment(Base):
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Last tracking poll; the poller serves the least recently polled first.
+    last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
@@ -59,7 +61,7 @@ class ShipmentEvent(Base):
     __tablename__ = "shipment_events"
     __table_args__ = (
         CheckConstraint("source IN ('webhook', 'poll', 'manual')", name="ck_shipment_events_source"),
-        Index("uq_shipment_events_dedupe_key", "dedupe_key", unique=True),
+        Index("uq_shipment_events_shipment_dedupe", "shipment_id", "dedupe_key", unique=True),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
