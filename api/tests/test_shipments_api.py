@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
@@ -169,8 +170,12 @@ def test_manual_dispatch_refused_for_review_hold():
         with SessionLocal() as db:
             s = db.get(Shipment, sid)
             assert s.status == "pending_dispatch" and s.tracking_number is None
-    with SessionLocal() as db:
-        assert db.query(Shipment).filter(Shipment.order_id == review_order).count() == 0
+    with SessionLocal() as db:  # the held row is created so it shows on the pending page
+        held = db.query(Shipment).filter(Shipment.order_id == review_order).all()
+        assert len(held) == 1 and held[0].hold_reason == "review" and held[0].status == "pending_dispatch"
+        assert held[0].tracking_number is None
+    pend = client.get(f"{API}/pending?reason=review", headers=w["h"]).json()
+    assert str(held[0].id) in {i["shipment_id"] for i in pend["data"]}
     # other holds report the hold reason
     oid = _order(w)
     _shipment(w, order_id=oid, hold="out_of_stock")
@@ -289,3 +294,97 @@ def test_dispatch_from_refuses_risk_hold_and_validates_warehouse():
     stock = _shipment(w, hold="out_of_stock")
     r = client.post(f"{API}/pending/{stock}/dispatch-from", json={"warehouse_id": "nope"}, headers=w["h"])
     assert r.status_code == 422
+
+
+def _force_failed(sid):
+    with SessionLocal() as db:
+        sh = db.get(Shipment, sid)
+        sh.status, sh.tracking_number = "dispatch_failed", None
+        db.commit()
+
+
+def test_approved_order_can_retry_after_dispatch_failed():
+    w = _world()
+    oid = _order(w, decision=RiskDecision.REVIEW)
+    sid = _shipment(w, order_id=oid, hold="review")
+    assert client.post(f"{API}/pending/{sid}/approve", headers=w["h"]).status_code == 200
+    with SessionLocal() as db:
+        assert db.get(Shipment, sid).meta["merchant_approved"]["at"]
+    _force_failed(sid)
+    r = client.post(f"{API}/shipments/{sid}/retry", headers=w["h"])
+    assert r.status_code == 200, r.text
+    assert r.json()["outcome"] == "dispatched" and r.json()["shipment"]["id"] != str(sid)
+    with SessionLocal() as db:
+        assert db.get(Shipment, uuid.UUID(r.json()["shipment"]["id"])).meta["merchant_approved"]
+    # also via POST /shipments after another failure
+    _force_failed(uuid.UUID(r.json()["shipment"]["id"]))
+    again = client.post(f"{API}/shipments", json={"order_id": str(oid)}, headers=w["h"])
+    assert again.status_code == 200 and again.json()["outcome"] == "dispatched"
+
+
+def test_unapproved_review_failed_shipment_cannot_retry():
+    w = _world()
+    old = _shipment(w, order_id=_order(w, decision=RiskDecision.REJECT), status="dispatch_failed")
+    r = client.post(f"{API}/shipments/{old}/retry", headers=w["h"])
+    assert r.status_code == 409 and r.json()["detail"] == "order_needs_decision"
+
+
+def test_no_assessment_fails_closed():
+    w = _world()
+    oid = _order(w)
+    with SessionLocal() as db:
+        db.query(RiskAssessment).filter(RiskAssessment.order_id == oid).delete()
+        db.commit()
+    r = client.post(f"{API}/shipments", json={"order_id": str(oid)}, headers=w["h"])
+    assert r.status_code == 409 and r.json()["detail"] == "order_needs_decision"
+
+
+def test_order_predating_carrier_link_refused():
+    w = _world()
+    oid = _order(w)
+    with SessionLocal() as db:
+        db.get(Order, oid).created_at = datetime.now(timezone.utc) - timedelta(days=2)
+        db.commit()
+    r = client.post(f"{API}/shipments", json={"order_id": str(oid)}, headers=w["h"])
+    assert r.status_code == 409 and r.json()["detail"] == "order_predates_carrier_link"
+
+
+def test_dispatch_error_returns_502(monkeypatch):
+    from app.services.dispatch_service import DispatchService
+
+    def boom(self, shipment, source="poll"):
+        raise RuntimeError("x")
+    monkeypatch.setattr(DispatchService, "dispatch_one", boom)
+    w = _world()
+    oid = _order(w)
+    r = client.post(f"{API}/shipments", json={"order_id": str(oid)}, headers=w["h"])
+    assert r.status_code == 502 and r.json()["detail"] == "dispatch_error"
+
+
+def test_skipped_outcome_writes_no_audit():
+    w = _world()
+    sid = _shipment(w, status="accepted")
+    oid = None
+    with SessionLocal() as db:
+        oid = db.get(Shipment, sid).order_id
+    r = client.post(f"{API}/shipments", json={"order_id": str(oid)}, headers=w["h"])
+    assert r.status_code == 200 and r.json()["outcome"] == "skipped"
+    with SessionLocal() as db:
+        assert db.query(AuditLog).filter(AuditLog.action == "shipment.dispatch",
+                                         AuditLog.resource_id == sid).count() == 0
+
+
+def test_search_escapes_like_wildcards():
+    w = _world()
+    _shipment(w, status="accepted")
+    _shipment(w, status="accepted")
+    assert client.get(f"{API}/shipments?q=%25", headers=w["h"]).json()["pagination"]["total"] == 0
+    assert client.get(f"{API}/shipments?q=_", headers=w["h"]).json()["pagination"]["total"] == 0
+    assert client.get(f"{API}/shipments?q=Ali", headers=w["h"]).json()["pagination"]["total"] == 2
+
+
+def test_dispatch_from_only_for_out_of_stock():
+    w = _world()
+    sid = _shipment(w, hold="mixed_source")
+    r = client.post(f"{API}/pending/{sid}/dispatch-from", json={"warehouse_id": str(w["warehouse"])}, headers=w["h"])
+    assert r.status_code == 409

@@ -2,6 +2,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_database, require_api_scope
@@ -15,6 +16,7 @@ from app.models.risk_assessment import RiskAssessment
 from app.models.shipment import Shipment, ShipmentEvent
 from app.schemas.shipping import ShipmentCreate
 from app.services.audit_service import AuditService
+from app.services.carrier_account_service import CarrierAccountService
 from app.services.dispatch_service import DispatchService
 from app.services.shipping_service import ShipmentActionRefused, ShippingService
 
@@ -116,11 +118,12 @@ def list_shipments(
     if source:
         base = base.filter(Order.source == source)
     if q:
-        term = f"%{q.strip()}%"
+        escaped = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        term = f"%{escaped}%"
         base = base.filter(or_(
-            Order.external_order_id.ilike(term), Shipment.tracking_number.ilike(term),
-            Order.first_name.ilike(term), Order.last_name.ilike(term),
-            (Order.first_name + " " + Order.last_name).ilike(term)))
+            Order.external_order_id.ilike(term, escape="\\"), Shipment.tracking_number.ilike(term, escape="\\"),
+            Order.first_name.ilike(term, escape="\\"), Order.last_name.ilike(term, escape="\\"),
+            (Order.first_name + " " + Order.last_name).ilike(term, escape="\\")))
     by_status = dict(base.with_entities(Shipment.status, func.count(Shipment.id)).group_by(Shipment.status).all())
     counts = {"all": sum(by_status.values())}
     for name, statuses in STATUS_GROUPS.items():
@@ -173,10 +176,31 @@ def _respond(db: Session, shipment: Shipment, outcome: str) -> dict:
     return {"shipment": shipment_dict(shipment, order, account.carrier_code if account else None), "outcome": outcome}
 
 
+def order_approved(db: Session, order_id: UUID) -> dict | None:
+    """The merchant's approval recorded on any shipment of this order (any status)."""
+    for (meta,) in db.query(Shipment.meta).filter(Shipment.order_id == order_id).all():
+        if isinstance(meta, dict) and meta.get("merchant_approved"):
+            return meta["merchant_approved"]
+    return None
+
+
 def _dispatch_now(db: Session, api_key: ApiKey, shipment: Shipment, action: str) -> dict:
     """Dispatch a shipment that has no hold, then commit. Held shipments never get here."""
-    outcome = DispatchService(db).dispatch_one(shipment, "manual")
-    _audit(db, api_key, action, shipment, outcome=outcome)
+    locked = db.query(Shipment).filter(Shipment.id == shipment.id).with_for_update().populate_existing().first()
+    if locked is None:
+        raise HTTPException(404, "Shipment not found")
+    shipment = locked
+    if shipment.hold_reason is not None:
+        db.commit()
+        raise HTTPException(409, _hold_detail(shipment))
+    try:
+        with db.begin_nested():
+            outcome = DispatchService(db).dispatch_one(shipment, "manual")
+    except Exception as exc:
+        db.commit()  # savepoint already rolled back; keep earlier work (e.g. a freshly created row)
+        raise HTTPException(502, "dispatch_error") from exc
+    if outcome != "skipped":
+        _audit(db, api_key, action, shipment, outcome=outcome)
     db.commit()
     return _respond(db, shipment, outcome)
 
@@ -198,17 +222,32 @@ def create_shipment(data: ShipmentCreate, store_id: str | None = Query(default=N
         if order.status == OrderStatus.CANCELLED:
             raise HTTPException(409, "order_cancelled")
         assessment = latest_assessment(db, order.id)
-        decision = assessment.decision if assessment is not None else RiskDecision.ALLOW
-        if decision in NEEDS_DECISION:
-            raise HTTPException(409, "order_needs_decision")
-        shipment = service.on_decision(order, db.get(Merchant, order.merchant_id), decision)
+        if assessment is None:
+            raise HTTPException(409, "order_needs_decision")  # fail closed
+        approved = order_approved(db, order.id)
+        decision = assessment.decision
+        needs_decision = decision in NEEDS_DECISION and approved is None
+        shipment = service.on_decision(order, db.get(Merchant, order.merchant_id),
+                                       decision if needs_decision or approved is None else RiskDecision.ALLOW)
         if shipment is None:
-            raise HTTPException(409, "no_carrier_configured")
+            first = CarrierAccountService(db).first_linked_at(order.store_id, order.environment) if order.store_id else None
+            predates = first is not None and _aware(order.created_at) < _aware(first)
+            raise HTTPException(409, "order_predates_carrier_link" if predates else "no_carrier_configured")
+        if approved is not None and not needs_decision:
+            service._set_meta(shipment, merchant_approved=approved)
+        if needs_decision:
+            db.commit()  # the held shipment appears on the pending page
+            raise HTTPException(409, "order_needs_decision")
     if shipment.hold_reason is not None:
         detail = _hold_detail(shipment)
         db.commit()  # keep a freshly created held shipment visible on the pending page
         raise HTTPException(409, detail)
     return _dispatch_now(db, api_key, shipment, "shipment.dispatch")
+
+
+def _aware(value):
+    from datetime import timezone
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
 
 @router.post("/shipments/{shipment_id}/retry")
@@ -226,23 +265,29 @@ def retry_shipment(shipment_id: str, store_id: str | None = Query(default=None),
     if order.status == OrderStatus.CANCELLED:
         raise HTTPException(409, "order_cancelled")
     assessment = latest_assessment(db, order.id)
-    if assessment is not None and assessment.decision in NEEDS_DECISION:
+    approved = order_approved(db, order.id)
+    if assessment is None or (assessment.decision in NEEDS_DECISION and approved is None):
         raise HTTPException(409, "order_needs_decision")
     new_id = uuid4()
     new = Shipment(
         id=new_id, merchant_id=old.merchant_id, store_id=old.store_id, order_id=old.order_id,
         environment=old.environment, status="pending_dispatch", idempotency_key=str(new_id),
         carrier_account_id=old.carrier_account_id, cod_amount=old.cod_amount, delivery_type=old.delivery_type,
-        allocations=[], meta={}, hold_reason=None, next_attempt_at=None)
-    db.add(new)
-    db.flush()
+        allocations=[], meta={"merchant_approved": approved} if approved else {}, hold_reason=None,
+        next_attempt_at=None)
+    try:
+        with db.begin_nested():
+            db.add(new)
+            db.flush()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "active_shipment_exists") from exc
     service.allocate_and_reserve(new)
     if new.hold_reason is not None:
         detail = _hold_detail(new)
         db.commit()
         raise HTTPException(409, detail)
-    result = _dispatch_now(db, api_key, new, "shipment.retry")
-    return result
+    return _dispatch_now(db, api_key, new, "shipment.retry")
 
 
 @router.post("/shipments/{shipment_id}/cancel")

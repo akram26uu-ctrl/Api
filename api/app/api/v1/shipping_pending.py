@@ -91,5 +91,8 @@ for _action in ("approve", "reject", "restore", "archive"):
 @router.post("/{shipment_id}/dispatch-from")
 def dispatch_from(shipment_id: str, data: DispatchFromRequest, store_id: str | None = Query(default=None),
                   db: Session = Depends(get_database), api_key: ApiKey = Depends(require_api_scope("shipping:write"))):
+    shipment = get_shipment(db, api_key, shipment_id, store_id)
+    if shipment.hold_reason != "out_of_stock":
+        raise HTTPException(409, "not_out_of_stock")
     return _act(db, api_key, shipment_id, store_id,
                 lambda svc, sh: svc.dispatch_from(sh, data.warehouse_id, api_key.id))

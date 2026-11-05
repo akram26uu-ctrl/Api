@@ -30,12 +30,15 @@ _ALLOWED = (
     re.compile(r"^/notifications/[0-9a-fA-F-]{36}/read$"),
     re.compile(r"^/notifications/read-all$"),
     re.compile(r"^/audit-logs$"),
-    re.compile(r"^/shipping/(carriers|routes)(?:/[0-9a-fA-F-]{36}(?:/(test|disable|warehouses))?)?$"),
+    re.compile(r"^/shipping/carriers(?:/[0-9a-fA-F-]{36}(?:/(test|disable|warehouses))?)?$"),
+    re.compile(r"^/shipping/routes(?:/[0-9a-fA-F-]{36})?$"),
     re.compile(r"^/shipping/settings$"),
     re.compile(r"^/shipping/shipments(?:/[0-9a-fA-F-]{36}(?:/(retry|cancel))?)?$"),
     re.compile(r"^/shipping/next-pickups$"),
     re.compile(r"^/shipping/pending(?:/[0-9a-fA-F-]{36}/(approve|reject|restore|archive|dispatch-from))?$"),
-    re.compile(r"^/inventory/(products|stock|deposits|movements)(?:/[0-9a-fA-F-]{36}(?:/(links|status))?)?$"),
+    re.compile(r"^/inventory/products(?:/[0-9a-fA-F-]{36}(?:/links)?)?$"),
+    re.compile(r"^/inventory/(stock|movements)$"),
+    re.compile(r"^/inventory/deposits(?:/[0-9a-fA-F-]{36}/status)?$"),
     re.compile(r"^/inventory/products/unmapped$"),
 )
 

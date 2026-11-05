@@ -377,7 +377,9 @@ class ShippingService:
         order = self.db.get(Order, shipment.order_id)
         if order is not None and order.status == OrderStatus.CANCELLED:
             raise ShipmentActionRefused("Order is cancelled")
-        self._set_meta(shipment, needs_confirmation=None, no_answer=None)
+        self._set_meta(shipment, needs_confirmation=None, no_answer=None,
+                       merchant_approved={"by": str(actor_key) if actor_key is not None else None,
+                                          "at": _now().isoformat()})
         self._release_hold(shipment)
         self._audit(shipment, action, actor_key)
         self.db.flush()
