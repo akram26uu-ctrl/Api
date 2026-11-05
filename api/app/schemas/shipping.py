@@ -115,3 +115,11 @@ class ShippingRouteResponse(BaseModel):
     carrier_account_id: UUID
     fallback_carrier_account_id: UUID | None = None
     priority: int
+
+
+class ShipmentCreate(BaseModel):
+    order_id: UUID
+
+
+class DispatchFromRequest(BaseModel):
+    warehouse_id: UUID

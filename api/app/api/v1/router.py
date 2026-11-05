@@ -23,6 +23,8 @@ from app.api.v1.inventory import router as inventory_router
 from app.api.v1.shipping_carriers import router as shipping_carriers_router
 from app.api.v1.shipping_settings import router as shipping_settings_router
 from app.api.v1.carrier_webhooks import router as carrier_webhooks_router
+from app.api.v1.shipments import router as shipments_router
+from app.api.v1.shipping_pending import router as shipping_pending_router
 
 
 router = APIRouter(
@@ -58,3 +60,5 @@ router.include_router(shipping_carriers_router)
 router.include_router(inventory_router)
 router.include_router(shipping_settings_router)
 router.include_router(carrier_webhooks_router)
+router.include_router(shipments_router)
+router.include_router(shipping_pending_router)

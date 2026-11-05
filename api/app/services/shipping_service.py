@@ -298,6 +298,19 @@ class ShippingService:
         shipment = self.active_shipment(order.id)
         if shipment is None:
             return None
+        return self._cancel_shipment(shipment)
+
+    def cancel_shipment(self, shipment: Shipment, actor_key) -> Shipment:
+        """Merchant-initiated cancel of one shipment (before pickup only)."""
+        if shipment.status not in ("pending_dispatch", "accepted"):
+            raise ShipmentActionRefused(f"Shipment is {shipment.status}")
+        self._cancel_shipment(shipment)
+        if shipment.status == "cancelled":
+            self._audit(shipment, "cancel", actor_key)
+            self.db.flush()
+        return shipment
+
+    def _cancel_shipment(self, shipment: Shipment) -> Shipment:
         if shipment.status == "pending_dispatch":
             self._cancel(shipment)
         elif shipment.status == "accepted":
@@ -449,3 +462,27 @@ class ShippingService:
         self._audit(shipment, "dispatch_from", actor_key, {"warehouse_id": str(warehouse.id)})
         self.db.flush()
         return shipment
+
+    def available_warehouses(self, shipment: Shipment) -> list[CarrierWarehouse]:
+        """Warehouses of the order's route carriers that hold stock for every item."""
+        order = self.db.get(Order, shipment.order_id)
+        if order is None or order.store_id is None or not order.items:
+            return []
+        matched, unmatched = self.inventory.match_items(order.store_id, list(order.items))
+        if unmatched or any(p.fulfillment != "carrier" for _, p in matched):
+            return []
+        needs: dict = {}
+        for item, product in matched:
+            current = needs.get(product.id, (product, 0))
+            needs[product.id] = (product, current[1] + int(item.quantity))
+        primary, fallback = self.settings_service.resolve_route(
+            order.store_id, order.environment, self._wilaya_code(order))
+        wilaya = self._wilaya_code(order)
+        found: list[CarrierWarehouse] = []
+        for account in (primary, fallback):
+            if account is None:
+                continue
+            for warehouse in self._candidate_warehouses(account, wilaya):
+                if all(self.inventory.available(p.id, warehouse.id) >= q for p, q in needs.values()):
+                    found.append(warehouse)
+        return found
