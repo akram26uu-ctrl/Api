@@ -17,8 +17,13 @@ from app.models.product import Product, ProductCarrierLink, StockDeposit, StockL
 from app.models.shipment import Shipment
 from app.services.carriers.base import CarrierAdapter, StockInfo
 
-# Task 7 sets this to retry backorders: hook(product_ids). Default is a no-op.
-on_stock_increased: Callable[[set], None] = lambda product_ids: None
+def _release_backorders(product_ids: set, db: Session) -> None:
+    from app.services.shipping_service import ShippingService
+    ShippingService(db).release_backorders(product_ids)
+
+
+# Called as hook(product_ids, db) after stock goes up; default retries backorders.
+on_stock_increased: Callable[[set, Session], None] = _release_backorders
 
 SALES_WINDOW_DAYS = 14
 logger = logging.getLogger(__name__)
@@ -126,7 +131,7 @@ class InventoryService:
                     increased.add(product.id)
         self.db.flush()
         if increased:
-            on_stock_increased(increased)
+            on_stock_increased(increased, self.db)
 
     def refresh_store(self, store_id: UUID, environment: str, adapter_for: Callable[[CarrierAccount], CarrierAdapter]) -> None:
         from app.services.carriers.base import CarrierError
@@ -220,7 +225,7 @@ class InventoryService:
         self._set_state(shipment, "restocked")
         self.db.flush()
         if increased:
-            on_stock_increased(increased)
+            on_stock_increased(increased, self.db)
 
     # ---- low stock ------------------------------------------------------
     def total_available(self, product_id: UUID) -> int:
@@ -278,5 +283,5 @@ class InventoryService:
         deposit.status = "received"
         self.db.flush()
         if increased:
-            on_stock_increased(increased)
+            on_stock_increased(increased, self.db)
 

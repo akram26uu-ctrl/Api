@@ -249,6 +249,28 @@ class ShippingService:
         shipment.warehouse_id = None
         self._stock_hold(shipment, "out_of_stock", backorder=settings.out_of_stock_policy == "backorder")
 
+    def release_backorders(self, product_ids: set) -> int:
+        """Stock arrived: retry allocation of backordered shipments that need these products."""
+        rows = self.db.query(Shipment).filter(
+            Shipment.status == "pending_dispatch", Shipment.hold_reason == "out_of_stock").order_by(
+            Shipment.created_at.asc()).all()
+        released = 0
+        for shipment in rows:
+            if not (shipment.meta or {}).get("backorder"):
+                continue
+            order = self.db.get(Order, shipment.order_id)
+            if order is None or order.store_id is None:
+                continue
+            matched, _ = self.inventory.match_items(order.store_id, list(order.items))
+            if not any(product.id in product_ids for _, product in matched):
+                continue
+            self.allocate_and_reserve(shipment)
+            if shipment.hold_reason != "out_of_stock":
+                released += 1
+        if released:
+            self.db.flush()
+        return released
+
     # ---- confirmation -------------------------------------------------
     def on_confirmed(self, order: Order) -> Shipment | None:
         shipment = self.active_shipment(order.id)

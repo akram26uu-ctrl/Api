@@ -164,7 +164,7 @@ def test_stock_increase_hook_called(ctx, monkeypatch):
     db, merchant_id, store_id, _ = ctx
     from app.services import inventory_service
     seen = []
-    monkeypatch.setattr(inventory_service, "on_stock_increased", lambda ids: seen.append(set(ids)))
+    monkeypatch.setattr(inventory_service, "on_stock_increased", lambda ids, _db: seen.append(set(ids)))
     acc = _account(db, merchant_id, store_id)
     p = _product(db, merchant_id, store_id, "ABC-1")
     dep = StockDeposit(merchant_id=merchant_id, carrier_account_id=acc.id, reference="D1", status="counting",
