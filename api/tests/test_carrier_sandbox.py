@@ -137,3 +137,40 @@ def test_sandbox_webhook_signature():
     assert out[0][0] == "SBX-1" and out[0][1].status == "delivered"
     with pytest.raises(CarrierAuthError):
         c.parse_webhook({"X-Sandbox-Signature": "bad"}, body)
+
+
+def test_sandbox_cancel_stops_timeline(clock):
+    c = SandboxCarrier(CREDS)
+    tn = c.create_shipment(_req()).tracking_number
+    clock["now"] = T0 + timedelta(hours=3)
+    c.cancel_shipment(tn)
+    clock["now"] = T0 + timedelta(hours=60)
+    events = c.get_tracking(tn)
+    assert [e.status for e in events] == ["accepted", "picked_up", "cancelled"]
+    assert events[-1].occurred_at == T0 + timedelta(hours=3)
+
+
+def _signed(c, payload):
+    body = json.dumps(payload).encode()
+    sig = hmac.new(b"test_ok", body, hashlib.sha256).hexdigest()
+    return {"X-Sandbox-Signature": sig}, body
+
+
+def test_sandbox_webhook_rejects_unknown_status():
+    c = SandboxCarrier(CREDS)
+    headers, body = _signed(c, {"events": [{"tracking": "SBX-1", "status": "bogus",
+                                            "occurred_at": "2026-01-03T08:00:00+00:00"}]})
+    with pytest.raises(CarrierValidationError):
+        c.parse_webhook(headers, body)
+
+
+def test_sandbox_webhook_naive_datetime_is_utc():
+    c = SandboxCarrier(CREDS)
+    headers, body = _signed(c, {"events": [{"tracking": "SBX-1", "status": "delivered",
+                                            "occurred_at": "2026-01-03T08:00:00"}]})
+    assert c.parse_webhook(headers, body)[0][1].occurred_at.tzinfo == timezone.utc
+
+
+def test_sandbox_webhook_non_ascii_signature_is_auth_error():
+    with pytest.raises(CarrierAuthError):
+        SandboxCarrier(CREDS).parse_webhook({"X-Sandbox-Signature": "é"}, b"{}")

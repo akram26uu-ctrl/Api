@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 from app.services.carriers.base import (
+    SHIPMENT_STATUSES,
     Capabilities,
     CarrierAuthError,
     CarrierShipmentResult,
@@ -93,10 +94,11 @@ class SandboxCarrier:
         events = []
         for hours, status in timeline:
             at = st["created_at"] + timedelta(hours=hours)
-            if at <= now:
+            if at <= now and (st["cancelled_at"] is None or at < st["cancelled_at"]):
                 events.append(self._event(tracking, status, at))
         if st["cancelled_at"] is not None:
             events.append(self._event(tracking, "cancelled", st["cancelled_at"]))
+        events.sort(key=lambda e: e.occurred_at)
         return events
 
     def parse_webhook(self, headers: dict, body: bytes) -> list[tuple[str, TrackingEvent]]:
@@ -105,19 +107,19 @@ class SandboxCarrier:
         given = next(
             (v for k, v in headers.items() if k.lower() == "x-sandbox-signature"), ""
         )
-        if not hmac.compare_digest(expected, str(given)):
+        if not hmac.compare_digest(expected.encode(), str(given).encode()):
             raise CarrierAuthError("bad sandbox webhook signature")
         try:
             items = json.loads(body)["events"]
-            return [
-                (
-                    it["tracking"],
-                    self._event(
-                        it["tracking"], it["status"], datetime.fromisoformat(it["occurred_at"])
-                    ),
-                )
-                for it in items
-            ]
+            out = []
+            for it in items:
+                if it["status"] not in SHIPMENT_STATUSES:
+                    raise CarrierValidationError(f"unknown status {it['status']!r}")
+                at = datetime.fromisoformat(it["occurred_at"])
+                if at.tzinfo is None:
+                    at = at.replace(tzinfo=timezone.utc)
+                out.append((it["tracking"], self._event(it["tracking"], it["status"], at)))
+            return out
         except (ValueError, KeyError, TypeError) as exc:
             raise CarrierValidationError("malformed sandbox webhook") from exc
 
