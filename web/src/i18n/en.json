@@ -1788,7 +1788,10 @@
         "save": "Save route",
         "delete_title": "Delete the route?",
         "delete_desc": "These wilayas will go back to the default carrier.",
-        "delete_confirm": "Yes, delete the route"
+        "delete_confirm": "Yes, delete the route",
+        "inactive": "inactive",
+        "carrier_inactive": "The current carrier is not active. Pick an active carrier.",
+        "fallback_inactive": "The current fallback carrier is not active. Pick an active carrier or no fallback."
       },
       "load_error": "Could not load shipping settings. Refresh the page to try again.",
       "unit_minutes": "minutes",

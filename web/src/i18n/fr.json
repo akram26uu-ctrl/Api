@@ -1789,7 +1789,10 @@
         "save": "Enregistrer la route",
         "delete_title": "Supprimer la route ?",
         "delete_desc": "Ces wilayas reviendront au transporteur par défaut.",
-        "delete_confirm": "Oui, supprimer la route"
+        "delete_confirm": "Oui, supprimer la route",
+        "inactive": "inactif",
+        "carrier_inactive": "Le transporteur actuel n'est pas actif. Choisissez un transporteur actif.",
+        "fallback_inactive": "Le transporteur de secours actuel n'est pas actif. Choisissez un transporteur actif ou aucun secours."
       },
       "load_error": "Impossible de charger les réglages d'expédition. Actualisez la page pour réessayer.",
       "unit_minutes": "minutes",

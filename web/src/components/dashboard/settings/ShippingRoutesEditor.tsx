@@ -29,6 +29,7 @@ export const ShippingRoutesEditor: React.FC<{ storeId: string }> = ({ storeId })
 
   const wilayaName = (w: typeof ALGERIAN_WILAYAS[number]) => language === 'ar' ? w.nameAr : language === 'fr' ? w.nameFr : w.nameEn;
   const usable = accounts.filter(account => account.status === 'active');
+  const inactiveLabel = t('settings.shipping.routes.inactive', 'غير نشطة');
   const accountName = (id: string | null) => accounts.find(account => account.id === id)?.display_name ?? '—';
 
   const load = useCallback(async () => {
@@ -53,6 +54,8 @@ export const ShippingRoutesEditor: React.FC<{ storeId: string }> = ({ storeId })
     if (!draft) return;
     const priority = draft.priority.trim() === '' ? NaN : Number(draft.priority);
     if (!draft.carrier) { setFormError(t('settings.shipping.routes.carrier_required', 'اختر شركة التوصيل.')); return; }
+    if (!usable.some(account => account.id === draft.carrier)) { setFormError(t('settings.shipping.routes.carrier_inactive', 'شركة التوصيل الحالية غير نشطة. اختر شركة نشطة.')); return; }
+    if (draft.fallback && !usable.some(account => account.id === draft.fallback)) { setFormError(t('settings.shipping.routes.fallback_inactive', 'شركة الاحتياط الحالية غير نشطة. اختر شركة نشطة أو بدون احتياط.')); return; }
     if (draft.fallback && draft.fallback === draft.carrier) { setFormError(t('settings.shipping.routes.fallback_same', 'شركة الاحتياط يجب أن تختلف عن الأساسية.')); return; }
     if (!isIntInRange(priority, 0, 100000)) { setFormError(t('settings.shipping.routes.priority_invalid', 'الأولوية عدد صحيح بين 0 و100000.')); return; }
     const payload = { wilaya_codes: draft.wilayas, carrier_account_id: draft.carrier, fallback_carrier_account_id: draft.fallback || null, priority };
@@ -141,6 +144,7 @@ export const ShippingRoutesEditor: React.FC<{ storeId: string }> = ({ storeId })
               <div>
                 <label htmlFor="route-carrier" className="settings-label mb-1.5">{t('settings.shipping.routes.carrier', 'شركة التوصيل')}</label>
                 <select id="route-carrier" className="settings-input w-full" value={draft.carrier} onChange={event => setDraft({ ...draft, carrier: event.target.value })}>
+                  {!usable.some(account => account.id === draft.carrier) && accounts.some(account => account.id === draft.carrier) && <option value={draft.carrier} disabled>{accountName(draft.carrier)} ({inactiveLabel})</option>}
                   {usable.map(account => <option key={account.id} value={account.id}>{account.display_name}</option>)}
                 </select>
               </div>
@@ -148,6 +152,7 @@ export const ShippingRoutesEditor: React.FC<{ storeId: string }> = ({ storeId })
                 <label htmlFor="route-fallback" className="settings-label mb-1.5">{t('settings.shipping.routes.fallback', 'شركة الاحتياط')}</label>
                 <select id="route-fallback" className="settings-input w-full" value={draft.fallback} onChange={event => setDraft({ ...draft, fallback: event.target.value })}>
                   <option value="">{t('settings.shipping.routes.no_fallback', 'بدون احتياط')}</option>
+                  {draft.fallback && !usable.some(account => account.id === draft.fallback) && <option value={draft.fallback} disabled>{accountName(draft.fallback)} ({inactiveLabel})</option>}
                   {usable.filter(account => account.id !== draft.carrier).map(account => <option key={account.id} value={account.id}>{account.display_name}</option>)}
                 </select>
               </div>

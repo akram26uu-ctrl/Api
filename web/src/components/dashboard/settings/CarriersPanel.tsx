@@ -104,15 +104,15 @@ export const CarriersPanel: React.FC<CarriersPanelProps> = ({ storeId, environme
                       {account.carrier_code} · {account.environment === 'live' ? t('common.live', 'LIVE') : t('common.sandbox', 'SANDBOX')}
                       {synced && <> · {t('settings.shipping.carriers.last_sync', 'آخر مزامنة')} {synced}</>}
                     </p>
-                    {account.last_error && <p className="settings-hint settings-feedback--error">{account.last_error}</p>}
+                    {account.last_error && <p className="settings-feedback settings-feedback--error">{account.last_error}</p>}
                   </div>
                   <span className={`settings-status ${statusTone[account.status] ?? 'settings-status--neutral'}`}>{statusLabel(account.status)}</span>
                   <div className="flex flex-wrap gap-1">
-                    <Button variant="ghost" size="sm" isLoading={busy === `test-${account.id}`} onClick={() => void run(`test-${account.id}`, () => shippingApi.testCarrier(account.id), t('settings.shipping.carriers.test_ok', 'الاتصال سليم.'))} leftIcon={<Plug className="w-3.5 h-3.5" />}>{t('settings.shipping.carriers.test', 'اختبار الاتصال')}</Button>
+                    <Button variant="ghost" size="md" isLoading={busy === `test-${account.id}`} onClick={() => void run(`test-${account.id}`, () => shippingApi.testCarrier(account.id), t('settings.shipping.carriers.test_ok', 'الاتصال سليم.'))} leftIcon={<Plug className="w-3.5 h-3.5" />}>{t('settings.shipping.carriers.test', 'اختبار الاتصال')}</Button>
                     {account.status !== 'disabled' && (
-                      <Button variant="ghost" size="sm" isLoading={busy === `disable-${account.id}`} onClick={() => void run(`disable-${account.id}`, () => shippingApi.disableCarrier(account.id), t('settings.shipping.carriers.disabled_ok', 'تم إيقاف الربط.'))} leftIcon={<Power className="w-3.5 h-3.5" />}>{t('settings.shipping.carriers.disable', 'إيقاف')}</Button>
+                      <Button variant="ghost" size="md" isLoading={busy === `disable-${account.id}`} onClick={() => void run(`disable-${account.id}`, () => shippingApi.disableCarrier(account.id), t('settings.shipping.carriers.disabled_ok', 'تم إيقاف الربط.'))} leftIcon={<Power className="w-3.5 h-3.5" />}>{t('settings.shipping.carriers.disable', 'إيقاف')}</Button>
                     )}
-                    <Button variant="ghost" size="sm" isLoading={busy === `delete-${account.id}`} onClick={() => setToDelete(account)} leftIcon={<Trash2 className="w-3.5 h-3.5" />}>{t('common.delete', 'حذف')}</Button>
+                    <Button variant="ghost" size="md" isLoading={busy === `delete-${account.id}`} onClick={() => setToDelete(account)} leftIcon={<Trash2 className="w-3.5 h-3.5" />}>{t('common.delete', 'حذف')}</Button>
                   </div>
                 </li>
               );
