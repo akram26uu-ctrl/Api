@@ -7,6 +7,7 @@ import { DashboardHeader } from './DashboardHeader';
 import { MerchantOnboarding } from './MerchantOnboarding';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { StoreManagementModal } from './StoreManagementModal';
+import { EmptyState } from '../common/EmptyState';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 import { isSettingsSection, SettingsSection } from './settings/SettingsView';
 
@@ -17,6 +18,7 @@ const IdentityNetworkView = lazy(() => import('./IdentityNetworkView').then(m =>
 const SimulatorView = lazy(() => import('./SimulatorView').then(m => ({ default: m.SimulatorView })));
 const SettingsView = lazy(() => import('./settings/SettingsView').then(m => ({ default: m.SettingsView })));
 const IntegrationsView = lazy(() => import('./IntegrationsView').then(m => ({ default: m.IntegrationsView })));
+const ShipmentsView = lazy(() => import('./ShipmentsView').then(m => ({ default: m.ShipmentsView })));
 const RulesEngineView = lazy(() => import('./RulesEngineView').then(m => ({ default: m.RulesEngineView })));
 
 interface DashboardLayoutProps {
@@ -24,7 +26,7 @@ interface DashboardLayoutProps {
   onLogout: () => void;
 }
 
-const DASHBOARD_TABS: DashboardTab[] = ['overview', 'confirmation', 'orders', 'integrations', 'network', 'rules', 'simulator', 'settings'];
+const DASHBOARD_TABS: DashboardTab[] = ['overview', 'confirmation', 'orders', 'pending', 'shipments', 'inventory', 'integrations', 'network', 'rules', 'simulator', 'settings'];
 const isDashboardTab = (value: string): value is DashboardTab => DASHBOARD_TABS.includes(value as DashboardTab);
 
 /** A place in the dashboard: a tab, plus a settings section when the tab is settings. */
@@ -137,6 +139,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
       case 'overview': return t('dashboard.sidebar.overview', 'نظرة عامة');
       case 'confirmation': return t('dashboard.sidebar.confirmation_page', 'التأكيد');
       case 'orders': return t('dashboard.sidebar.orders', 'الطلبات');
+      case 'pending': return t('dashboard.sidebar.pending', 'بانتظار القرار');
+      case 'shipments': return t('dashboard.sidebar.shipments', 'الشحنات');
+      case 'inventory': return t('dashboard.sidebar.inventory', 'المخزون');
       case 'network': return t('dashboard.titles.network', 'تحليل المخاطر');
       case 'simulator': return t('dashboard.titles.simulator', 'طلب تجريبي');
       case 'integrations': return t('dashboard.sidebar.integrations', 'ربط المتجر');
@@ -163,6 +168,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
                 {activeTab === 'overview' && <>{showOnboarding && <MerchantOnboarding onNavigate={navigateTab} onDismiss={dismissOnboarding} />}<OverviewView onNavigateTab={navigateTab} /></>}
                 {activeTab === 'confirmation' && <ConfirmationView onOpenOrders={() => navigateTab('orders')} />}
                 {activeTab === 'orders' && <OrdersView storeName={stores.find(store => store.id === selectedStoreId)?.name} onOpenSimulator={() => navigateTab('simulator')} onOpenConfirmation={() => navigateTab('confirmation')} />}
+                {(activeTab === 'pending' || activeTab === 'inventory') && <div className="dashboard-content"><EmptyState title={getTabTitle()} description={t('shipping.coming_soon', 'هذه الصفحة قيد الإعداد وستتوفر قريبًا.')} /></div>}
+                {activeTab === 'shipments' && <ShipmentsView onNavigate={navigateTab} />}
                 {activeTab === 'integrations' && <IntegrationsView storeId={selectedStoreId} />}
                 {activeTab === 'network' && <IdentityNetworkView />}
                 {activeTab === 'rules' && <RulesEngineView />}

@@ -485,7 +485,11 @@
       "store_workspace_hint": "Send WhatsApp confirmations and record outcomes from the orders page — WhatsApp is an Ordium-managed service.",
       "integrations": "Store connection",
       "confirmation": "Confirmation results",
-      "confirmation_page": "Confirmation"
+      "confirmation_page": "Confirmation",
+      "pending": "Awaiting decision",
+      "shipments": "Shipments",
+      "inventory": "Inventory",
+      "group_shipping": "Shipping"
     },
     "header": {
       "sandbox_btn": "SANDBOX",
@@ -1835,5 +1839,172 @@
   },
   "legal": {
     "effective": "Effective date"
+  },
+  "shipping": {
+    "actions": {
+      "cancel": "Cancel shipment",
+      "cancel_failed": "Could not cancel the shipment",
+      "cancelled": "Shipment cancelled",
+      "label": "Print label",
+      "refresh": "Refresh status now",
+      "retry": "Retry",
+      "retry_failed": "Retry failed"
+    },
+    "cancel_modal": {
+      "confirm": "Yes, cancel shipment",
+      "desc": "The carrier will be asked to cancel this parcel. This cannot be undone.",
+      "keep": "Keep shipment",
+      "title": "Cancel this shipment?"
+    },
+    "col_carrier": "Carrier and source",
+    "col_cod": "COD",
+    "col_destination": "Destination and customer",
+    "col_order": "Order",
+    "col_status": "Status",
+    "col_tracking": "Tracking",
+    "col_updated": "Last update",
+    "col_wilaya": "Wilaya",
+    "coming_soon": "This page is being prepared and will be available soon.",
+    "description": "Every parcel that left your shop or the carrier's warehouse, from dispatch to delivery or return.",
+    "dispatch_modal": {
+      "desc": "Enter the order id to send it to the carrier now.",
+      "order_id": "Order id",
+      "submit": "Send",
+      "title": "Dispatch an order manually"
+    },
+    "drawer": {
+      "decision": "Ordium decision",
+      "decision_carrier": "The order was accepted and sent automatically from the carrier's warehouse.",
+      "decision_merchant": "The order left your own stock and was handed to the carrier once accepted.",
+      "decision_note": "On delivery or return the outcome is recorded automatically and used to improve scoring.",
+      "fact_attempts": "Dispatch attempts",
+      "fact_carrier": "Carrier",
+      "fact_cod": "Cash on delivery",
+      "fact_destination": "Destination",
+      "fact_dispatched": "Dispatched on",
+      "fact_source": "Sent from",
+      "fact_tracking": "Tracking number",
+      "fact_type": "Delivery type",
+      "last_error": "Last failure reason",
+      "last_sync": "Last updated",
+      "log": "Tracking log",
+      "log_empty": "No tracking events yet.",
+      "next_attempt": "Next attempt",
+      "parcel": "Parcel",
+      "stages": "Shipment stages",
+      "title": "Shipment"
+    },
+    "empty": {
+      "desc": "No shipments match the current filters.",
+      "link_action": "Open settings",
+      "link_desc": "Link a carrier in Settings to start sending accepted orders automatically.",
+      "link_title": "Link a carrier",
+      "no_carriers_live": "No carriers available yet",
+      "no_carriers_live_desc": "We will let you know as soon as the first carrier becomes available for your account.",
+      "title": "No parcels in this state right now"
+    },
+    "errors": {
+      "active_shipment_exists": "This order already has an active shipment.",
+      "awaiting_confirmation": "The order is awaiting customer confirmation.",
+      "carrier_cancel_failed": "The carrier did not accept the cancellation. Try again later.",
+      "generic": "Could not complete the action. Please try again.",
+      "mixed_source": "The order's products come from different stock sources.",
+      "no_answer": "The customer did not answer the confirmation.",
+      "no_carrier_configured": "No carrier is configured for this wilaya.",
+      "no_store": "The order is not linked to a store.",
+      "not_found": "Order or shipment not found.",
+      "order_cancelled": "The order is cancelled.",
+      "order_needs_decision": "This order needs your decision first (review or reject) before it can be sent.",
+      "order_predates_carrier_link": "The order predates the carrier link and is not sent automatically.",
+      "out_of_stock": "The product is out of stock.",
+      "unmapped_product": "A product in the order is not mapped to inventory.",
+      "wrong_state": "This action is not possible in the shipment's current state."
+    },
+    "fail_alert": "Orders that did not reach the carrier:",
+    "fail_alert_action": "View and fix",
+    "load_error": "Could not load shipments",
+    "loading": "Loading shipments…",
+    "manual_dispatch": "Manual dispatch",
+    "next_page": "Next",
+    "prev_page": "Previous",
+    "open": "Open shipment",
+    "page_label": "page",
+    "pickups": {
+      "merchant": "From your shop",
+      "next": "Next pickup",
+      "title": "Upcoming pickups",
+      "warehouse": "From warehouse"
+    },
+    "print_labels": "Print my labels",
+    "refresh": "Refresh",
+    "results_label": "shipments",
+    "search_label": "Search shipments",
+    "search_placeholder": "Search by order, tracking or customer name…",
+    "source": {
+      "carrier": "Carrier warehouse",
+      "merchant": "From my shop"
+    },
+    "source_all": "All sources",
+    "source_filter": "Order source",
+    "tabs_label": "Shipment status",
+    "title": "Shipments",
+    "tab": {
+      "all": "All",
+      "ready": "Preparing",
+      "transit": "In transit",
+      "out": "Out for delivery",
+      "done": "Delivered",
+      "ret": "Returned",
+      "fail": "Not sent"
+    },
+    "order_source": {
+      "api": "API",
+      "shopify": "Shopify",
+      "woocommerce": "WooCommerce",
+      "youcan": "YouCan"
+    },
+    "delivery_type": {
+      "home": "Home delivery",
+      "stop_desk": "Stop desk"
+    },
+    "outcome": {
+      "dispatched": "Shipment sent to the carrier",
+      "retried": "Retry succeeded",
+      "failed": "The shipment did not reach the carrier",
+      "fell_back": "Sent through the fallback carrier",
+      "held": "Shipment held for a decision",
+      "skipped": "No action was needed"
+    },
+    "stage": {
+      "created": "Created",
+      "accepted": "Accepted",
+      "picked_up": "Picked up",
+      "in_transit": "In transit",
+      "out_for_delivery": "Out for delivery",
+      "delivered": "Delivered"
+    },
+    "status": {
+      "pending_dispatch": "Pending dispatch",
+      "accepted": "Accepted",
+      "picked_up": "Picked up",
+      "in_transit": "In transit",
+      "out_for_delivery": "Out for delivery",
+      "delivery_attempt_failed": "Delivery attempt failed",
+      "delivered": "Delivered",
+      "returning": "Returning",
+      "returned": "Returned",
+      "dispatch_failed": "Dispatch failed",
+      "cancelled": "Cancelled"
+    },
+    "hold": {
+      "review": "The order is waiting for your review before dispatch.",
+      "rejected": "The order was rejected and will not be sent without your decision.",
+      "no_answer": "The customer did not answer the confirmation.",
+      "awaiting_confirmation": "Awaiting customer confirmation.",
+      "out_of_stock": "The product is out of stock.",
+      "unmapped_product": "A product is not mapped to inventory.",
+      "mixed_source": "Products come from different stock sources.",
+      "no_store": "The order is not linked to a store."
+    }
   }
 }

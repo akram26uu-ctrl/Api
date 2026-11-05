@@ -486,7 +486,11 @@
       "store_workspace_hint": "Envoyez des confirmations WhatsApp et enregistrez les résultats depuis la page des commandes — WhatsApp est un service géré par Ordium.",
       "integrations": "Connexion boutique",
       "confirmation": "Résultats de confirmation",
-      "confirmation_page": "Confirmation"
+      "confirmation_page": "Confirmation",
+      "pending": "En attente de décision",
+      "shipments": "Expéditions",
+      "inventory": "Stock",
+      "group_shipping": "Expédition"
     },
     "header": {
       "sandbox_btn": "BAC À SABLE",
@@ -1836,5 +1840,172 @@
   },
   "legal": {
     "effective": "Date d'entrée en vigueur"
+  },
+  "shipping": {
+    "actions": {
+      "cancel": "Annuler l'expédition",
+      "cancel_failed": "Impossible d'annuler l'expédition",
+      "cancelled": "Expédition annulée",
+      "label": "Imprimer l'étiquette",
+      "refresh": "Actualiser le statut",
+      "retry": "Réessayer",
+      "retry_failed": "Échec de la nouvelle tentative"
+    },
+    "cancel_modal": {
+      "confirm": "Oui, annuler l'expédition",
+      "desc": "Le transporteur recevra une demande d'annulation de ce colis. Cette action est irréversible.",
+      "keep": "Conserver l'expédition",
+      "title": "Annuler l'expédition ?"
+    },
+    "col_carrier": "Transporteur et origine",
+    "col_cod": "Encaissement",
+    "col_destination": "Destination et client",
+    "col_order": "Commande",
+    "col_status": "Statut",
+    "col_tracking": "Suivi",
+    "col_updated": "Dernière mise à jour",
+    "col_wilaya": "Wilaya",
+    "coming_soon": "Cette page est en préparation et sera bientôt disponible.",
+    "description": "Chaque colis sorti de votre boutique ou de l'entrepôt du transporteur, de l'envoi jusqu'à la livraison ou au retour.",
+    "dispatch_modal": {
+      "desc": "Saisissez l'identifiant de la commande pour l'envoyer maintenant au transporteur.",
+      "order_id": "Identifiant de commande",
+      "submit": "Envoyer",
+      "title": "Envoi manuel d'une commande"
+    },
+    "drawer": {
+      "decision": "Décision Ordium",
+      "decision_carrier": "La commande a été acceptée et expédiée automatiquement depuis l'entrepôt du transporteur.",
+      "decision_merchant": "La commande est sortie de votre stock et a été transmise au transporteur après acceptation.",
+      "decision_note": "À la livraison ou au retour, le résultat est enregistré automatiquement et sert à améliorer l'évaluation.",
+      "fact_attempts": "Tentatives d'envoi",
+      "fact_carrier": "Transporteur",
+      "fact_cod": "Paiement à la livraison",
+      "fact_destination": "Destination",
+      "fact_dispatched": "Date d'envoi",
+      "fact_source": "Origine de l'envoi",
+      "fact_tracking": "Numéro de suivi",
+      "fact_type": "Type de livraison",
+      "last_error": "Dernière erreur",
+      "last_sync": "Dernière mise à jour",
+      "log": "Historique de suivi",
+      "log_empty": "Aucun événement de suivi pour le moment.",
+      "next_attempt": "Prochaine tentative",
+      "parcel": "Colis",
+      "stages": "Étapes de l'expédition",
+      "title": "Expédition"
+    },
+    "empty": {
+      "desc": "Aucune expédition ne correspond aux filtres actuels.",
+      "link_action": "Ouvrir les paramètres",
+      "link_desc": "Liez un transporteur dans les paramètres pour envoyer automatiquement les commandes acceptées.",
+      "link_title": "Liez un transporteur",
+      "no_carriers_live": "Aucun transporteur disponible pour le moment",
+      "no_carriers_live_desc": "Nous vous préviendrons dès qu'un premier transporteur sera disponible pour votre compte.",
+      "title": "Aucun colis dans cet état pour le moment"
+    },
+    "errors": {
+      "active_shipment_exists": "Cette commande a déjà une expédition active.",
+      "awaiting_confirmation": "La commande attend la confirmation du client.",
+      "carrier_cancel_failed": "Le transporteur a refusé l'annulation. Réessayez plus tard.",
+      "generic": "Action impossible. Veuillez réessayer.",
+      "mixed_source": "Les produits de la commande proviennent de sources de stock différentes.",
+      "no_answer": "Le client n'a pas répondu à la confirmation.",
+      "no_carrier_configured": "Aucun transporteur n'est configuré pour cette wilaya.",
+      "no_store": "La commande n'est liée à aucune boutique.",
+      "not_found": "Commande ou expédition introuvable.",
+      "order_cancelled": "La commande est annulée.",
+      "order_needs_decision": "Cette commande nécessite d'abord votre décision (revue ou rejet) avant l'envoi.",
+      "order_predates_carrier_link": "La commande est antérieure à la liaison du transporteur et n'est pas envoyée automatiquement.",
+      "out_of_stock": "Produit en rupture de stock.",
+      "unmapped_product": "Un produit de la commande n'est pas associé au stock.",
+      "wrong_state": "Cette action n'est pas possible dans l'état actuel de l'expédition."
+    },
+    "fail_alert": "Commandes non transmises au transporteur :",
+    "fail_alert_action": "Afficher et corriger",
+    "load_error": "Impossible de charger les expéditions",
+    "loading": "Chargement des expéditions…",
+    "manual_dispatch": "Envoi manuel",
+    "next_page": "Suivant",
+    "prev_page": "Précédent",
+    "open": "Ouvrir l'expédition",
+    "page_label": "page",
+    "pickups": {
+      "merchant": "Depuis votre boutique",
+      "next": "Prochain passage",
+      "title": "Prochains passages",
+      "warehouse": "Depuis l'entrepôt"
+    },
+    "print_labels": "Imprimer mes étiquettes",
+    "refresh": "Actualiser",
+    "results_label": "expéditions",
+    "search_label": "Rechercher dans les expéditions",
+    "search_placeholder": "Rechercher par commande, suivi ou nom du client…",
+    "source": {
+      "carrier": "Entrepôt du transporteur",
+      "merchant": "Depuis ma boutique"
+    },
+    "source_all": "Toutes les sources",
+    "source_filter": "Source de la commande",
+    "tabs_label": "Statut de l'expédition",
+    "title": "Expéditions",
+    "tab": {
+      "all": "Toutes",
+      "ready": "En préparation",
+      "transit": "En route",
+      "out": "Chez le livreur",
+      "done": "Livrées",
+      "ret": "Retours",
+      "fail": "Non envoyées"
+    },
+    "order_source": {
+      "api": "API",
+      "shopify": "Shopify",
+      "woocommerce": "WooCommerce",
+      "youcan": "YouCan"
+    },
+    "delivery_type": {
+      "home": "À domicile",
+      "stop_desk": "Point relais"
+    },
+    "outcome": {
+      "dispatched": "Expédition transmise au transporteur",
+      "retried": "Nouvelle tentative réussie",
+      "failed": "L'expédition n'a pas atteint le transporteur",
+      "fell_back": "Envoyée via le transporteur de secours",
+      "held": "Expédition en attente de décision",
+      "skipped": "Aucune action nécessaire"
+    },
+    "stage": {
+      "created": "Créée",
+      "accepted": "Reçue",
+      "picked_up": "Récupérée",
+      "in_transit": "En route",
+      "out_for_delivery": "En livraison",
+      "delivered": "Livrée"
+    },
+    "status": {
+      "pending_dispatch": "Envoi en cours",
+      "accepted": "Accepté",
+      "picked_up": "Récupéré",
+      "in_transit": "En route",
+      "out_for_delivery": "En livraison",
+      "delivery_attempt_failed": "Livraison échouée",
+      "delivered": "Livré",
+      "returning": "En retour",
+      "returned": "Retourné",
+      "dispatch_failed": "Envoi échoué",
+      "cancelled": "Annulé"
+    },
+    "hold": {
+      "review": "La commande attend votre revue avant l'envoi.",
+      "rejected": "La commande est rejetée et ne sera pas envoyée sans votre décision.",
+      "no_answer": "Le client n'a pas répondu à la confirmation.",
+      "awaiting_confirmation": "En attente de la confirmation du client.",
+      "out_of_stock": "Produit en rupture de stock.",
+      "unmapped_product": "Produit non associé au stock.",
+      "mixed_source": "Produits issus de sources de stock différentes.",
+      "no_store": "La commande n'est liée à aucune boutique."
+    }
   }
 }

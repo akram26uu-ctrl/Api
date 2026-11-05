@@ -1,10 +1,10 @@
 /** ORDIUM Dashboard Sidebar Navigation */
 import React, { useEffect, useRef } from 'react';
-import { LayoutDashboard, ShoppingCart, ClipboardCheck, Network, Zap, Cpu, X, Settings, Link2, Sliders } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, ClipboardCheck, Network, Zap, Cpu, X, Settings, Link2, Sliders, Clock, Truck, Package } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 
-export type DashboardTab = 'overview' | 'confirmation' | 'orders' | 'integrations' | 'network' | 'rules' | 'simulator' | 'settings';
+export type DashboardTab = 'overview' | 'confirmation' | 'orders' | 'pending' | 'shipments' | 'inventory' | 'integrations' | 'network' | 'rules' | 'simulator' | 'settings';
 
 interface DashboardSidebarProps {
   activeTab: DashboardTab;
@@ -55,7 +55,15 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ activeTab, o
       label: t('dashboard.sidebar.group_orders', 'الطلبات'),
       items: [
         { id: 'orders', label: t('dashboard.sidebar.orders', 'الطلبات'), icon: <ShoppingCart className="w-4 h-4" /> },
-        { id: 'confirmation', label: t('dashboard.sidebar.confirmation_page', 'التأكيد'), icon: <ClipboardCheck className="w-4 h-4" /> }
+        { id: 'confirmation', label: t('dashboard.sidebar.confirmation_page', 'التأكيد'), icon: <ClipboardCheck className="w-4 h-4" /> },
+        { id: 'pending', label: t('dashboard.sidebar.pending', 'بانتظار القرار'), icon: <Clock className="w-4 h-4" /> }
+      ]
+    },
+    {
+      label: t('dashboard.sidebar.group_shipping', 'الشحن'),
+      items: [
+        { id: 'shipments', label: t('dashboard.sidebar.shipments', 'الشحنات'), icon: <Truck className="w-4 h-4" /> },
+        { id: 'inventory', label: t('dashboard.sidebar.inventory', 'المخزون'), icon: <Package className="w-4 h-4" /> }
       ]
     },
     {
