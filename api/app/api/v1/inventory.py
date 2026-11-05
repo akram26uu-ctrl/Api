@@ -31,7 +31,9 @@ def _reevaluate_holds(db: Session, store_id: UUID, environment: str) -> None:
     from app.services.shipping_service import ShippingService
     try:
         with db.begin_nested():
-            ShippingService(db).reevaluate_store_holds(store_id, environment)
+            service = ShippingService(db)
+            for env in ("live", "test"):  # a product change applies to both environments of the store
+                service.reevaluate_store_holds(store_id, env)
         db.commit()
     except Exception:
         db.rollback()

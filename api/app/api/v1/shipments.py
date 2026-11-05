@@ -19,7 +19,7 @@ from app.schemas.shipping import ShipmentCreate
 from app.services.audit_service import AuditService
 from app.services.carrier_account_service import CarrierAccountService
 from app.services.dispatch_service import DispatchService
-from app.services.shipping_service import ShipmentActionRefused, ShippingService
+from app.services.shipping_service import CLOSED_ORDER_STATUSES, ShipmentActionRefused, ShippingService
 
 router = APIRouter(prefix="/shipping", tags=["Shipping"])
 
@@ -237,11 +237,11 @@ def create_shipment(data: ShipmentCreate, store_id: str | None = Query(default=N
     order = query.first()
     if order is None:
         raise HTTPException(404, "Order not found")
+    if order.status in CLOSED_ORDER_STATUSES:
+        raise HTTPException(409, "order_closed")
     service = ShippingService(db)
     shipment = service.active_shipment(order.id)
     if shipment is None:
-        if order.status == OrderStatus.CANCELLED:
-            raise HTTPException(409, "order_cancelled")
         assessment = latest_assessment(db, order.id)
         if assessment is None:
             raise HTTPException(409, "order_needs_decision")  # fail closed
@@ -283,8 +283,8 @@ def retry_shipment(shipment_id: str, store_id: str | None = Query(default=None),
     service = ShippingService(db)
     if service.active_shipment(order.id) is not None:
         raise HTTPException(409, "active_shipment_exists")
-    if order.status == OrderStatus.CANCELLED:
-        raise HTTPException(409, "order_cancelled")
+    if order.status in CLOSED_ORDER_STATUSES:
+        raise HTTPException(409, "order_closed")
     assessment = latest_assessment(db, order.id)
     approved = order_approved(db, order.id)
     if assessment is None or (assessment.decision in NEEDS_DECISION and approved is None):
