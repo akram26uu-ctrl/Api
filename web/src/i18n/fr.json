@@ -2042,7 +2042,7 @@
     "no_answer": "Sans réponse",
     "reject": "Rejeter",
     "dispatch_from": "Expédier depuis cet entrepôt",
-    "cancel_order": "Annuler la commande",
+    "cancel_order": "Annuler la commande (rupture de stock)",
     "restore": "Restaurer",
     "archive": "Archiver",
     "action_failed": "Impossible d'effectuer l'action",
@@ -2053,7 +2053,9 @@
       "reject": "Commande rejetée",
       "dispatch": "Expédiée depuis l'entrepôt choisi",
       "restore": "Commande restaurée",
-      "archive": "Commande archivée"
+      "archive": "Commande archivée",
+      "generic": "Action effectuée",
+      "cancel_stock": "Commande annulée (rupture de stock)"
     },
     "confirm_reject": {
       "title": "Rejeter cette commande ?",
@@ -2071,6 +2073,12 @@
       "mixed_source": "Les produits viennent de sources de stock différentes.",
       "no_store": "La commande n'est liée à aucune boutique.",
       "out_of_stock": "Stock insuffisant pour cette commande."
+    },
+    "link_products": "Lier les produits",
+    "no_warehouse": "Choisissez d'abord un entrepôt avec du stock",
+    "confirm_cancel_stock": {
+      "title": "Annuler la commande (rupture de stock) ?",
+      "desc": "La commande sera annulée faute de stock et ne comptera pas comme un mauvais résultat."
     }
   }
 }

@@ -383,3 +383,28 @@ def test_shipping_hook_failure_does_not_affect_order(monkeypatch):
     with SessionLocal() as db:
         assert db.query(Shipment).filter_by(order_id=UUID(body["order_id"])).count() == 0
         assert db.query(WhatsAppMessage).filter_by(order_id=UUID(body["order_id"])).count() == 1
+
+
+def test_reject_out_of_stock_records_non_bad_reason(db):
+    merchant, store, _ = _world(db)
+    order = _order(db, merchant, store)
+    svc = ShippingService(db)
+    s = svc.on_decision(order, merchant, RiskDecision.REVIEW)
+    s.hold_reason = "out_of_stock"
+    svc.reject(s, "key-1")
+    outcome = db.query(OrderOutcome).filter_by(order_id=order.id).one()
+    assert (outcome.outcome_status, outcome.reason) == ("cancelled", "out_of_stock")
+    assert not is_bad_outcome(outcome.outcome_status, outcome.reason)
+
+
+def test_approve_allowed_for_no_answer_refused_for_unmapped(db):
+    merchant, store, _ = _world(db)
+    svc = ShippingService(db)
+    s = svc.on_decision(_order(db, merchant, store), merchant, RiskDecision.REVIEW)
+    s.hold_reason = "no_answer"; s.meta = {"needs_confirmation": True, "no_answer": True}
+    svc.approve(s, "key")
+    assert s.hold_reason is None and not (s.meta or {}).get("needs_confirmation") and not (s.meta or {}).get("no_answer")
+    s2 = svc.on_decision(_order(db, merchant, store), merchant, RiskDecision.REVIEW)
+    s2.hold_reason = "unmapped_product"
+    with pytest.raises(ShipmentActionRefused):
+        svc.approve(s2, "key")

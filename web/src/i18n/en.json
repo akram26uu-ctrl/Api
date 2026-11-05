@@ -2041,7 +2041,7 @@
     "no_answer": "No answer",
     "reject": "Reject",
     "dispatch_from": "Dispatch from this warehouse",
-    "cancel_order": "Cancel order",
+    "cancel_order": "Cancel order (out of stock)",
     "restore": "Restore",
     "archive": "Archive",
     "action_failed": "Unable to complete the action",
@@ -2052,7 +2052,9 @@
       "reject": "Order rejected",
       "dispatch": "Dispatched from the chosen warehouse",
       "restore": "Order restored",
-      "archive": "Order archived"
+      "archive": "Order archived",
+      "generic": "Action completed",
+      "cancel_stock": "Order cancelled (out of stock)"
     },
     "confirm_reject": {
       "title": "Reject this order?",
@@ -2070,6 +2072,12 @@
       "mixed_source": "Products come from different stock sources.",
       "no_store": "The order is not linked to a store.",
       "out_of_stock": "Not enough stock for this order."
+    },
+    "link_products": "Link products",
+    "no_warehouse": "Choose a warehouse with stock first",
+    "confirm_cancel_stock": {
+      "title": "Cancel order (out of stock)?",
+      "desc": "The order will be cancelled for lack of stock and will not count as a bad outcome."
     }
   }
 }

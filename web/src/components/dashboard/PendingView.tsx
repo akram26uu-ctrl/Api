@@ -1,6 +1,6 @@
 /** ORDIUM Pending-decision queue: orders held before dispatch until the merchant decides. */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCw, ChevronLeft, ChevronRight, Clock, PhoneOff, Check, X, Undo2, Archive, Send, ClipboardCheck } from 'lucide-react';
+import { RefreshCw, Link2, ChevronLeft, ChevronRight, Clock, PhoneOff, Check, X, Undo2, Archive, Send, ClipboardCheck } from 'lucide-react';
 import type { Order, PendingAction, PendingItem, PendingListResponse } from '../../lib/api/types';
 import { shippingApi } from '../../lib/api/shipping';
 import { ordiumClient } from '../../lib/api/client';
@@ -11,6 +11,7 @@ import { ToastContainer, ToastMessage } from '../common/Toast';
 import { OrderDetailDrawer } from './OrderDetailDrawer';
 import { shippingErrorMessage } from './shippingErrors';
 import { resolveWilaya } from './wilaya';
+import type { DashboardRoute } from './DashboardLayout';
 import { useLanguage } from '../../i18n/LanguageContext';
 
 const TABS = ['review', 'stock', 'rejected'] as const;
@@ -18,9 +19,9 @@ type Tab = typeof TABS[number];
 type Sort = 'oldest' | 'risk' | 'value';
 const STALE_MS = 48 * 3600 * 1000;
 
-interface Props { environment?: string; storeName?: string }
+interface Props { storeName?: string; onNavigate?: (route: DashboardRoute) => void }
 
-export const PendingView: React.FC<Props> = ({ storeName }) => {
+export const PendingView: React.FC<Props> = ({ storeName, onNavigate }) => {
   const { t, language } = useLanguage();
   const locale = language === 'ar' ? 'ar-DZ' : language === 'fr' ? 'fr-DZ' : 'en-GB';
   const [tab, setTab] = useState<Tab>('review');
@@ -31,7 +32,7 @@ export const PendingView: React.FC<Props> = ({ storeName }) => {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [warehouse, setWarehouse] = useState<Record<string, string>>({});
-  const [confirm, setConfirm] = useState<{ item: PendingItem; action: 'reject' | 'archive' } | null>(null);
+  const [confirm, setConfirm] = useState<{ item: PendingItem; action: 'reject' | 'archive' | 'cancel_stock' } | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -72,9 +73,14 @@ export const PendingView: React.FC<Props> = ({ storeName }) => {
   const run = async (item: PendingItem, action: PendingAction, doneKey: string) => {
     setBusy(item.shipment_id);
     try {
-      const body = action === 'dispatch-from' ? { warehouse_id: warehouse[item.shipment_id] ?? item.available_warehouses[0]?.id } : undefined;
-      await shippingApi.pendingAction(item.shipment_id, action, body as { warehouse_id: string } | undefined);
-      notify('success', t(`pending.done.${doneKey}`, doneKey));
+      let body: { warehouse_id: string } | undefined;
+      if (action === 'dispatch-from') {
+        const warehouseId = warehouse[item.shipment_id] ?? item.available_warehouses[0]?.id;
+        if (!warehouseId) { notify('error', t('pending.no_warehouse', 'اختر مستودعًا به مخزون أولًا')); return; }
+        body = { warehouse_id: warehouseId };
+      }
+      await shippingApi.pendingAction(item.shipment_id, action, body);
+      notify('success', t(`pending.done.${doneKey}`, t('pending.done.generic', 'تم تنفيذ الإجراء')));
       setConfirm(null);
       await load();
     } catch (err) { notify('error', t('pending.action_failed', 'تعذر تنفيذ الإجراء'), shippingErrorMessage(err, t)); setConfirm(null); }
@@ -159,8 +165,9 @@ export const PendingView: React.FC<Props> = ({ storeName }) => {
                   </div>
                   <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                     {tab === 'review' && <>
-                      <Button variant="primary" size="md" disabled={disabled} onClick={() => void run(i, 'approve', 'approve')} leftIcon={<Check className="w-3.5 h-3.5" aria-hidden="true" />}>{t('pending.approve', 'قبول وإرسال')}</Button>
-                      <Button variant="outline" size="md" disabled={disabled} onClick={() => void noAnswer(i)} leftIcon={<PhoneOff className="w-3.5 h-3.5" aria-hidden="true" />}>{t('pending.no_answer', 'لم يرد')}</Button>
+                      {(i.hold_reason === 'review' || i.hold_reason === 'no_answer') && <Button variant="primary" size="md" disabled={disabled} onClick={() => void run(i, 'approve', 'approve')} leftIcon={<Check className="w-3.5 h-3.5" aria-hidden="true" />}>{t('pending.approve', 'قبول وإرسال')}</Button>}
+                      {i.hold_reason === 'unmapped_product' && <Button variant="primary" size="md" onClick={() => onNavigate?.('inventory')} leftIcon={<Link2 className="w-3.5 h-3.5" aria-hidden="true" />}>{t('pending.link_products', 'ربط المنتجات')}</Button>}
+                      {(i.hold_reason === 'review' || i.hold_reason === 'no_answer') && <Button variant="outline" size="md" disabled={disabled} onClick={() => void noAnswer(i)} leftIcon={<PhoneOff className="w-3.5 h-3.5" aria-hidden="true" />}>{t('pending.no_answer', 'لم يرد')}</Button>}
                       <Button variant="danger" size="md" disabled={disabled} onClick={() => setConfirm({ item: i, action: 'reject' })} leftIcon={<X className="w-3.5 h-3.5" aria-hidden="true" />}>{t('pending.reject', 'رفض')}</Button>
                     </>}
                     {tab === 'stock' && <>
@@ -170,7 +177,8 @@ export const PendingView: React.FC<Props> = ({ storeName }) => {
                         </select>
                         <Button variant="primary" size="md" disabled={disabled} onClick={() => void run(i, 'dispatch-from', 'dispatch')} leftIcon={<Send className="w-3.5 h-3.5" aria-hidden="true" />}>{t('pending.dispatch_from', 'إرسال من هذا المستودع')}</Button>
                       </>}
-                      <Button variant="danger" size="md" disabled={disabled} onClick={() => setConfirm({ item: i, action: 'reject' })} leftIcon={<X className="w-3.5 h-3.5" aria-hidden="true" />}>{t('pending.cancel_order', 'إلغاء')}</Button>
+                      {i.hold_reason === 'unmapped_product' && <Button variant="primary" size="md" onClick={() => onNavigate?.('inventory')} leftIcon={<Link2 className="w-3.5 h-3.5" aria-hidden="true" />}>{t('pending.link_products', 'ربط المنتجات')}</Button>}
+                      <Button variant="danger" size="md" disabled={disabled} onClick={() => setConfirm({ item: i, action: i.hold_reason === 'out_of_stock' ? 'cancel_stock' : 'reject' })} leftIcon={<X className="w-3.5 h-3.5" aria-hidden="true" />}>{i.hold_reason === 'out_of_stock' ? t('pending.cancel_order', 'إلغاء الطلب (نفاد المخزون)') : t('pending.reject', 'رفض')}</Button>
                     </>}
                     {tab === 'rejected' && <>
                       <Button variant="outline" size="md" disabled={disabled} onClick={() => void run(i, 'restore', 'restore')} leftIcon={<Undo2 className="w-3.5 h-3.5" aria-hidden="true" />}>{t('pending.restore', 'استعادة')}</Button>
@@ -189,10 +197,10 @@ export const PendingView: React.FC<Props> = ({ storeName }) => {
         </div>
       )}
 
-      <Modal isOpen={Boolean(confirm)} onClose={() => setConfirm(null)} title={confirm?.action === 'archive' ? t('pending.confirm_archive.title', 'أرشفة هذا الطلب؟') : t('pending.confirm_reject.title', 'رفض هذا الطلب؟')} description={confirm?.action === 'archive' ? t('pending.confirm_archive.desc', 'سيختفي الطلب من هذه القائمة ولن يُشحن.') : t('pending.confirm_reject.desc', 'لن يُرسل الطلب إلى شركة التوصيل.')}>
+      <Modal isOpen={Boolean(confirm)} onClose={() => setConfirm(null)} title={t(`pending.confirm_${confirm?.action ?? 'reject'}.title`, 'تأكيد الإجراء')} description={t(`pending.confirm_${confirm?.action ?? 'reject'}.desc`, '')}>
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" size="md" onClick={() => setConfirm(null)}>{t('common.cancel', 'إلغاء')}</Button>
-          <Button type="button" variant="danger" size="md" isLoading={Boolean(confirm && busy === confirm.item.shipment_id)} onClick={() => confirm && void run(confirm.item, confirm.action, confirm.action)}>{confirm?.action === 'archive' ? t('pending.archive', 'أرشفة') : t('pending.reject', 'رفض')}</Button>
+          <Button type="button" variant="danger" size="md" isLoading={Boolean(confirm && busy === confirm.item.shipment_id)} onClick={() => confirm && void run(confirm.item, confirm.action === 'cancel_stock' ? 'reject' : confirm.action, confirm.action)}>{confirm?.action === 'archive' ? t('pending.archive', 'أرشفة') : confirm?.action === 'cancel_stock' ? t('pending.cancel_order', 'إلغاء الطلب (نفاد المخزون)') : t('pending.reject', 'رفض')}</Button>
         </div>
       </Modal>
       <OrderDetailDrawer order={order} isOpen={Boolean(order)} onClose={() => setOrder(null)} storeName={storeName} />

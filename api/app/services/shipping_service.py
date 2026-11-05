@@ -389,13 +389,14 @@ class ShippingService:
 
     def approve(self, shipment: Shipment, actor_key) -> Shipment:
         self._require_pending(shipment)
-        if shipment.hold_reason not in RISK_HOLDS:
+        if shipment.hold_reason not in RISK_HOLDS + ("no_answer",):
             raise ShipmentActionRefused("Shipment is not held for review")
         return self._open_for_dispatch(shipment, "approve", actor_key)
 
     REJECT_REASONS = {
         "review": "risk_decision", "rejected": "risk_decision", "no_answer": "unreachable",
         "unmapped_product": "other", "mixed_source": "other", "no_store": "other",
+        "out_of_stock": "out_of_stock",
     }
 
     def reject(self, shipment: Shipment, actor_key) -> Shipment:
