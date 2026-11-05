@@ -83,8 +83,11 @@ def _get_route(db: Session, api_key: ApiKey, route_id: str, store: UUID) -> Ship
 def list_routes(store_id: str | None = Query(default=None), db: Session = Depends(get_database),
                 api_key: ApiKey = Depends(require_api_scope("shipping:read"))):
     selected = _store(db, api_key, store_id)
-    return db.query(ShippingRoute).filter(
+    return db.query(ShippingRoute).join(
+        CarrierAccount, CarrierAccount.id == ShippingRoute.carrier_account_id,
+    ).filter(
         ShippingRoute.store_id == selected, ShippingRoute.merchant_id == api_key.merchant_id,
+        CarrierAccount.environment == api_key.environment,
     ).order_by(ShippingRoute.priority.asc(), ShippingRoute.id.asc()).all()
 
 

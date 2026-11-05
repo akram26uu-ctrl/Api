@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.carrier_account import CarrierAccount
@@ -11,8 +12,11 @@ class ShippingSettingsService:
     def __init__(self, db: Session):
         self.db = db
 
+    def _find(self, store_id: UUID) -> ShippingSettings | None:
+        return self.db.query(ShippingSettings).filter(ShippingSettings.store_id == store_id).first()
+
     def get_or_default(self, store_id: UUID) -> ShippingSettings:
-        settings = self.db.query(ShippingSettings).filter(ShippingSettings.store_id == store_id).first()
+        settings = self._find(store_id)
         if settings is not None:
             return settings
         merchant_id = self.db.query(Store.merchant_id).filter(Store.id == store_id).scalar()
@@ -23,8 +27,15 @@ class ShippingSettingsService:
             confirmation_timeout_hours=24, label_size="a6", notify_on_hold=True, notify_on_failure=True,
             notify_on_low_stock=True,
         )
-        self.db.add(settings)
-        self.db.flush()
+        try:
+            with self.db.begin_nested():
+                self.db.add(settings)
+        except IntegrityError:
+            # Lost the race on the unique store_id: use the row the winner created.
+            existing = self._find(store_id)
+            if existing is None:
+                raise
+            return existing
         return settings
 
     def update(self, store_id: UUID, changes: dict) -> ShippingSettings:

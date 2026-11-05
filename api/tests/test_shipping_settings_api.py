@@ -19,7 +19,7 @@ DEFAULTS = {
 }
 
 
-def _setup(environment="test"):
+def _setup(environment="test", unbound=False):
     with SessionLocal() as db:
         merchant = Merchant(name="Ship", email=f"ship-{uuid4()}@ordium.local", status=MerchantStatus.ACTIVE,
                             is_shadow_mode_enabled=False)
@@ -30,6 +30,8 @@ def _setup(environment="test"):
         db.flush()
         key, raw = ApiKeyService(db).create_key(merchant=merchant, name="k", environment=environment,
                                                 scopes=["shipping:read", "shipping:write"])
+        if unbound:
+            key.store_id = None
         db.commit()
         return merchant.id, str(store.id), {"Authorization": f"Bearer {raw}"}
 
@@ -51,11 +53,58 @@ def test_defaults_returned_when_none_saved():
 
 
 def test_settings_require_store():
-    _, sid, h = _setup()
+    _, _, h = _setup(unbound=True)
     r = client.get("/api/v1/shipping/settings", headers=h)
-    assert r.status_code in (200, 422)
-    if r.status_code == 422:
-        assert r.json()["detail"] == "store_id_required"
+    assert r.status_code == 422 and r.json()["detail"] == "store_id_required"
+    r = client.put("/api/v1/shipping/settings", json={"hold_minutes": 5}, headers=h)
+    assert r.status_code == 422 and r.json()["detail"] == "store_id_required"
+    assert client.get("/api/v1/shipping/routes", headers=h).json()["detail"] == "store_id_required"
+
+
+def test_get_or_default_survives_insert_race(monkeypatch):
+    from app.models.shipping_settings import ShippingSettings
+    from app.services.shipping_settings_service import ShippingSettingsService
+    mid, sid, _ = _setup()
+    with SessionLocal() as winner:
+        winner.add(ShippingSettings(merchant_id=mid, store_id=UUID(sid)))
+        winner.commit()
+    with SessionLocal() as db:
+        real = ShippingSettingsService._find
+        calls = {"n": 0}
+
+        def stale(self, store_id):
+            calls["n"] += 1
+            return None if calls["n"] == 1 else real(self, store_id)
+
+        monkeypatch.setattr(ShippingSettingsService, "_find", stale)
+        settings = ShippingSettingsService(db).get_or_default(UUID(sid))
+        assert settings.store_id == UUID(sid) and calls["n"] == 2
+        db.commit()
+        assert db.query(ShippingSettings).filter(ShippingSettings.store_id == UUID(sid)).count() == 1
+
+
+def test_routes_listed_only_for_key_environment():
+    from app.models.carrier_account import CarrierAccount
+    from app.models.shipping_settings import ShippingRoute
+    mid, sid, h_test = _setup()
+    a = _carrier(h_test, sid)
+    assert client.post(f"/api/v1/shipping/routes?store_id={sid}", headers=h_test,
+                       json={"wilaya_codes": ["16"], "carrier_account_id": a}).status_code == 201
+    with SessionLocal() as db:
+        from app.models.merchant import Merchant
+        merchant = db.get(Merchant, mid)
+        _, raw = ApiKeyService(db).create_key(merchant=merchant, name="live", environment="live",
+                                              scopes=["shipping:read", "shipping:write"])
+        live = CarrierAccount(merchant_id=mid, store_id=UUID(sid), environment="live", carrier_code="x",
+                              display_name="L", status="active")
+        db.add(live)
+        db.flush()
+        db.add(ShippingRoute(merchant_id=mid, store_id=UUID(sid), wilaya_codes=["31"], carrier_account_id=live.id))
+        db.commit()
+    h_live = {"Authorization": f"Bearer {raw}"}
+    url = f"/api/v1/shipping/routes?store_id={sid}"
+    assert [r["wilaya_codes"] for r in client.get(url, headers=h_live).json()] == [["31"]]
+    assert [r["wilaya_codes"] for r in client.get(url, headers=h_test).json()] == [["16"]]
 
 
 def test_put_updates_and_rejects_invalid():
