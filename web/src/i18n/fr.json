@@ -2079,7 +2079,8 @@
       "carrier_unreachable": "Le transporteur est injoignable pour le moment. Réessayez plus tard.",
       "store_id_required": "Sélectionnez d'abord une boutique.",
       "fallback_same_as_primary": "Le transporteur de secours doit différer du principal.",
-      "carrier_account_invalid": "Le transporteur choisi n'est pas valide."
+      "carrier_account_invalid": "Le transporteur choisi n'est pas valide.",
+      "order_closed": "La commande est clôturée (annulée, retournée ou livrée) et ne peut pas être expédiée."
     },
     "fail_alert": "Commandes non transmises au transporteur :",
     "fail_alert_action": "Afficher et corriger",

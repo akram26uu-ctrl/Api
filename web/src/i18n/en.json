@@ -2078,7 +2078,8 @@
       "carrier_unreachable": "The carrier cannot be reached right now. Try again later.",
       "store_id_required": "Select a store first.",
       "fallback_same_as_primary": "The fallback carrier must differ from the primary one.",
-      "carrier_account_invalid": "The selected carrier is not valid."
+      "carrier_account_invalid": "The selected carrier is not valid.",
+      "order_closed": "The order is closed (cancelled, returned or delivered) and cannot be shipped."
     },
     "fail_alert": "Orders that did not reach the carrier:",
     "fail_alert_action": "View and fix",

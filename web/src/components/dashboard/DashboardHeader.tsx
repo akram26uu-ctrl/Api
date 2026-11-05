@@ -63,55 +63,70 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const displayName = session.user.name?.trim() || [session.user.first_name, session.user.last_name].filter(Boolean).join(' ').trim() || session.user.email.split('@')[0] || t('dashboard.profile.user_default','مستخدم ORDIUM');
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'OP';
 
+  const isTest = environment === 'test';
+  const control = 'min-h-11 lg:min-h-10 rounded-xl border border-white/10 bg-[var(--ordium-surface)]';
+
   return (
-    <header className="dashboard-topbar sticky top-0 z-40 min-h-16 border-b border-white/5 bg-[var(--ordium-canvas)]/95 backdrop-blur-xl px-2 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-3">
-      {/* Left: Mobile sidebar control, optional desktop title, and store selector */}
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+    <header className="dashboard-topbar sticky top-0 z-40 min-h-16 border-b border-white/5 bg-[var(--ordium-canvas)]/95 backdrop-blur-xl px-2 sm:px-6 flex items-center gap-2 sm:gap-4">
+      {/* Start: menu (phones) and the page title */}
+      <div className="flex items-center gap-2 shrink-0 lg:shrink lg:flex-1 lg:min-w-0">
         {onToggleMobileSidebar && (
           <button
             type="button"
             onClick={onToggleMobileSidebar}
-            className="lg:hidden inline-flex items-center justify-center min-w-11 min-h-11 rounded-lg text-[var(--ordium-muted)] hover:text-white hover:bg-white/5 shrink-0"
+            className="lg:hidden inline-flex items-center justify-center min-w-11 min-h-11 rounded-xl text-[var(--ordium-muted)] hover:text-white hover:bg-white/5 shrink-0"
             aria-label={t('ui.open_menu', 'Open menu')}
           >
             <PanelLeft aria-hidden="true" className="w-5 h-5 rtl:-scale-x-100" strokeWidth={1.8} />
           </button>
         )}
-
-        <h1 className="sr-only lg:not-sr-only text-xl font-semibold text-[var(--ordium-text)] truncate">
-          {title}
-        </h1>
-
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <span className="hidden sm:inline text-xs text-[var(--ordium-subtle)]">{t('dashboard.header.store_label', 'المتجر')}</span>
-          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-[var(--ordium-surface)] px-1 sm:px-1.5 py-1 min-w-0 max-w-[min(56vw,15rem)] sm:max-w-none">
-            <StoreIcon className="w-3.5 h-3.5 text-[var(--ordium-signal)] shrink-0" />
-            <select disabled={!stores.length} value={selectedStoreId || ''} onChange={e => onStoreChange(e.target.value)} className="w-[min(38vw,9.5rem)] sm:w-auto sm:max-w-[170px] bg-transparent px-0.5 sm:px-1 text-xs text-white outline-none disabled:text-[var(--ordium-subtle)] truncate">
-              {stores.length ? stores.map(store => <option key={store.id} value={store.id}>{store.name}</option>) : <option value="">{t('dashboard.header.no_store', 'لا يوجد متجر')}</option>}
-            </select>
-            <button type="button" onClick={onManageStores} className="p-1.5 rounded-lg text-[var(--ordium-muted)] hover:text-white hover:bg-white/5" aria-label={t('dashboard.header.manage_stores', 'إدارة المتاجر')} title={t('dashboard.header.manage_stores', 'إدارة المتاجر')}>
-              <Settings2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-        <div role="radiogroup" aria-label={t('dashboard.header.environment', 'البيئة')} className="inline-flex shrink-0 rounded-xl border border-white/10 bg-[var(--ordium-surface)] p-1">
-          {(['live', 'test'] as const).map(env => (
-            <button key={env} type="button" role="radio" aria-checked={environment === env} onClick={() => environment !== env && onEnvironmentChange(env)} className={`min-h-11 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ordium-signal)]/50 ${environment === env ? 'bg-[var(--ordium-surface-raised)] text-white' : 'text-[var(--ordium-muted)] hover:text-white'}`}>
-              <span className="sm:hidden">{env === 'live' ? 'LIVE' : 'TEST'}</span>
-              <span className="hidden sm:inline">{env === 'live' ? t('dashboard.header.env_live', 'حقيقية (LIVE)') : t('dashboard.header.env_test', 'تجريبية (TEST)')}</span>
-            </button>
-          ))}
-        </div>
-        {environment === 'test' && <span className="hidden sm:inline shrink-0 text-xs font-semibold px-2 py-0.5 rounded bg-[var(--ordium-warning)]/20 text-[var(--ordium-warning)]">{t('dashboard.header.test_badge', 'وضع تجريبي')}</span>}
+        <h1 className="sr-only lg:not-sr-only text-lg font-semibold text-[var(--ordium-text)] truncate">{title}</h1>
       </div>
 
-      {/* Right: Notifications, Language & Account */}
-      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+      {/* Workspace context: which store, which environment */}
+      <div className="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 flex-1 lg:flex-none">
+        <label className={`${control} flex items-center gap-2 ps-2.5 sm:ps-3 pe-1.5 sm:pe-2 min-w-0 flex-1 sm:flex-none cursor-pointer hover:border-white/20 transition-colors focus-within:border-[var(--ordium-signal)]/60`}>
+          <StoreIcon aria-hidden="true" className="w-4 h-4 text-[var(--ordium-signal)] shrink-0" />
+          <span className="sr-only">{t('dashboard.header.store_label', 'المتجر')}</span>
+          <select
+            disabled={!stores.length}
+            value={selectedStoreId || ''}
+            onChange={e => onStoreChange(e.target.value)}
+            className="min-w-[4.5rem] w-full sm:w-auto sm:max-w-[12rem] bg-transparent text-sm font-medium text-white outline-none disabled:text-[var(--ordium-subtle)] truncate cursor-pointer"
+          >
+            {stores.length ? stores.map(store => <option key={store.id} value={store.id}>{store.name}</option>) : <option value="">{t('dashboard.header.no_store', 'لا يوجد متجر')}</option>}
+          </select>
+        </label>
+
+        <div role="radiogroup" aria-label={t('dashboard.header.environment', 'البيئة')} className={`${control} inline-flex items-center shrink-0 p-1 gap-0.5`}>
+          {(['live', 'test'] as const).map(env => {
+            const active = environment === env;
+            const tone = env === 'test' ? 'var(--ordium-warning)' : 'var(--ordium-success)';
+            return (
+              <button
+                key={env}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                aria-label={env === 'live' ? t('dashboard.header.env_live', 'حقيقية (LIVE)') : t('dashboard.header.env_test', 'تجريبية (TEST)')}
+                title={env === 'live' ? t('dashboard.header.env_live', 'حقيقية (LIVE)') : t('dashboard.header.env_test', 'تجريبية (TEST)')}
+                onClick={() => { if (!active) onEnvironmentChange(env); else if (typeof window !== 'undefined' && !window.matchMedia('(min-width: 640px)').matches) onEnvironmentChange(env === 'live' ? 'test' : 'live'); }}
+                className={`${active ? 'inline-flex' : 'hidden sm:inline-flex'} items-center gap-1.5 h-9 lg:h-8 px-2 sm:px-2.5 rounded-lg font-mono text-xs font-semibold tracking-wide focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ordium-signal)]/50 transition-colors ${active ? (env === 'test' ? 'bg-[var(--ordium-warning)]/15 text-[var(--ordium-warning)]' : 'bg-[var(--ordium-surface-raised)] text-white') : 'text-[var(--ordium-subtle)] hover:text-white'}`}
+              >
+                <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: active ? tone : 'currentColor', opacity: active ? 1 : 0.5 }} />
+                {env === 'live' ? 'LIVE' : 'TEST'}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* End: notifications, language and account */}
+      <div className="flex items-center gap-0.5 sm:gap-2 shrink-0 sm:ps-3 sm:border-s border-white/10">
         {selectedStoreId && <NotificationsCenter environment={environment} />}
 
-        {/* Language Switcher in Header */}
-        {/* Phones: the language switcher lives in the side menu, freeing room for the store name. */}
-        <div className="hidden sm:flex items-center ps-2 border-s border-white/10 shrink-0">
+        {/* Phones: the language switcher lives in the side menu. */}
+        <div className="hidden sm:flex items-center shrink-0">
           <LanguageSwitcher variant="dropdown" align="end" />
         </div>
 
@@ -121,13 +136,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             onClick={() => setProfileOpen(prev => !prev)}
             aria-expanded={profileOpen}
             aria-haspopup="menu"
-            aria-label={t('dashboard.profile.open', t('dashboard.profile.open','فتح قائمة الحساب'))}
-            className="flex items-center gap-1.5 rounded-xl p-1 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-[var(--ordium-accent)]/50 transition-colors"
+            aria-label={t('dashboard.profile.open', 'فتح قائمة الحساب')}
+            className="flex items-center gap-1.5 min-h-11 lg:min-h-10 rounded-xl px-1 hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ordium-signal)]/50 transition-colors"
           >
             <span className="w-8 h-8 rounded-full bg-[var(--ordium-accent)]/20 border border-[var(--ordium-accent)]/40 flex items-center justify-center font-mono text-xs font-bold text-[var(--ordium-signal)]">
               {initials}
             </span>
-            <ChevronDown className={`hidden sm:block w-3.5 h-3.5 text-[var(--ordium-subtle)] transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown aria-hidden="true" className={`hidden sm:block w-3.5 h-3.5 text-[var(--ordium-subtle)] transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {profileOpen && (
@@ -148,7 +163,19 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 </div>
               </div>
 
+              {isTest && (
+                <p className="mx-4 mt-3 text-xs font-semibold px-2 py-1 rounded bg-[var(--ordium-warning)]/20 text-[var(--ordium-warning)]">{t('dashboard.header.test_badge', 'وضع تجريبي')}</p>
+              )}
               <div className="p-2">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { setProfileOpen(false); onManageStores(); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#CBD5E1] hover:text-white hover:bg-white/5 text-start transition-colors"
+                >
+                  <Settings2 className="w-4 h-4 text-[var(--ordium-signal)] shrink-0" />
+                  <span>{t('dashboard.header.manage_stores', 'إدارة المتاجر')}</span>
+                </button>
                 <button
                   type="button"
                   role="menuitem"
