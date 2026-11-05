@@ -14,4 +14,6 @@ export * from './audit';
 export * from './features';
 export * from './usage';
 export * from './identityGraph';
+export * from './shipping';
+export * from './inventory';
 export * from './mockDatabase';
