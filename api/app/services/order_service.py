@@ -206,6 +206,8 @@ class OrderService:
                 status=OrderStatus.PENDING,
                 total_amount=data.total_amount,
                 currency=data.currency,
+                delivery_type=data.delivery_type,
+                stop_desk_id=data.stop_desk_id,
                 first_name=data.first_name,
                 last_name=data.last_name,
                 ip_address=ip_address,

@@ -98,6 +98,33 @@ def _normalize_dz_phone(value):
     return normalize_dz_phone(value) or value
 
 
+_STOP_DESK_MARKERS = ("stop", "desk", "bureau", "مكتب")
+
+
+def _delivery_type(payload: dict) -> tuple[str, str | None]:
+    """stop_desk when the platform's shipping method/line title names a pickup
+    office; home otherwise (including when the payload carries no such info)."""
+    candidates: list = []
+    for key in ("delivery_type", "shipping_method", "shipping_method_title", "shipping_title", "shipping_option"):
+        candidates.append(payload.get(key))
+    for key in ("shipping_lines", "shipping_line", "shipping"):
+        lines = payload.get(key)
+        for line in (lines if isinstance(lines, list) else [lines]):
+            if isinstance(line, dict):
+                candidates.extend(
+                    line.get(k) for k in ("title", "method_title", "name", "code", "method_id", "method", "delivery_type")
+                )
+    text = " ".join(str(c).lower() for c in candidates if isinstance(c, (str, int)) and str(c).strip())
+    desk = None
+    if any(marker in text for marker in _STOP_DESK_MARKERS):
+        for key in ("stop_desk_id", "stopdesk_id", "pickup_point_id", "desk_id"):
+            if payload.get(key):
+                desk = str(payload[key])[:100]
+                break
+        return "stop_desk", desk
+    return "home", None
+
+
 def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
     # Accommodate common native Shopify/YouCan-style fields and WooCommerce's
     # billing/shipping shape. Prefer a real shipping address, falling back to
@@ -181,6 +208,7 @@ def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
         ))
 
     total = payload.get("total_price") or payload.get("total_amount") or payload.get("total")
+    delivery_type, stop_desk_id = _delivery_type(payload)
     return OrderCreate(
         external_order_id=external_order_id,
         first_name=_required_text(first_name, "first name", 100),
@@ -193,6 +221,8 @@ def _normalize_order(payload: dict, external_order_id: str) -> OrderCreate:
         currency=currency,
         items=items,
         customer_ip=_shopper_ip(payload),
+        delivery_type=delivery_type,
+        stop_desk_id=stop_desk_id,
     )
 
 

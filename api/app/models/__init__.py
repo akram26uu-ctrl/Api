@@ -34,3 +34,9 @@ from app.models.store_integration import StoreIntegration
 from app.models.whatsapp_message import WhatsAppInboundEvent, WhatsAppMessage
 
 from app.models.store_order_backlog import StoreOrderBacklog
+
+from app.models.carrier_account import CarrierAccount
+from app.models.carrier_warehouse import CarrierWarehouse
+from app.models.product import Product, ProductCarrierLink, StockDeposit, StockLevel, StockMovement
+from app.models.shipment import Shipment, ShipmentEvent
+from app.models.shipping_settings import ShippingRoute, ShippingSettings

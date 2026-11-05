@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Literal
 from app.core.algeria_geo import canonical_wilaya_text
 from app.core.dz_input import normalize_currency, normalize_dz_phone, to_cents
 
@@ -109,6 +110,9 @@ class OrderCreate(BaseModel):
     )
 
     items: list[OrderItemCreate] = Field(default_factory=list, max_length=100)
+
+    delivery_type: Literal["home", "stop_desk"] = "home"
+    stop_desk_id: str | None = Field(default=None, max_length=100)
 
     currency: str = Field(
         default="DZD",
