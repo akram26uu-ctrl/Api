@@ -1,4 +1,8 @@
-"""Fake carrier for the `test` environment. Shipments progress with SANDBOX_CLOCK."""
+"""Fake carrier for the `test` environment. Shipments progress with SANDBOX_CLOCK.
+
+Stateless across processes: the tracking number itself carries the creation time
+and the outcome, ``SBX-<base36 epoch>-<D|R>-<digest of idempotency key>``, so any
+worker can answer tracking. Cancellation is recorded on the shipment row only."""
 from __future__ import annotations
 
 import hashlib
@@ -22,8 +26,31 @@ from app.services.carriers.base import (
 
 SANDBOX_CLOCK: Callable[[], datetime] = lambda: datetime.now(timezone.utc)  # noqa: E731
 
-# tracking -> {"created_at", "return", "cancelled_at"}
-_STATE: dict[str, dict] = {}
+# Per-process cache: idempotency key -> tracking number, so a replay in the same
+# process returns the same number (another process may mint a new epoch: fine for a sandbox).
+_STATE: dict[str, str] = {}
+_BASE36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+def _to36(value: int) -> str:
+    out = ""
+    while True:
+        value, rem = divmod(value, 36)
+        out = _BASE36[rem] + out
+        if value == 0:
+            return out
+
+
+def _parse(tracking: str) -> tuple[datetime, bool]:
+    """(created_at, is_return) from a sandbox tracking number."""
+    parts = str(tracking).split("-")
+    if len(parts) != 4 or parts[0] != "SBX" or parts[2] not in ("D", "R") or not parts[1]:
+        raise CarrierValidationError(f"unknown tracking {tracking}")
+    try:
+        epoch = int(parts[1], 36)
+    except ValueError:
+        raise CarrierValidationError(f"unknown tracking {tracking}") from None
+    return datetime.fromtimestamp(epoch, tz=timezone.utc), parts[2] == "R"
 
 _DELIVERY_TIMELINE = [
     (0, "accepted"),
@@ -76,28 +103,23 @@ class SandboxCarrier:
             raise CarrierUnavailable("sandbox carrier is down")
         if "FAIL" in address:
             raise CarrierValidationError("sandbox rejected the address")
-        digest = hashlib.sha256(req.idempotency_key.encode()).hexdigest()[:10].upper()
-        tracking = f"SBX-{digest}"
-        _STATE.setdefault(
-            tracking,
-            {"created_at": SANDBOX_CLOCK(), "return": "RETURN" in address, "cancelled_at": None},
-        )
+        tracking = _STATE.get(req.idempotency_key)
+        if tracking is None:
+            digest = hashlib.sha256(req.idempotency_key.encode()).hexdigest()[:10].upper()
+            epoch = int(SANDBOX_CLOCK().timestamp())
+            tracking = f"SBX-{_to36(epoch)}-{'R' if 'RETURN' in address else 'D'}-{digest}"
+            _STATE[req.idempotency_key] = tracking
         return CarrierShipmentResult(tracking, self.label_url(tracking), {"sandbox": True})
 
     def cancel_shipment(self, tracking: str) -> None:
-        self._state(tracking)["cancelled_at"] = SANDBOX_CLOCK()
+        _parse(tracking)  # unknown numbers are still refused; the shipment row records the cancel
 
     def get_tracking(self, tracking: str) -> list[TrackingEvent]:
-        st = self._state(tracking)
+        created_at, is_return = _parse(tracking)
         now = SANDBOX_CLOCK()
-        timeline = _RETURN_TIMELINE if st["return"] else _DELIVERY_TIMELINE
-        events = []
-        for hours, status in timeline:
-            at = st["created_at"] + timedelta(hours=hours)
-            if at <= now and (st["cancelled_at"] is None or at < st["cancelled_at"]):
-                events.append(self._event(tracking, status, at))
-        if st["cancelled_at"] is not None:
-            events.append(self._event(tracking, "cancelled", st["cancelled_at"]))
+        timeline = _RETURN_TIMELINE if is_return else _DELIVERY_TIMELINE
+        events = [self._event(tracking, status, created_at + timedelta(hours=hours))
+                  for hours, status in timeline if created_at + timedelta(hours=hours) <= now]
         events.sort(key=lambda e: e.occurred_at)
         return events
 
@@ -125,13 +147,6 @@ class SandboxCarrier:
 
     def label_url(self, tracking: str) -> str | None:
         return f"https://sandbox.invalid/labels/{tracking}.pdf"
-
-    @staticmethod
-    def _state(tracking: str) -> dict:
-        try:
-            return _STATE[tracking]
-        except KeyError:
-            raise CarrierValidationError(f"unknown tracking {tracking}") from None
 
     @staticmethod
     def _event(tracking: str, status: str, at: datetime) -> TrackingEvent:

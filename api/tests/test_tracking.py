@@ -191,7 +191,7 @@ def test_sync_shipments_advances_sandbox_by_clock(db, monkeypatch):
     DispatchService(db, clock=lambda: datetime.now(timezone.utc) + timedelta(hours=1)).run_batch()
     db.refresh(s)
     assert s.status == "accepted"
-    created = sandbox._STATE[s.tracking_number]["created_at"]
+    created = sandbox._parse(s.tracking_number)[0]
     monkeypatch.setattr(sandbox, "SANDBOX_CLOCK", lambda: created + timedelta(hours=30))
     counts = TrackingService(db).sync_active()
     assert counts["polled"] >= 1 and s.status == "in_transit" and order.status == OrderStatus.SHIPPED

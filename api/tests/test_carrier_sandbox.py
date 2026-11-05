@@ -139,15 +139,34 @@ def test_sandbox_webhook_signature():
         c.parse_webhook({"X-Sandbox-Signature": "bad"}, body)
 
 
-def test_sandbox_cancel_stops_timeline(clock):
+def test_sandbox_cancel_is_stateless_noop(clock):
     c = SandboxCarrier(CREDS)
     tn = c.create_shipment(_req()).tracking_number
     clock["now"] = T0 + timedelta(hours=3)
-    c.cancel_shipment(tn)
-    clock["now"] = T0 + timedelta(hours=60)
-    events = c.get_tracking(tn)
-    assert [e.status for e in events] == ["accepted", "picked_up", "cancelled"]
-    assert events[-1].occurred_at == T0 + timedelta(hours=3)
+    c.cancel_shipment(tn)  # succeeds; the shipment row records the cancellation
+    assert [e.status for e in c.get_tracking(tn)] == ["accepted", "picked_up"]
+    with pytest.raises(CarrierValidationError):
+        c.cancel_shipment("SBX-NOPE")
+
+
+def test_sandbox_tracking_survives_a_fresh_process(clock, monkeypatch):
+    tn = SandboxCarrier(CREDS).create_shipment(_req("rx", address="RETURN road")).tracking_number
+    assert tn.startswith("SBX-") and "-R-" in tn
+    monkeypatch.setattr(sandbox, "_STATE", {})  # another worker process: no memory of the create
+    clock["now"] = T0 + timedelta(hours=50)
+    other = SandboxCarrier(CREDS)
+    events = other.get_tracking(tn)
+    assert events[0].occurred_at == T0 and events[-1].status == "returned"
+    other.cancel_shipment(tn)
+    clock["now"] = T0 + timedelta(hours=1)
+    assert [e.status for e in other.get_tracking(tn)] == ["accepted"]
+
+
+def test_sandbox_unknown_tracking_is_validation_error():
+    c = SandboxCarrier(CREDS)
+    for bad in ("SBX-ABC", "XYZ-1-D-2", "SBX-!!-D-ABC", "SBX-1-X-ABC"):
+        with pytest.raises(CarrierValidationError):
+            c.get_tracking(bad)
 
 
 def _signed(c, payload):
