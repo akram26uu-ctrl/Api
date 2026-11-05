@@ -29,6 +29,7 @@ SANDBOX_CLOCK: Callable[[], datetime] = lambda: datetime.now(timezone.utc)  # no
 # Per-process cache: idempotency key -> tracking number, so a replay in the same
 # process returns the same number (another process may mint a new epoch: fine for a sandbox).
 _STATE: dict[str, str] = {}
+_STATE_MAX = 10_000
 _BASE36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
@@ -109,6 +110,8 @@ class SandboxCarrier:
             epoch = int(SANDBOX_CLOCK().timestamp())
             tracking = f"SBX-{_to36(epoch)}-{'R' if 'RETURN' in address else 'D'}-{digest}"
             _STATE[req.idempotency_key] = tracking
+            while len(_STATE) > _STATE_MAX:
+                _STATE.pop(next(iter(_STATE)))  # evict the oldest entry
         return CarrierShipmentResult(tracking, self.label_url(tracking), {"sandbox": True})
 
     def cancel_shipment(self, tracking: str) -> None:
