@@ -7,7 +7,6 @@ import { DashboardHeader } from './DashboardHeader';
 import { MerchantOnboarding } from './MerchantOnboarding';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { StoreManagementModal } from './StoreManagementModal';
-import { EmptyState } from '../common/EmptyState';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 import { isSettingsSection, SettingsSection } from './settings/SettingsView';
 
@@ -18,6 +17,7 @@ const IdentityNetworkView = lazy(() => import('./IdentityNetworkView').then(m =>
 const SimulatorView = lazy(() => import('./SimulatorView').then(m => ({ default: m.SimulatorView })));
 const SettingsView = lazy(() => import('./settings/SettingsView').then(m => ({ default: m.SettingsView })));
 const IntegrationsView = lazy(() => import('./IntegrationsView').then(m => ({ default: m.IntegrationsView })));
+const InventoryView = lazy(() => import('./InventoryView').then(m => ({ default: m.InventoryView })));
 const PendingView = lazy(() => import('./PendingView').then(m => ({ default: m.PendingView })));
 const ShipmentsView = lazy(() => import('./ShipmentsView').then(m => ({ default: m.ShipmentsView })));
 const RulesEngineView = lazy(() => import('./RulesEngineView').then(m => ({ default: m.RulesEngineView })));
@@ -182,7 +182,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
                 {activeTab === 'overview' && <>{showOnboarding && <MerchantOnboarding onNavigate={navigateTab} onDismiss={dismissOnboarding} />}<OverviewView onNavigateTab={navigateTab} /></>}
                 {activeTab === 'confirmation' && <ConfirmationView onOpenOrders={() => navigateTab('orders')} />}
                 {activeTab === 'orders' && <OrdersView storeName={stores.find(store => store.id === selectedStoreId)?.name} onOpenSimulator={() => navigateTab('simulator')} onOpenConfirmation={() => navigateTab('confirmation')} />}
-                {(activeTab === 'inventory') && <div className="dashboard-content"><EmptyState title={getTabTitle()} description={t('shipping.coming_soon', 'هذه الصفحة قيد الإعداد وستتوفر قريبًا.')} /></div>}
+                {activeTab === 'inventory' && <InventoryView />}
                 {activeTab === 'pending' && <PendingView onNavigate={navigateTab} storeName={stores.find(store => store.id === selectedStoreId)?.name} />}
                 {activeTab === 'shipments' && <ShipmentsView environment={environment} onNavigate={navigateTab} />}
                 {activeTab === 'integrations' && <IntegrationsView storeId={selectedStoreId} />}

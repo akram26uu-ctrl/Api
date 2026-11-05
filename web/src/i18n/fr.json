@@ -2084,5 +2084,124 @@
       "title": "Annuler la commande (rupture de stock) ?",
       "desc": "La commande sera annulée faute de stock et ne comptera pas comme un mauvais résultat."
     }
+  },
+  "inventory": {
+    "title": "Stock",
+    "description": "Les quantités de vos produits chez les transporteurs et chez vous, et chaque mouvement.",
+    "sync_now": "Synchroniser",
+    "sync_done": "Stock synchronisé",
+    "sync_failed": "Échec de la synchronisation",
+    "add_product": "Ajouter un produit",
+    "deposit_to_warehouse": "Déposer en entrepôt",
+    "unmapped_alert": "Produits de vos commandes non liés au stock",
+    "link_products": "Lier les produits",
+    "load_error": "Impossible de charger le stock",
+    "loading": "Chargement du stock…",
+    "locations": "Emplacements",
+    "with_me": "Chez moi",
+    "reserved": "Réservé",
+    "tabs_label": "Sections du stock",
+    "tab": {
+      "products": "Produits",
+      "deposits": "Dépôts",
+      "movements": "Mouvements"
+    },
+    "search_label": "Rechercher des produits",
+    "search_placeholder": "Nom du produit ou SKU…",
+    "location_filter": "Emplacement",
+    "all_locations": "Tous les emplacements",
+    "edit_product": "Modifier le produit",
+    "col": {
+      "product": "Produit",
+      "where": "Où",
+      "available": "Disponible",
+      "reserved": "Réservé",
+      "inbound": "En arrivée",
+      "status": "Statut",
+      "actions": "Actions"
+    },
+    "status": {
+      "ok": "En stock",
+      "low": "Stock bas",
+      "out": "Épuisé",
+      "merchant": "Chez moi",
+      "unmapped": "Non lié"
+    },
+    "empty": {
+      "title": "Aucun produit pour l'instant",
+      "desc": "En liant un transporteur, nous importons automatiquement votre stock. Ou ajoutez un produit conservé dans votre boutique.",
+      "no_match": "Aucun produit correspondant",
+      "no_match_desc": "Modifiez la recherche ou l'emplacement."
+    },
+    "deposits": {
+      "empty_title": "Aucun dépôt pour l'instant",
+      "empty_desc": "Enregistrez un dépôt quand vous envoyez de la marchandise à l'entrepôt du transporteur."
+    },
+    "deposit_status": {
+      "in_transit": "En transit",
+      "counting": "En comptage",
+      "received": "Reçu"
+    },
+    "mark_counting": "Marquer : en comptage",
+    "mark_received": "Marquer : reçu",
+    "deposit_updated": "Statut du dépôt mis à jour",
+    "deposit_failed": "Impossible de mettre à jour le dépôt",
+    "movements": {
+      "empty_title": "Aucun mouvement pour l'instant",
+      "empty_desc": "Chaque entrée et sortie de stock apparaît ici."
+    },
+    "reason": {
+      "sync": "Synchronisation",
+      "shipment": "Expédition",
+      "return": "Retour",
+      "deposit": "Dépôt"
+    },
+    "link": {
+      "title": "Lier un produit non lié",
+      "desc": "Liez le produit vu dans les commandes à un produit de votre stock, ou créez-en un nouveau.",
+      "unmapped": "Produit non lié",
+      "no_sku": "Ce produit n'a pas de SKU dans la commande et ne peut pas être lié d'ici.",
+      "mode": "Mode de liaison",
+      "mode_existing": "Produit existant",
+      "mode_new": "Nouveau produit",
+      "product": "Produit de votre stock",
+      "account": "Transporteur",
+      "submit": "Lier",
+      "missing": "Choisissez le produit et le compte transporteur",
+      "done": "Produit lié"
+    },
+    "deposit": {
+      "title": "Déposer en entrepôt",
+      "desc": "Enregistrez la marchandise envoyée à l'entrepôt du transporteur.",
+      "warehouse": "Entrepôt",
+      "reference": "Référence (facultatif)",
+      "lines": "Lignes",
+      "sku": "SKU",
+      "quantity": "Quantité",
+      "remove_line": "Supprimer la ligne",
+      "add_line": "Ajouter une ligne",
+      "submit": "Enregistrer le dépôt",
+      "invalid": "Choisissez un entrepôt et ajoutez au moins une ligne avec une quantité valide",
+      "created": "Dépôt enregistré"
+    },
+    "product": {
+      "add_title": "Ajouter un produit",
+      "edit_title": "Modifier le produit",
+      "desc": "Un produit conservé dans votre boutique, ou ses informations.",
+      "name": "Nom du produit",
+      "fulfillment": "Lieu de stockage",
+      "weight": "Poids en grammes (facultatif)",
+      "saved": "Produit enregistré"
+    },
+    "fulfillment": {
+      "carrier": "Chez le transporteur",
+      "merchant": "Chez moi"
+    },
+    "errors": {
+      "sku_already_exists": "Un produit avec ce SKU existe déjà.",
+      "sku_required": "Le SKU est obligatoire.",
+      "invalid_deposit_transition": "Un dépôt ne peut pas revenir à un statut précédent.",
+      "store_id_required": "Choisissez d'abord une boutique."
+    }
   }
 }

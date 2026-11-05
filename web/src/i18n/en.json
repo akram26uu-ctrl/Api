@@ -2083,5 +2083,124 @@
       "title": "Cancel order (out of stock)?",
       "desc": "The order will be cancelled for lack of stock and will not count as a bad outcome."
     }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "description": "Quantities of your products at carrier warehouses and with you, and every movement.",
+    "sync_now": "Sync now",
+    "sync_done": "Inventory synced",
+    "sync_failed": "Sync failed",
+    "add_product": "Add product",
+    "deposit_to_warehouse": "Deposit to warehouse",
+    "unmapped_alert": "Products in your orders are not linked to inventory",
+    "link_products": "Link products",
+    "load_error": "Unable to load inventory",
+    "loading": "Loading inventory…",
+    "locations": "Locations",
+    "with_me": "With me",
+    "reserved": "Reserved",
+    "tabs_label": "Inventory sections",
+    "tab": {
+      "products": "Products",
+      "deposits": "Deposits",
+      "movements": "Movements"
+    },
+    "search_label": "Search products",
+    "search_placeholder": "Product name or SKU…",
+    "location_filter": "Location",
+    "all_locations": "All locations",
+    "edit_product": "Edit product",
+    "col": {
+      "product": "Product",
+      "where": "Where",
+      "available": "Available",
+      "reserved": "Reserved",
+      "inbound": "Inbound",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "ok": "In stock",
+      "low": "Low stock",
+      "out": "Out of stock",
+      "merchant": "With me",
+      "unmapped": "Unmapped"
+    },
+    "empty": {
+      "title": "No products yet",
+      "desc": "When you link a carrier we import your stock from it automatically. Or add a product you keep at your shop.",
+      "no_match": "No matching products",
+      "no_match_desc": "Change the search or location."
+    },
+    "deposits": {
+      "empty_title": "No deposits yet",
+      "empty_desc": "Record a deposit when you send goods to the carrier's warehouse."
+    },
+    "deposit_status": {
+      "in_transit": "In transit",
+      "counting": "Counting",
+      "received": "Received"
+    },
+    "mark_counting": "Mark: counting",
+    "mark_received": "Mark: received",
+    "deposit_updated": "Deposit status updated",
+    "deposit_failed": "Unable to update the deposit",
+    "movements": {
+      "empty_title": "No movements yet",
+      "empty_desc": "Every stock increase or decrease shows up here."
+    },
+    "reason": {
+      "sync": "Sync",
+      "shipment": "Shipment",
+      "return": "Return",
+      "deposit": "Deposit"
+    },
+    "link": {
+      "title": "Link an unmapped product",
+      "desc": "Link the product seen in orders to one in your inventory, or create a new product.",
+      "unmapped": "Unmapped product",
+      "no_sku": "This product has no SKU in the order and cannot be linked from here.",
+      "mode": "Link mode",
+      "mode_existing": "Existing product",
+      "mode_new": "New product",
+      "product": "Product from your inventory",
+      "account": "Carrier",
+      "submit": "Link",
+      "missing": "Choose the product and carrier account",
+      "done": "Product linked"
+    },
+    "deposit": {
+      "title": "Deposit to warehouse",
+      "desc": "Record the goods you sent to the carrier's warehouse.",
+      "warehouse": "Warehouse",
+      "reference": "Reference (optional)",
+      "lines": "Lines",
+      "sku": "SKU",
+      "quantity": "Quantity",
+      "remove_line": "Remove line",
+      "add_line": "Add line",
+      "submit": "Record deposit",
+      "invalid": "Choose a warehouse and add at least one line with a valid quantity",
+      "created": "Deposit recorded"
+    },
+    "product": {
+      "add_title": "Add product",
+      "edit_title": "Edit product",
+      "desc": "A product you keep at your shop, or its details.",
+      "name": "Product name",
+      "fulfillment": "Held at",
+      "weight": "Weight in grams (optional)",
+      "saved": "Product saved"
+    },
+    "fulfillment": {
+      "carrier": "At the carrier",
+      "merchant": "With me"
+    },
+    "errors": {
+      "sku_already_exists": "A product with this SKU already exists.",
+      "sku_required": "SKU is required.",
+      "invalid_deposit_transition": "A deposit cannot go back to an earlier status.",
+      "store_id_required": "Select a store first."
+    }
   }
 }

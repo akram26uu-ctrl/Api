@@ -4,11 +4,11 @@ import { CheckCircle2, Clock, PackageCheck, Truck, Navigation, AlertTriangle, Ro
 import type { ShipmentStatus } from '../../lib/api/types';
 import { useLanguage } from '../../i18n/LanguageContext';
 
-const SUCCESS = 'bg-[var(--ordium-success)]/12 text-[var(--ordium-success)] border-[var(--ordium-success)]/30';
-const WARNING = 'bg-[var(--ordium-warning)]/12 text-[var(--ordium-warning)] border-[var(--ordium-warning)]/30';
-const DANGER = 'bg-[var(--ordium-danger)]/12 text-[var(--ordium-danger)] border-[var(--ordium-danger)]/30';
-const SIGNAL = 'bg-[var(--ordium-signal)]/12 text-[var(--ordium-signal)] border-[var(--ordium-signal)]/30';
-const MUTED = 'bg-white/5 text-[var(--ordium-muted)] border-white/10';
+export const SUCCESS = 'bg-[var(--ordium-success)]/12 text-[var(--ordium-success)] border-[var(--ordium-success)]/30';
+export const WARNING = 'bg-[var(--ordium-warning)]/12 text-[var(--ordium-warning)] border-[var(--ordium-warning)]/30';
+export const DANGER = 'bg-[var(--ordium-danger)]/12 text-[var(--ordium-danger)] border-[var(--ordium-danger)]/30';
+export const SIGNAL = 'bg-[var(--ordium-signal)]/12 text-[var(--ordium-signal)] border-[var(--ordium-signal)]/30';
+export const MUTED = 'bg-white/5 text-[var(--ordium-muted)] border-white/10';
 
 export const SHIPMENT_STATUS_STYLES: Record<ShipmentStatus, { icon: typeof Clock; className: string; fallback: string }> = {
   pending_dispatch: { icon: Clock, className: MUTED, fallback: 'قيد الإرسال' },
