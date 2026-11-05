@@ -56,13 +56,26 @@ const parseRoute = (raw: string): ParsedRoute => {
 const routeFromHash = (): ParsedRoute => typeof window === 'undefined' ? { tab: 'overview', section: null } : parseRoute(window.location.hash);
 const routeToHash = ({ tab, section }: ParsedRoute) => tab === 'settings' && section ? `#/settings/${section}` : `#/${tab}`;
 
+const ENVIRONMENT_STORAGE_KEY = 'ordium.dashboard.environment';
+
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLogout }) => {
   const { t } = useLanguage();
   const [currentSession, setCurrentSession] = useState<AuthSession>(session);
   useEffect(() => setCurrentSession(session), [session]);
   const [route, setRoute] = useState<ParsedRoute>(routeFromHash);
   const activeTab = route.tab;
-  const [environment] = useState<Environment>('live');
+  const [environment, setEnvironmentState] = useState<Environment>(() => {
+    let initial: Environment = 'live';
+    try { if (window.localStorage.getItem(ENVIRONMENT_STORAGE_KEY) === 'test') initial = 'test'; } catch { /* storage unavailable */ }
+    // Set synchronously so child effects (which run before this component's effects) already send the right header.
+    ordiumClient.setEnvironment(initial);
+    return initial;
+  });
+  const handleEnvironmentChange = useCallback((env: Environment) => {
+    ordiumClient.setEnvironment(env);
+    try { window.localStorage.setItem(ENVIRONMENT_STORAGE_KEY, env); } catch { /* storage unavailable */ }
+    setEnvironmentState(env);
+  }, []);
   const [stores, setStores] = useState<Store[]>([]);
   const [storesLoading, setStoresLoading] = useState(true);
   const [storeManagementOpen, setStoreManagementOpen] = useState(false);
@@ -158,8 +171,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
     <div className="dashboard-shell flex h-[100dvh] min-h-0 text-[var(--ordium-text)] overflow-hidden">
       <DashboardSidebar activeTab={activeTab} onSelectTab={navigateTab} mobileOpen={isMobileSidebarOpen} onCloseMobile={() => setIsMobileSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <DashboardHeader environment={environment} stores={stores} selectedStoreId={selectedStoreId} onStoreChange={handleStoreChange} onManageStores={() => navigateTab('settings/stores')} onOpenAccountSettings={() => navigateTab('settings/account')} onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)} title={getTabTitle()} session={currentSession} onLogout={onLogout} />
-        <main className="dashboard-main flex-1 overflow-y-auto" key={`${selectedStoreId || 'none'}-${keyRefreshCounter}`}>
+        <DashboardHeader environment={environment} onEnvironmentChange={handleEnvironmentChange} stores={stores} selectedStoreId={selectedStoreId} onStoreChange={handleStoreChange} onManageStores={() => navigateTab('settings/stores')} onOpenAccountSettings={() => navigateTab('settings/account')} onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)} title={getTabTitle()} session={currentSession} onLogout={onLogout} />
+        <main className="dashboard-main flex-1 overflow-y-auto" key={`${environment}-${selectedStoreId || 'none'}-${keyRefreshCounter}`}>
           {storesLoading ? (
             <div className="min-h-full flex items-center justify-center text-sm text-[var(--ordium-muted)]" role="status">{t('dashboard.stores.loading', 'جارٍ تحميل المتاجر…')}</div>
           ) : selectedStoreId ? (

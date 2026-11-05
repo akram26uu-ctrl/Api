@@ -12,6 +12,7 @@ import { NotificationsCenter } from './NotificationsCenter';
 
 interface DashboardHeaderProps {
   environment: Environment;
+  onEnvironmentChange: (env: Environment) => void;
   stores: Store[];
   selectedStoreId: string | null;
   onStoreChange: (storeId: string) => void;
@@ -25,6 +26,7 @@ interface DashboardHeaderProps {
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   environment,
+  onEnvironmentChange,
   stores,
   selectedStoreId,
   onStoreChange,
@@ -92,6 +94,15 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             </button>
           </div>
         </div>
+        <div role="radiogroup" aria-label={t('dashboard.header.environment', 'البيئة')} className="inline-flex shrink-0 rounded-xl border border-white/10 bg-[var(--ordium-surface)] p-1">
+          {(['live', 'test'] as const).map(env => (
+            <button key={env} type="button" role="radio" aria-checked={environment === env} onClick={() => environment !== env && onEnvironmentChange(env)} className={`min-h-11 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ordium-signal)]/50 ${environment === env ? 'bg-[var(--ordium-surface-raised)] text-white' : 'text-[var(--ordium-muted)] hover:text-white'}`}>
+              <span className="sm:hidden">{env === 'live' ? 'LIVE' : 'TEST'}</span>
+              <span className="hidden sm:inline">{env === 'live' ? t('dashboard.header.env_live', 'حقيقية (LIVE)') : t('dashboard.header.env_test', 'تجريبية (TEST)')}</span>
+            </button>
+          ))}
+        </div>
+        {environment === 'test' && <span className="hidden sm:inline shrink-0 text-xs font-semibold px-2 py-0.5 rounded bg-[var(--ordium-warning)]/20 text-[var(--ordium-warning)]">{t('dashboard.header.test_badge', 'وضع تجريبي')}</span>}
       </div>
 
       {/* Right: Notifications, Language & Account */}

@@ -498,6 +498,10 @@
       "simulate_order": "Simulate Order",
       "return_website": "Return to website",
       "store_label": "Store",
+      "environment": "Environment",
+      "env_live": "Live (LIVE)",
+      "env_test": "Sandbox (TEST)",
+      "test_badge": "Test mode",
       "toggle_menu": "Open navigation",
       "manage_stores": "Manage stores",
       "no_store": "No store"

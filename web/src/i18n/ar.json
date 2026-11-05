@@ -499,6 +499,10 @@
       "simulate_order": "تجربة طلب",
       "return_website": "العودة إلى الموقع الرئيسي",
       "store_label": "المتجر",
+      "environment": "البيئة",
+      "env_live": "حقيقية (LIVE)",
+      "env_test": "تجريبية (TEST)",
+      "test_badge": "وضع تجريبي",
       "toggle_menu": "فتح قائمة التنقل",
       "manage_stores": "إدارة المتاجر",
       "no_store": "لا يوجد متجر"

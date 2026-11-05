@@ -499,6 +499,10 @@
       "simulate_order": "Simuler une commande",
       "return_website": "Retour au site",
       "store_label": "Boutique",
+      "environment": "Environnement",
+      "env_live": "Réel (LIVE)",
+      "env_test": "Test (TEST)",
+      "test_badge": "Mode test",
       "toggle_menu": "Ouvrir la navigation",
       "manage_stores": "Gérer les boutiques",
       "no_store": "Aucune boutique"
