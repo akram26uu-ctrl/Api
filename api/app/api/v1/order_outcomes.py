@@ -21,6 +21,7 @@ from app.repositories.order_outcome_repository import (
 from app.repositories.risk_assessment_repository import RiskAssessmentRepository
 from app.services.risk_evaluation_service import RiskEvaluationService
 from app.services.audit_service import AuditService
+from app.services.outcome_service import OutcomeExists, record_outcome
 from app.services.webhook_service import WebhookService
 from app.schemas.order_outcome import (
     OrderOutcomeCreate,
@@ -89,65 +90,23 @@ def create_order_outcome(
             detail="Order not found",
         )
 
-    repository = OrderOutcomeRepository(db)
-
-    existing = repository.get_by_order_id(order.id)
-
-    if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Order outcome already exists",
-        )
-
-    occurred_at = data.occurred_at or datetime.now(timezone.utc)
-    order_created_at = order.created_at
-    if order_created_at.tzinfo is None:
-        order_created_at = order_created_at.replace(tzinfo=timezone.utc)
-    if occurred_at < order_created_at:
-        raise HTTPException(422, "occurred_at cannot be earlier than order creation time")
-
-    outcome = OrderOutcome(
-        order_id=order.id,
-        outcome_status=data.outcome_status,
-        source=data.source,
-        note=data.note,
-        reason=data.reason,
-        occurred_at=occurred_at,
-    )
-
     try:
-        repository.create(outcome)
-    except IntegrityError as exc:
-        db.rollback()
+        outcome = record_outcome(
+            db, order, data.outcome_status, source=data.source, reason=data.reason,
+            note=data.note, occurred_at=data.occurred_at,
+        )
+    except OutcomeExists as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Order outcome already exists",
         ) from exc
-
-    status_map = {
-        "delivered": OrderStatus.DELIVERED,
-        "cancelled": OrderStatus.CANCELLED,
-        "returned": OrderStatus.RETURNED,
-    }
-
-    order.status = status_map[data.outcome_status]
-
-    assessment = RiskAssessmentRepository(db).get_latest_for_order(order.id)
-    RiskEvaluationService(db).record_from_outcome(
-        order=order,
-        assessment=assessment,
-        outcome=outcome,
-    )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
     AuditService(db).record(
         action="order.outcome.updated", resource_type="order", resource_id=order.id,
         merchant_id=api_key.merchant_id, api_key_id=api_key.id, environment=order.environment,
         metadata={"outcome_status": outcome.outcome_status, "reason": outcome.reason},
-    )
-    WebhookService(db).enqueue(
-        api_key.merchant_id, order.environment, "order.outcome.updated",
-        {"order_id": str(order.id), "outcome_status": outcome.outcome_status, "reason": outcome.reason, "environment": order.environment},
-        store_id=order.store_id,
     )
     db.commit()
     db.refresh(outcome)

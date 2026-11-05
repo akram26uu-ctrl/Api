@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import json
 from decimal import Decimal
 from dataclasses import dataclass
@@ -274,6 +275,14 @@ class OrderService:
             # the dispatcher sends it only after the order commits.
             from app.services.whatsapp_service import enqueue_for_order
             enqueue_for_order(self.db, order, merchant, risk_result.decision, data.phone)
+
+            # Shipment creation/holds. Never allowed to fail the order or change the response.
+            try:
+                from app.services.shipping_service import ShippingService
+                with self.db.begin_nested():
+                    ShippingService(self.db).on_decision(order, merchant, risk_result.decision)
+            except Exception:
+                logging.getLogger(__name__).exception("shipping hook failed for order %s", order.id)
 
             # Same summary the score was computed from.
             graph_summary = risk_result.graph_summary or {}

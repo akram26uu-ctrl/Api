@@ -4,6 +4,7 @@ Used by the manual dashboard flow (POST /orders/{id}/confirmation-attempts)
 and by the automatic WhatsApp reply webhook, so both follow the same status
 transition rules and produce the same notification / merchant webhook.
 """
+import logging
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -13,6 +14,8 @@ from app.models.notification import Notification
 from app.models.order import Order
 from app.models.order_confirmation_attempt import OrderConfirmationAttempt
 from app.services.webhook_service import WebhookService
+
+logger = logging.getLogger(__name__)
 
 
 class ConfirmationConflict(ValueError):
@@ -75,6 +78,18 @@ def apply_confirmation(
         store_id=order.store_id,
     )
     db.flush()
+    if outcome in ("confirmed", "cancelled"):
+        # Shipping must never break the confirmation itself.
+        try:
+            from app.services.shipping_service import ShippingService
+            with db.begin_nested():
+                service = ShippingService(db)
+                if outcome == "confirmed":
+                    service.on_confirmed(order)
+                else:
+                    service.on_cancelled(order)
+        except Exception:
+            logger.exception("shipping hook failed for order %s", order.id)
     return attempt
 
 
