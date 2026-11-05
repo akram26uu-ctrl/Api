@@ -203,3 +203,20 @@ def test_settings_audit_logged():
     with SessionLocal() as db:
         actions = {x.action for x in db.query(AuditLog).filter(AuditLog.merchant_id == mid)}
     assert {"shipping_settings.updated", "shipping_route.created"} <= actions
+
+
+def test_route_update_delete_scoped_to_key_environment():
+    from app.models.merchant import Merchant
+    mid, sid, h_test = _setup()
+    a = _carrier(h_test, sid)
+    rid = client.post(f"/api/v1/shipping/routes?store_id={sid}", headers=h_test,
+                      json={"wilaya_codes": ["16"], "carrier_account_id": a}).json()["id"]
+    with SessionLocal() as db:
+        _, raw = ApiKeyService(db).create_key(merchant=db.get(Merchant, mid), name="live", environment="live",
+                                              scopes=["shipping:read", "shipping:write"])
+        db.commit()
+    h_live = {"Authorization": f"Bearer {raw}"}
+    url = f"/api/v1/shipping/routes/{rid}?store_id={sid}"
+    assert client.put(url, headers=h_live, json={"wilaya_codes": ["31"], "carrier_account_id": a}).status_code == 404
+    assert client.delete(url, headers=h_live).status_code == 404
+    assert client.delete(url, headers=h_test).status_code == 204

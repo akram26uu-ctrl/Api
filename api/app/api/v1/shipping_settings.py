@@ -71,9 +71,13 @@ def _get_route(db: Session, api_key: ApiKey, route_id: str, store: UUID) -> Ship
         parsed = UUID(route_id)
     except ValueError as exc:
         raise HTTPException(404, "Route not found") from exc
-    route = db.query(ShippingRoute).filter(
+    # Routes belong to the key's environment through their carrier account.
+    route = db.query(ShippingRoute).join(
+        CarrierAccount, CarrierAccount.id == ShippingRoute.carrier_account_id,
+    ).filter(
         ShippingRoute.id == parsed, ShippingRoute.store_id == store,
-        ShippingRoute.merchant_id == api_key.merchant_id).first()
+        ShippingRoute.merchant_id == api_key.merchant_id, CarrierAccount.environment == api_key.environment,
+    ).first()
     if route is None:
         raise HTTPException(404, "Route not found")
     return route
