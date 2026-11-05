@@ -17,6 +17,7 @@ from app.models.enums import OrderStatus, RiskDecision
 from app.models.merchant import Merchant
 from app.models.notification import Notification
 from app.models.order import Order
+from app.models.product import Product
 from app.models.shipment import Shipment
 from app.services.audit_service import AuditService
 from app.services.carrier_account_service import CarrierAccountService
@@ -49,6 +50,7 @@ class ShippingService:
         self.db = db
         self.settings_service = ShippingSettingsService(db)
         self.inventory = InventoryService(db)
+        self._quiet = False  # suppress hold notifications while re-allocating at dispatch time
 
     # ---- helpers ------------------------------------------------------
     def active_shipment(self, order_id: UUID) -> Shipment | None:
@@ -167,10 +169,12 @@ class ShippingService:
     def _stock_hold(self, shipment: Shipment, reason: str, backorder: bool = False) -> None:
         if shipment.hold_reason in RISK_HOLDS:
             return  # a risk hold is never replaced by a weaker one
+        previous = shipment.hold_reason
         self._hold(shipment, reason)
         if backorder:
             shipment.meta = {**(shipment.meta or {}), "backorder": True}
-        self._notify_hold(shipment)
+        if previous != reason and not self._quiet:
+            self._notify_hold(shipment)
 
     def _candidate_warehouses(self, account: CarrierAccount, wilaya: str | None) -> list[CarrierWarehouse]:
         rows = self.db.query(CarrierWarehouse).filter(
@@ -183,7 +187,8 @@ class ShippingService:
                 return warehouse
         return None
 
-    def allocate_and_reserve(self, shipment: Shipment) -> None:
+    def allocate_and_reserve(self, shipment: Shipment, account: CarrierAccount | None = None) -> None:
+        """Reserve stock. With ``account`` only that carrier's warehouses are considered (no fallback)."""
         if (shipment.meta or {}).get("stock") == "reserved":
             return
         order = self.db.get(Order, shipment.order_id)
@@ -203,8 +208,11 @@ class ShippingService:
             needs[product.id] = (product, current[1] + int(item.quantity))
 
         settings = self.settings_service.get_or_default(order.store_id)
-        primary, fallback = self.settings_service.resolve_route(
-            order.store_id, order.environment, self._wilaya_code(order))
+        if account is not None:
+            primary, fallback = account, None
+        else:
+            primary, fallback = self.settings_service.resolve_route(
+                order.store_id, order.environment, self._wilaya_code(order))
         if primary is not None:
             shipment.carrier_account_id = primary.id
 
@@ -251,8 +259,12 @@ class ShippingService:
 
     def release_backorders(self, product_ids: set) -> int:
         """Stock arrived: retry allocation of backordered shipments that need these products."""
+        store_ids = {sid for (sid,) in self.db.query(Product.store_id).filter(Product.id.in_(product_ids)).all()}
+        if not store_ids:
+            return 0
         rows = self.db.query(Shipment).filter(
-            Shipment.status == "pending_dispatch", Shipment.hold_reason == "out_of_stock").order_by(
+            Shipment.status == "pending_dispatch", Shipment.hold_reason == "out_of_stock",
+            Shipment.store_id.in_(store_ids)).order_by(
             Shipment.created_at.asc()).all()
         released = 0
         for shipment in rows:

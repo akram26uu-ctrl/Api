@@ -346,3 +346,171 @@ def test_webhook_event_enqueued_on_accept(db):
     assert d.payload == {"order_id": str(order.id), "external_order_id": order.external_order_id,
                          "shipment_id": str(s.id), "status": "accepted", "tracking_number": s.tracking_number,
                          "carrier_code": "sandbox"}
+
+
+# ---- review fixes -------------------------------------------------------
+def _wh(db, acc, ext="ALG"):
+    return db.query(CarrierWarehouse).filter_by(carrier_account_id=acc.id, external_id=ext).one()
+
+
+def _two_carriers(db, monkeypatch, primary_down=True):
+    merchant, store, primary = _world(db)
+    fallback = _account(db, merchant, store)
+    db.add(ShippingRoute(merchant_id=merchant.id, store_id=store.id, wilaya_codes=[],
+                         carrier_account_id=primary.id, fallback_carrier_account_id=fallback.id, priority=1))
+    ShippingSettingsService(db).update(store.id, {"retry_max": 1})
+    adapters = {primary.id: _FakeAdapter(primary_down), fallback.id: _FakeAdapter(False)}
+    monkeypatch.setattr(CarrierAccountService, "adapter_for", lambda self, acc: adapters[acc.id])
+    return merchant, store, primary, fallback
+
+
+def test_fallback_reallocates_stock_in_fallback_warehouses(db, monkeypatch):
+    merchant, store, primary, fallback = _two_carriers(db, monkeypatch)
+    old = _product(db, merchant, store, "FB-1", _wh(db, primary).id, 5)
+    p = db.get(Product, old.product_id)
+    new = StockLevel(product_id=p.id, warehouse_id=_wh(db, fallback).id, on_hand=5, reserved=0, inbound=0)
+    db.add(new)
+    db.flush()
+    s, _o = _shipment(db, merchant, store, items=[("FB-1", 2)])
+    assert old.reserved == 2
+    svc, _now = _svc(db)
+    assert svc.run_batch()["fell_back"] == 1
+    db.refresh(s); db.refresh(old); db.refresh(new)
+    assert s.carrier_account_id == fallback.id and s.warehouse_id == _wh(db, fallback).id
+    assert old.reserved == 0 and new.reserved == 2 and s.meta["stock"] == "reserved"
+    assert s.hold_reason is None and s.status == "pending_dispatch"
+    assert svc.run_batch()["dispatched"] == 1
+
+
+def test_fallback_without_stock_fails(db, monkeypatch):
+    merchant, store, primary, fallback = _two_carriers(db, monkeypatch)
+    old = _product(db, merchant, store, "FB-2", _wh(db, primary).id, 5)
+    s, _o = _shipment(db, merchant, store, items=[("FB-2", 2)])
+    svc, _now = _svc(db)
+    assert svc.run_batch()["failed"] == 1
+    db.refresh(s); db.refresh(old)
+    assert s.status == "dispatch_failed" and s.last_error == "fallback_no_stock" and s.hold_reason is None
+    assert old.reserved == 0 and s.meta["stock"] == "released"
+    assert db.query(Notification).filter_by(resource_id=str(s.id), notification_type="shipment.dispatch_failed").count() == 1
+    assert db.query(Notification).filter_by(resource_id=str(s.id), notification_type="shipment.held").count() == 0
+
+
+def test_fallback_merchant_fulfilled_switches_directly(db, monkeypatch):
+    merchant, store, primary, fallback = _two_carriers(db, monkeypatch)
+    level = _product(db, merchant, store, "MF-1", None, 5, fulfillment="merchant")
+    s, _o = _shipment(db, merchant, store, items=[("MF-1", 1)])
+    svc, _now = _svc(db)
+    assert svc.run_batch()["fell_back"] == 1
+    db.refresh(s); db.refresh(level)
+    assert s.carrier_account_id == fallback.id and level.reserved == 1 and s.meta["stock"] == "reserved"
+
+
+def test_reroute_when_account_inactive_reallocates(db):
+    merchant, store, acc = _world(db)
+    level = _product(db, merchant, store, "RR-1", _wh(db, acc).id, 5)
+    s, _o = _shipment(db, merchant, store, items=[("RR-1", 2)])
+    other = _account(db, merchant, store)
+    new = StockLevel(product_id=level.product_id, warehouse_id=_wh(db, other).id, on_hand=5, reserved=0, inbound=0)
+    db.add(new)
+    acc.status = "disabled"
+    db.flush()
+    svc, _now = _svc(db)
+    assert svc.run_batch()["dispatched"] == 1
+    db.refresh(s); db.refresh(level); db.refresh(new)
+    assert s.carrier_account_id == other.id and level.reserved == 0 and new.reserved == 2
+
+
+def test_reroute_without_stock_fails(db):
+    merchant, store, acc = _world(db)
+    level = _product(db, merchant, store, "RR-2", _wh(db, acc).id, 5)
+    s, _o = _shipment(db, merchant, store, items=[("RR-2", 2)])
+    _account(db, merchant, store)
+    acc.status = "disabled"
+    db.flush()
+    svc, _now = _svc(db)
+    assert svc.run_batch()["failed"] == 1
+    db.refresh(s); db.refresh(level)
+    assert s.status == "dispatch_failed" and s.last_error == "reroute_no_stock" and level.reserved == 0
+
+
+def test_final_failure_counts_attempt_once(db, monkeypatch):
+    merchant, store, acc = _world(db)
+    ShippingSettingsService(db).update(store.id, {"retry_max": 2})
+    monkeypatch.setattr(CarrierAccountService, "adapter_for", lambda self, a: _FakeAdapter(True))
+    s, _o = _shipment(db, merchant, store)
+    svc, now = _svc(db)
+    svc.run_batch()
+    DispatchService(db, clock=lambda: now + timedelta(hours=1)).run_batch()
+    db.refresh(s)
+    assert s.status == "dispatch_failed" and s.attempts == 2
+
+
+def test_replayed_accept_does_not_enqueue_webhook_twice(db):
+    merchant, store, acc = _world(db)
+    ep = WebhookEndpoint(merchant_id=merchant.id, store_id=store.id, environment="test", url="https://example.com/h",
+                         signing_secret_encrypted=b"x", events=["order.shipment.updated"], is_active=True)
+    db.add(ep)
+    db.flush()
+    s, _o = _shipment(db, merchant, store)
+    svc, _now = _svc(db)
+    svc.run_batch()
+    s.status, s.next_attempt_at = "pending_dispatch", datetime.now(timezone.utc) - timedelta(minutes=1)
+    db.flush()
+    svc.run_batch()
+    assert db.query(WebhookDelivery).filter_by(endpoint_id=ep.id).count() == 1
+    assert db.query(ShipmentEvent).filter_by(shipment_id=s.id).count() == 1
+
+
+def test_unexpected_error_after_carrier_accept_backs_off(db, monkeypatch):
+    from app.services.webhook_service import WebhookService
+    merchant, store, acc = _world(db)
+    s, _o = _shipment(db, merchant, store)
+    monkeypatch.setattr(WebhookService, "enqueue", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    svc, now = _svc(db)
+    assert svc.run_batch() == {"dispatched": 0, "retried": 0, "failed": 0, "fell_back": 0}
+    db.refresh(s)
+    assert s.status == "pending_dispatch" and "boom" in s.last_error
+    assert abs((_aware(s.next_attempt_at) - now).total_seconds() - 600) < 2
+    monkeypatch.undo()
+    DispatchService(db, clock=lambda: now + timedelta(minutes=11)).run_batch()
+    db.refresh(s)
+    assert s.status == "accepted"
+
+
+def test_run_batch_commits_per_shipment(db):
+    merchant, store, _ = _world(db)
+    for _ in range(2):
+        _shipment(db, merchant, store)
+    calls = []
+    svc, _now = _svc(db)
+    svc.run_batch(commit=lambda: calls.append(1))
+    assert len(calls) >= 2
+
+
+def test_stock_hold_notification_not_repeated(db):
+    merchant, store, acc = _world(db)
+    _product(db, merchant, store, "NH-1", _wh(db, acc).id, 0)
+    s, _o = _shipment(db, merchant, store, items=[("NH-1", 1)])
+    assert s.hold_reason == "out_of_stock"
+    ShippingService(db).allocate_and_reserve(s)
+    ShippingService(db).allocate_and_reserve(s)
+    db.flush()
+    assert db.query(Notification).filter_by(resource_id=str(s.id), notification_type="shipment.held").count() == 1
+
+
+def test_release_backorders_ignores_other_stores(db):
+    merchant, store, acc = _world(db)
+    ShippingSettingsService(db).update(store.id, {"out_of_stock_policy": "backorder"})
+    _product(db, merchant, store, "OS-1", _wh(db, acc).id, 0)
+    s, _o = _shipment(db, merchant, store, items=[("OS-1", 1)])
+    m2, store2, acc2 = _world(db)
+    other = _product(db, m2, store2, "OS-1", _wh(db, acc2).id, 9)
+    _wh(db, acc).id
+    mine = db.query(StockLevel).join(Product, Product.id == StockLevel.product_id).filter(
+        Product.store_id == store.id).one()
+    mine.on_hand = 5
+    db.flush()
+    assert ShippingService(db).release_backorders({other.product_id}) == 0
+    db.refresh(s)
+    assert s.hold_reason == "out_of_stock"
+    assert ShippingService(db).release_backorders({mine.product_id}) == 1

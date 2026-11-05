@@ -43,7 +43,8 @@ class DispatchService:
         self.settings_service = ShippingSettingsService(db)
 
     # ---- batch --------------------------------------------------------
-    def run_batch(self, limit: int = 50) -> dict[str, int]:
+    def run_batch(self, limit: int = 50, commit: Callable[[], None] | None = None) -> dict[str, int]:
+        """``commit`` is called after each shipment so a crash loses at most one."""
         now = self.clock()
         self.shipping.expire_unconfirmed(now)  # re-check hold rules before picking work
         manual_stores = select(ShippingSettings.store_id).where(ShippingSettings.auto_dispatch.is_(False))
@@ -60,13 +61,28 @@ class DispatchService:
             try:
                 with self.db.begin_nested():
                     outcome = self.dispatch_one(shipment, source="poll")
-            except Exception:
+            except Exception as exc:
                 logger.exception("dispatch failed unexpectedly shipment=%s", shipment.id)
-                continue
+                self._back_off_after_error(shipment, exc)
+                outcome = None
             if outcome in counts:
                 counts[outcome] += 1
+            if commit is not None:
+                commit()
         self.db.flush()
         return counts
+
+    def _back_off_after_error(self, shipment: Shipment, exc: Exception) -> None:
+        """Unexpected error (possibly after the carrier accepted): retry later, idempotently."""
+        try:
+            with self.db.begin_nested():
+                minutes = 10
+                if shipment.store_id is not None:
+                    minutes = self.settings_service.get_or_default(shipment.store_id).retry_interval_minutes
+                shipment.last_error = f"{exc.__class__.__name__}: {exc}"[:ERROR_LIMIT]
+                shipment.next_attempt_at = self.clock() + timedelta(minutes=minutes)
+        except Exception:
+            logger.exception("could not record dispatch error shipment=%s", shipment.id)
 
     # ---- one shipment -------------------------------------------------
     def dispatch_one(self, shipment: Shipment, source: str = "poll") -> str:
@@ -76,9 +92,9 @@ class DispatchService:
         order = self.db.get(Order, shipment.order_id)
         if order is None:
             return self._fail(shipment, "order_not_found")
-        account = self._account(shipment, order)
+        account, error = self._account(shipment, order)
         if account is None:
-            return self._fail(shipment, "no_carrier_route")
+            return self._fail(shipment, error or "no_carrier_route")
         try:
             request = self._request(shipment, order)
             result = CarrierAccountService(self.db).adapter_for(account).create_shipment(request)
@@ -88,6 +104,29 @@ class DispatchService:
             return self._fail(shipment, str(exc) or exc.__class__.__name__)
         self._accept(shipment, order, account, result, source)
         return "dispatched"
+
+    def _switch_carrier(self, shipment: Shipment, order: Order, account: CarrierAccount) -> bool:
+        """Move to another carrier. Carrier-held stock is released and re-allocated in that
+        carrier's warehouses; returns False when it cannot be (the stock is then released)."""
+        shipment.carrier_account_id = account.id
+        had_stock = shipment.fulfillment == "carrier" and (
+            shipment.warehouse_id is not None or (shipment.meta or {}).get("stock") == "reserved")
+        if not had_stock:
+            shipment.warehouse_id = None
+            return True
+        self.shipping.inventory.release(shipment)
+        shipment.warehouse_id = None
+        self.shipping._quiet = True
+        try:
+            self.shipping.allocate_and_reserve(shipment, account=account)
+        finally:
+            self.shipping._quiet = False
+        ok = shipment.hold_reason is None and (shipment.meta or {}).get("stock") == "reserved" \
+            and shipment.warehouse_id is not None
+        if not ok:
+            shipment.hold_reason = None  # a failed shipment is not held
+            self.shipping._set_meta(shipment, backorder=None)
+        return ok
 
     # ---- helpers ------------------------------------------------------
     def _wilaya_code(self, order: Order) -> str | None:
@@ -99,16 +138,16 @@ class DispatchService:
             return None, None
         return self.settings_service.resolve_route(order.store_id, order.environment, self._wilaya_code(order))
 
-    def _account(self, shipment: Shipment, order: Order) -> CarrierAccount | None:
+    def _account(self, shipment: Shipment, order: Order) -> tuple[CarrierAccount | None, str | None]:
         account = self.db.get(CarrierAccount, shipment.carrier_account_id) if shipment.carrier_account_id else None
         if account is not None and account.status == "active":
-            return account
+            return account, None
         primary, _ = self._route(order)
-        if primary is not None:
-            shipment.carrier_account_id = primary.id
-            if account is not None:
-                shipment.warehouse_id = None  # the old warehouse belongs to the unusable account
-        return primary
+        if primary is None:
+            return None, "no_carrier_route"
+        if not self._switch_carrier(shipment, order, primary):
+            return None, "reroute_no_stock"
+        return primary, None
 
     def _request(self, shipment: Shipment, order: Order) -> ShipmentRequest:
         phone = order.phone_identifier.phone if order.phone_identifier is not None else None
@@ -142,9 +181,11 @@ class DispatchService:
         shipment.next_attempt_at = None
         shipment.last_error = None
         dedupe = f"{result.tracking_number}:accepted"
-        if self.db.query(ShipmentEvent.id).filter_by(dedupe_key=dedupe).first() is None:
-            self.db.add(ShipmentEvent(shipment_id=shipment.id, status="accepted", raw_status="accepted",
-                                      occurred_at=now, source=source, dedupe_key=dedupe))
+        if self.db.query(ShipmentEvent.id).filter_by(shipment_id=shipment.id, dedupe_key=dedupe).first() is not None:
+            self.db.flush()
+            return
+        self.db.add(ShipmentEvent(shipment_id=shipment.id, status="accepted", raw_status="accepted",
+                                  occurred_at=now, source=source, dedupe_key=dedupe))
         WebhookService(self.db).enqueue(
             shipment.merchant_id, shipment.environment, "order.shipment.updated",
             {"order_id": str(order.id), "external_order_id": order.external_order_id,
@@ -153,10 +194,11 @@ class DispatchService:
             store_id=shipment.store_id)
         self.db.flush()
 
-    def _fail(self, shipment: Shipment, message: str) -> str:
+    def _fail(self, shipment: Shipment, message: str, count_attempt: bool = True) -> str:
         shipment.status = "dispatch_failed"
         shipment.next_attempt_at = None
-        shipment.attempts += 1
+        if count_attempt:
+            shipment.attempts += 1
         shipment.last_error = message[:ERROR_LIMIT]
         self.shipping.inventory.release(shipment)
         if shipment.store_id is None or self.settings_service.get_or_default(shipment.store_id).notify_on_failure:
@@ -173,12 +215,12 @@ class DispatchService:
         if shipment.attempts >= settings.retry_max:
             fallback = self._fallback(shipment, order, account) if settings.fallback_enabled else None
             if fallback is None:
-                return self._fail(shipment, message)
-            shipment.carrier_account_id = fallback.id
-            shipment.warehouse_id = None  # warehouses are per carrier account
+                return self._fail(shipment, message, count_attempt=False)
+            self.shipping._set_meta(shipment, fell_back=True)
+            if not self._switch_carrier(shipment, order, fallback):
+                return self._fail(shipment, "fallback_no_stock", count_attempt=False)
             shipment.attempts = 0
             shipment.next_attempt_at = now
-            self.shipping._set_meta(shipment, fell_back=True)
             self.db.flush()
             return "fell_back"
         delay = min(MAX_BACKOFF, timedelta(minutes=settings.retry_interval_minutes) * 2 ** (shipment.attempts - 1))

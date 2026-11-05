@@ -13,7 +13,7 @@ logger = logging.getLogger("ordium.dispatch")
 
 def main() -> dict[str, int]:
     with SessionLocal() as db:
-        counts = DispatchService(db).run_batch()
+        counts = DispatchService(db).run_batch(commit=db.commit)
         db.commit()
     if any(counts.values()):
         logger.info("shipment dispatch: %s", counts)
