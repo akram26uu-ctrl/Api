@@ -189,7 +189,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ session, onLog
                 {activeTab === 'network' && <IdentityNetworkView />}
                 {activeTab === 'rules' && <RulesEngineView />}
                 {activeTab === 'simulator' && <SimulatorView storeId={selectedStoreId} onOrderCreated={() => navigateTab('orders')} />}
-                {activeTab === 'settings' && <SettingsView section={route.section} onSelectSection={section => navigateTab(section ? `settings/${section}` : 'settings')} session={currentSession} onSessionUpdate={setCurrentSession} stores={stores} selectedStoreId={selectedStoreId} onStoresChanged={handleStoresChanged} environment={environment} />}
+                {activeTab === 'settings' && <SettingsView section={route.section} onSelectSection={section => navigateTab(section ? `settings/${section}` : 'settings')} session={currentSession} onSessionUpdate={setCurrentSession} stores={stores} selectedStoreId={selectedStoreId} onStoresChanged={handleStoresChanged} environment={environment} onNavigate={navigateTab} />}
               </div>
               </ErrorBoundary>
             </Suspense>
