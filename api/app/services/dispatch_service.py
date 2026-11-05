@@ -53,10 +53,13 @@ class DispatchService:
         self.settings_service = ShippingSettingsService(db)
 
     # ---- batch --------------------------------------------------------
-    def run_batch(self, limit: int = 50, commit: Callable[[], None] | None = None) -> dict[str, int]:
-        """``commit`` is called after each shipment so a crash loses at most one."""
+    def run_batch(self, limit: int = 50, commit: Callable[[], None] | None = None,
+                  expire: bool = True) -> dict[str, int]:
+        """``commit`` is called after each shipment so a crash loses at most one.
+        ``expire`` re-checks confirmation holds first (the worker gates it to every few minutes)."""
         now = self.clock()
-        self.shipping.expire_unconfirmed(now)  # re-check hold rules before picking work
+        if expire:
+            self.shipping.expire_unconfirmed(now)
         manual_stores = select(ShippingSettings.store_id).where(ShippingSettings.auto_dispatch.is_(False))
         counts = {"dispatched": 0, "retried": 0, "failed": 0, "fell_back": 0}
         seen: set = set()
@@ -70,6 +73,7 @@ class DispatchService:
                 .order_by(Shipment.next_attempt_at)
                 .limit(1)
                 .with_for_update(skip_locked=True)
+                .execution_options(populate_existing=True)
             ).first()
             if shipment is None:
                 break
@@ -102,12 +106,16 @@ class DispatchService:
 
     # ---- one shipment -------------------------------------------------
     def dispatch_one(self, shipment: Shipment, source: str = "poll") -> str:
-        """Returns dispatched | retried | failed | fell_back | held | skipped."""
+        """Returns dispatched | retried | failed | fell_back | held | cancelled | skipped."""
         if shipment.status != "pending_dispatch" or shipment.hold_reason is not None:
             return "skipped"
         order = self.db.get(Order, shipment.order_id)
         if order is None:
             return self._fail(shipment, "order_not_found")
+        if self.shipping.close_if_order_closed(shipment, order):
+            # Defensive: a cancelled / returned / delivered order never reaches the carrier.
+            logger.warning("shipment %s not dispatched: order is %s", shipment.id, order.status.value)
+            return "cancelled"
         if shipment.fulfillment == "carrier" and (shipment.meta or {}).get("stock") != "reserved":
             # Stock is checked again at dispatch (nothing may have been reserved yet).
             self.shipping.allocate_and_reserve(shipment)

@@ -19,7 +19,7 @@ from app.repositories.order_outcome_repository import (
 from app.repositories.risk_assessment_repository import RiskAssessmentRepository
 from app.services.risk_evaluation_service import RiskEvaluationService
 from app.services.audit_service import AuditService
-from app.services.outcome_service import OutcomeExists, record_outcome
+from app.services.outcome_service import OutcomeExists, cancel_order_shipment, record_outcome
 from app.services.webhook_service import WebhookService
 from app.schemas.order_outcome import (
     OrderOutcomeCreate,
@@ -187,6 +187,9 @@ def update_order_outcome(
         {"order_id": str(order.id), "outcome_status": outcome.outcome_status, "reason": outcome.reason, "environment": order.environment},
         store_id=order.store_id,
     )
+    if data.outcome_status == "cancelled":
+        db.flush()
+        cancel_order_shipment(db, order)
     db.commit()
     db.refresh(outcome)
     return outcome_to_response(outcome)

@@ -57,13 +57,13 @@ def _product(db, merchant_id, store_id, sku="SNK-BLK-42", fulfillment="carrier",
     return p
 
 
-def _shipment(db, merchant_id, store_id):
+def _shipment(db, merchant_id, store_id, environment="test"):
     order = Order(merchant_id=merchant_id, store_id=store_id, external_order_id=f"o-{uuid4()}",
                   status=OrderStatus.PENDING, total_amount=100, currency="DZD", first_name="A", last_name="B",
-                  environment="test", data_origin="real")
+                  environment=environment, data_origin="real")
     db.add(order)
     db.flush()
-    s = Shipment(merchant_id=merchant_id, store_id=store_id, order_id=order.id, environment="test",
+    s = Shipment(merchant_id=merchant_id, store_id=store_id, order_id=order.id, environment=environment,
                  idempotency_key=str(uuid4()))
     db.add(s)
     db.flush()
@@ -95,7 +95,7 @@ def test_sku_match_is_case_and_space_insensitive(ctx):
 def test_reserve_then_release_restores_available(ctx):
     db, merchant_id, store_id, _ = ctx
     p = _product(db, merchant_id, store_id, on_hand=5)
-    s, _ = _shipment(db, merchant_id, store_id)
+    s, _ = _shipment(db, merchant_id, store_id, "live")
     svc = InventoryService(db)
     svc.reserve(s, [(p, None, 2)])
     assert svc.available(p.id, None) == 3
@@ -107,7 +107,7 @@ def test_reserve_then_release_restores_available(ctx):
 def test_reserve_beyond_available_raises(ctx):
     db, merchant_id, store_id, _ = ctx
     p = _product(db, merchant_id, store_id, on_hand=1)
-    s, _ = _shipment(db, merchant_id, store_id)
+    s, _ = _shipment(db, merchant_id, store_id, "live")
     with pytest.raises(InsufficientStock):
         InventoryService(db).reserve(s, [(p, None, 2)])
     assert InventoryService(db).available(p.id, None) == 1
@@ -116,7 +116,7 @@ def test_reserve_beyond_available_raises(ctx):
 def test_consume_and_restock_write_movements(ctx):
     db, merchant_id, store_id, _ = ctx
     p = _product(db, merchant_id, store_id, on_hand=5)
-    s, _ = _shipment(db, merchant_id, store_id)
+    s, _ = _shipment(db, merchant_id, store_id, "live")
     svc = InventoryService(db)
     svc.reserve(s, [(p, None, 1)])
     svc.consume(s)
@@ -167,8 +167,9 @@ def test_stock_increase_hook_called(ctx, monkeypatch):
     monkeypatch.setattr(inventory_service, "on_stock_increased", lambda ids, _db: seen.append(set(ids)))
     acc = _account(db, merchant_id, store_id)
     p = _product(db, merchant_id, store_id, "ABC-1")
-    dep = StockDeposit(merchant_id=merchant_id, carrier_account_id=acc.id, reference="D1", status="counting",
-                       lines=[{"sku": "ABC-1", "quantity": 3}])
+    wh = db.query(CarrierWarehouse).filter_by(carrier_account_id=acc.id).first()
+    dep = StockDeposit(merchant_id=merchant_id, carrier_account_id=acc.id, warehouse_id=wh.id, reference="D1",
+                       status="counting", lines=[{"sku": "ABC-1", "quantity": 3}])
     db.add(dep)
     db.flush()
     InventoryService(db).receive_deposit(dep)
@@ -246,8 +247,14 @@ def test_deposits_api_and_movements_and_refresh():
     assert client.get(f"/api/v1/inventory/stock?store_id={store_id}&refresh=1", headers=h).status_code == 200
     mv = client.get(f"/api/v1/inventory/movements?store_id={store_id}", headers=h).json()
     assert mv["pagination"]["total"] == 3 and mv["data"][0]["reason"] == "sync"
+    no_wh = client.post(f"/api/v1/inventory/deposits?store_id={store_id}", headers=h, json={
+        "carrier_account_id": acc["id"], "reference": "R0", "lines": [{"sku": "SNK-BLK-41", "quantity": 5}]})
+    assert no_wh.status_code == 422 and no_wh.json()["detail"] == "warehouse_required"
+    whs = client.get(f"/api/v1/shipping/carriers/{acc['id']}/warehouses?store_id={store_id}", headers=h).json()
+    orn = [w for w in whs if w["external_id"] == "ORN"][0]["id"]
     d = client.post(f"/api/v1/inventory/deposits?store_id={store_id}", headers=h, json={
-        "carrier_account_id": acc["id"], "reference": "R1", "lines": [{"sku": "SNK-BLK-41", "quantity": 5}]})
+        "carrier_account_id": acc["id"], "warehouse_id": orn, "reference": "R1",
+        "lines": [{"sku": "SNK-BLK-41", "quantity": 5}]})
     assert d.status_code == 201, d.text
     did = d.json()["id"]
     assert client.post(f"/api/v1/inventory/deposits/{did}/status?store_id={store_id}", headers=h,
@@ -282,8 +289,8 @@ def test_allocation_operations_are_idempotent(ctx):
     from app.services.inventory_service import AlreadyAllocated
     db, merchant_id, store_id, _ = ctx
     p = _product(db, merchant_id, store_id, on_hand=10)
-    s1, _ = _shipment(db, merchant_id, store_id)
-    s2, _ = _shipment(db, merchant_id, store_id)
+    s1, _ = _shipment(db, merchant_id, store_id, "live")
+    s2, _ = _shipment(db, merchant_id, store_id, "live")
     svc = InventoryService(db)
     svc.reserve(s1, [(p, None, 2)])
     svc.reserve(s2, [(p, None, 3)])
@@ -308,9 +315,10 @@ def test_allocation_operations_are_idempotent(ctx):
 def test_second_receive_adds_nothing(ctx):
     db, merchant_id, store_id, _ = ctx
     acc = _account(db, merchant_id, store_id)
-    p = _product(db, merchant_id, store_id, "ABC-1", on_hand=0)
-    dep = StockDeposit(merchant_id=merchant_id, carrier_account_id=acc.id, reference="D", status="counting",
-                       lines=[{"sku": "ABC-1", "quantity": 4}])
+    wh = db.query(CarrierWarehouse).filter_by(carrier_account_id=acc.id).first()
+    p = _product(db, merchant_id, store_id, "ABC-1", on_hand=0, warehouse_id=wh.id)
+    dep = StockDeposit(merchant_id=merchant_id, carrier_account_id=acc.id, warehouse_id=wh.id, reference="D",
+                       status="counting", lines=[{"sku": "ABC-1", "quantity": 4}])
     db.add(dep)
     db.flush()
     svc = InventoryService(db)

@@ -14,7 +14,7 @@ from app.services.carrier_account_service import CarrierAccountService
 from app.services.carriers.base import STATUS_RANK, TrackingEvent
 from app.services.dispatch_service import enqueue_shipment_updated
 from app.services.inventory_service import InventoryService
-from app.services.outcome_service import STATUS_MAP, OutcomeExists, record_outcome
+from app.services.outcome_service import STATUS_MAP, OutcomeExists, enqueue_outcome_updated, record_outcome
 from app.repositories.order_outcome_repository import OrderOutcomeRepository
 from app.repositories.risk_assessment_repository import RiskAssessmentRepository
 from app.services.risk_evaluation_service import RiskEvaluationService
@@ -115,6 +115,7 @@ class TrackingService:
         self.db.flush()
         assessment = RiskAssessmentRepository(self.db).get_latest_for_order(order.id)
         RiskEvaluationService(self.db).record_from_outcome(order=order, assessment=assessment, outcome=outcome)
+        enqueue_outcome_updated(self.db, order, outcome)
 
     def _notify_failure(self, shipment: Shipment, status: str) -> None:
         if shipment.store_id is not None and not ShippingSettingsService(self.db).get_or_default(

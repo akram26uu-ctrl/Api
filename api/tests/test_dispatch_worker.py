@@ -402,7 +402,8 @@ def test_fallback_merchant_fulfilled_switches_directly(db, monkeypatch):
     svc, _now = _svc(db)
     assert svc.run_batch()["fell_back"] == 1
     db.refresh(s); db.refresh(level)
-    assert s.carrier_account_id == fallback.id and level.reserved == 1 and s.meta["stock"] == "reserved"
+    # TEST shipments never reserve merchant-location stock
+    assert s.carrier_account_id == fallback.id and level.reserved == 0 and s.meta["stock"] == "untracked"
 
 
 def test_reroute_when_account_inactive_reallocates(db):

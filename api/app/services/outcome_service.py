@@ -1,4 +1,5 @@
 """Single place that records an order outcome (endpoint, merchant reject, ...)."""
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy.exc import IntegrityError
@@ -19,8 +20,31 @@ STATUS_MAP = {
 }
 
 
+logger = logging.getLogger(__name__)
+
+
 class OutcomeExists(Exception):
     """The order already has an outcome."""
+
+
+def cancel_order_shipment(db: Session, order: Order) -> None:
+    """A cancelled order must not ship: cancel its active shipment (and release stock).
+    Runs in a savepoint; a shipping failure never breaks recording the outcome."""
+    from app.services.shipping_service import ShippingService
+    try:
+        with db.begin_nested():
+            ShippingService(db).on_cancelled(order)
+    except Exception:
+        logger.exception("shipping cancel hook failed for order %s", order.id)
+
+
+def enqueue_outcome_updated(db: Session, order: Order, outcome: OrderOutcome) -> None:
+    WebhookService(db).enqueue(
+        order.merchant_id, order.environment, "order.outcome.updated",
+        {"order_id": str(order.id), "outcome_status": outcome.outcome_status, "reason": outcome.reason,
+         "environment": order.environment},
+        store_id=order.store_id,
+    )
 
 
 def record_outcome(
@@ -61,10 +85,8 @@ def record_outcome(
     order.status = STATUS_MAP[outcome_status]
     assessment = RiskAssessmentRepository(db).get_latest_for_order(order.id)
     RiskEvaluationService(db).record_from_outcome(order=order, assessment=assessment, outcome=outcome)
-    WebhookService(db).enqueue(
-        order.merchant_id, order.environment, "order.outcome.updated",
-        {"order_id": str(order.id), "outcome_status": outcome.outcome_status, "reason": outcome.reason,
-         "environment": order.environment},
-        store_id=order.store_id,
-    )
+    enqueue_outcome_updated(db, order, outcome)
+    if outcome_status == "cancelled":
+        db.flush()
+        cancel_order_shipment(db, order)
     return outcome

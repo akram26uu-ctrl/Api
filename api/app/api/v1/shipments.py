@@ -45,13 +45,18 @@ def scoped_shipments(db: Session, api_key: ApiKey, store_id: str | None):
     return query, selected
 
 
-def get_shipment(db: Session, api_key: ApiKey, shipment_id: str, store_id: str | None) -> Shipment:
+def get_shipment(db: Session, api_key: ApiKey, shipment_id: str, store_id: str | None,
+                 lock: bool = False) -> Shipment:
+    """``lock=True`` row-locks and reloads the shipment (state-changing actions)."""
     try:
         parsed = UUID(shipment_id)
     except ValueError as exc:
         raise HTTPException(404, "Shipment not found") from exc
     query, _ = scoped_shipments(db, api_key, store_id)
-    shipment = query.filter(Shipment.id == parsed).first()
+    query = query.filter(Shipment.id == parsed)
+    if lock:
+        query = query.with_for_update().populate_existing()
+    shipment = query.first()
     if shipment is None:
         raise HTTPException(404, "Shipment not found")
     return shipment
@@ -309,7 +314,7 @@ def retry_shipment(shipment_id: str, store_id: str | None = Query(default=None),
 @router.post("/shipments/{shipment_id}/cancel")
 def cancel_shipment(shipment_id: str, store_id: str | None = Query(default=None), db: Session = Depends(get_database),
                     api_key: ApiKey = Depends(require_api_scope("shipping:write"))):
-    shipment = get_shipment(db, api_key, shipment_id, store_id)
+    shipment = get_shipment(db, api_key, shipment_id, store_id, lock=True)
     try:
         ShippingService(db).cancel_shipment(shipment, api_key.id)
     except ShipmentActionRefused as exc:

@@ -8,6 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
+from sqlalchemy import and_, func, literal, not_, or_
 from sqlalchemy.orm import Session
 
 from app.core.algeria_geo import resolve_wilaya
@@ -19,6 +20,7 @@ from app.models.notification import Notification
 from app.models.order import Order
 from app.models.product import Product
 from app.models.shipment import Shipment
+from app.models.shipping_settings import ShippingSettings
 from app.services.audit_service import AuditService
 from app.services.carrier_account_service import CarrierAccountService
 from app.services.carriers.base import CarrierError
@@ -31,6 +33,9 @@ logger = logging.getLogger(__name__)
 INACTIVE_STATUSES = ("cancelled", "returned", "delivered", "dispatch_failed")
 RISK_HOLDS = ("review", "rejected")
 STOCK_HOLDS = ("out_of_stock", "unmapped_product", "mixed_source")
+CLOSED_ORDER_STATUSES = (OrderStatus.CANCELLED, OrderStatus.RETURNED, OrderStatus.DELIVERED)
+DEFAULT_DISPATCH_TRIGGER = "after_confirmation"
+DEFAULT_CONFIRMATION_TIMEOUT_HOURS = 24
 
 
 class ShipmentActionRefused(ValueError):
@@ -58,6 +63,13 @@ class ShippingService:
             Shipment.order_id == order_id, Shipment.status.notin_(INACTIVE_STATUSES)
         ).first()
 
+    def lock(self, shipment: Shipment) -> Shipment:
+        """Row-lock the shipment and reload it, so a concurrent dispatch/cancel is seen.
+        Pending in-memory changes are flushed first so the reload keeps them."""
+        self.db.flush()
+        locked = self.db.query(Shipment).filter(Shipment.id == shipment.id).with_for_update().populate_existing().first()
+        return locked if locked is not None else shipment
+
     @staticmethod
     def confirmation_applies(merchant: Merchant | None) -> bool:
         if merchant is None or not merchant.whatsapp_confirmation_enabled:
@@ -78,10 +90,13 @@ class ShippingService:
         shipment.meta = {k: v for k, v in meta.items() if v is not None}
 
     def _release_stock_hold(self, shipment: Shipment) -> None:
-        """The only way to clear a stock hold: never makes an unconfirmed order due."""
-        if (shipment.meta or {}).get("needs_confirmation"):
-            self._hold(shipment, "awaiting_confirmation")
+        """The only way to clear a stock hold: never makes an unconfirmed order due.
+        A customer who timed out while the stock hold lasted lands on ``no_answer``."""
+        meta = shipment.meta or {}
+        if meta.get("needs_confirmation"):
+            self._hold(shipment, "no_answer" if meta.get("no_answer") else "awaiting_confirmation")
         else:
+            self._set_meta(shipment, no_answer=None)
             self._release_hold(shipment)
 
     def _release_hold(self, shipment: Shipment, now: datetime | None = None) -> None:
@@ -218,8 +233,17 @@ class ShippingService:
 
         if fulfillments == {"merchant"}:
             shipment.fulfillment, shipment.warehouse_id = "merchant", None
-            if all(self.inventory.available(p.id, None) >= q for p, q in needs.values()):
-                self._reserve(shipment, needs, None)
+            # Merchant-location stock is tracked only where a StockLevel row exists for it,
+            # and never for TEST shipments (TEST must not touch the merchant's real stock).
+            tracked = {} if shipment.environment == "test" else {
+                pid: need for pid, need in needs.items() if self.inventory.is_tracked(pid, None)}
+            if not tracked:
+                shipment.allocations = []
+                self.inventory._set_state(shipment, "untracked")
+                self._clear_stock_hold_if_reserved(shipment)
+                return
+            if all(self.inventory.available(p.id, None) >= q for p, q in tracked.values()):
+                self._reserve(shipment, tracked, None)
                 self._clear_stock_hold_if_reserved(shipment)
                 return
             self._out_of_stock(shipment, settings, None)
@@ -242,7 +266,7 @@ class ShippingService:
         self._clear_stock_hold_if_reserved(shipment)
 
     def _clear_stock_hold_if_reserved(self, shipment: Shipment) -> None:
-        if (shipment.meta or {}).get("stock") == "reserved" and shipment.hold_reason in STOCK_HOLDS:
+        if (shipment.meta or {}).get("stock") in ("reserved", "untracked") and shipment.hold_reason in STOCK_HOLDS:
             self._release_stock_hold(shipment)
 
     def _reserve(self, shipment: Shipment, needs: dict, warehouse_id) -> None:
@@ -276,12 +300,63 @@ class ShippingService:
             matched, _ = self.inventory.match_items(order.store_id, list(order.items))
             if not any(product.id in product_ids for _, product in matched):
                 continue
+            if self.close_if_order_closed(shipment, order):
+                continue
             self.allocate_and_reserve(shipment)
             if shipment.hold_reason != "out_of_stock":
                 released += 1
         if released:
             self.db.flush()
         return released
+
+    def reevaluate_store_holds(self, store_id: UUID, environment: str | None = None) -> int:
+        """The cause of a stock hold may be fixed (product created, fulfillment changed, carrier
+        link added): re-run allocation for the store's unmapped / mixed-source holds and for
+        backordered out-of-stock holds (a plain ``hold`` policy waits for the merchant).
+        Returns the number of shipments whose hold changed."""
+        query = self.db.query(Shipment.id).filter(
+            Shipment.store_id == store_id, Shipment.status == "pending_dispatch",
+            Shipment.hold_reason.in_(STOCK_HOLDS))
+        if environment is not None:
+            query = query.filter(Shipment.environment == environment)
+        changed = 0
+        for (shipment_id,) in query.order_by(Shipment.created_at.asc()).all():
+            shipment = self.db.get(Shipment, shipment_id)
+            if shipment is None:
+                continue
+            shipment = self.lock(shipment)
+            before = shipment.hold_reason
+            if shipment.status != "pending_dispatch" or before not in STOCK_HOLDS:
+                continue
+            if before == "out_of_stock" and not (shipment.meta or {}).get("backorder"):
+                continue
+            order = self.db.get(Order, shipment.order_id)
+            if order is None:
+                continue
+            if self.close_if_order_closed(shipment, order):
+                changed += 1
+                continue
+            self.allocate_and_reserve(shipment)
+            if shipment.hold_reason != before:
+                changed += 1
+        self.db.flush()
+        return changed
+
+    def stores_with_stock_holds(self) -> list[tuple[UUID, str]]:
+        """(store_id, environment) pairs that have re-evaluable stock holds (periodic pass)."""
+        return [(sid, env) for sid, env in self.db.query(Shipment.store_id, Shipment.environment).filter(
+            Shipment.status == "pending_dispatch", Shipment.hold_reason.in_(STOCK_HOLDS),
+            Shipment.store_id.is_not(None)).distinct().all()]
+
+    def close_if_order_closed(self, shipment: Shipment, order: Order | None) -> bool:
+        """An order that is already cancelled / returned / delivered never ships: cancel the
+        pending shipment and release its stock. Returns True when the shipment was closed."""
+        if order is None or order.status not in CLOSED_ORDER_STATUSES or shipment.status != "pending_dispatch":
+            return False
+        self._cancel(shipment)
+        self._set_meta(shipment, closed_order_status=order.status.value)
+        self.db.flush()
+        return True
 
     # ---- confirmation -------------------------------------------------
     def on_confirmed(self, order: Order) -> Shipment | None:
@@ -295,13 +370,18 @@ class ShippingService:
         return shipment
 
     def on_cancelled(self, order: Order) -> Shipment | None:
+        self.db.flush()
         shipment = self.active_shipment(order.id)
         if shipment is None:
             return None
+        shipment = self.lock(shipment)
+        if shipment.status in INACTIVE_STATUSES:
+            return shipment
         return self._cancel_shipment(shipment)
 
     def cancel_shipment(self, shipment: Shipment, actor_key) -> Shipment:
         """Merchant-initiated cancel of one shipment (before pickup only)."""
+        shipment = self.lock(shipment)
         if shipment.status not in ("pending_dispatch", "accepted"):
             raise ShipmentActionRefused(f"Shipment is {shipment.status}")
         self._cancel_shipment(shipment)
@@ -340,43 +420,63 @@ class ShippingService:
         shipment.next_attempt_at = None
         self.inventory.release(shipment)
 
+    def _confirmation_off(self):
+        """SQL: the store no longer waits for confirmation (trigger on_allow, or the merchant's
+        WhatsApp confirmation is off / does not cover ALLOW)."""
+        decisions = literal(",") + func.coalesce(Merchant.whatsapp_confirmation_decisions, "") + literal(",")
+        confirms = and_(Merchant.whatsapp_confirmation_enabled.is_(True), decisions.like("%,allow,%"))
+        trigger = func.coalesce(ShippingSettings.dispatch_trigger, DEFAULT_DISPATCH_TRIGGER)
+        return or_(trigger == "on_allow", not_(confirms))
+
+    def _expiry_candidates(self, *criteria):
+        return self.db.query(Shipment).join(Merchant, Merchant.id == Shipment.merchant_id).outerjoin(
+            ShippingSettings, ShippingSettings.store_id == Shipment.store_id).filter(
+            Shipment.status == "pending_dispatch", Shipment.store_id.is_not(None), *criteria)
+
     def expire_unconfirmed(self, now: datetime | None = None) -> int:
+        """Confirmation timeouts and confirmation-setting changes. Only rows that can change
+        are selected in SQL: needs-confirmation rows of stores that stopped waiting, and
+        awaiting / stock-held rows older than their store's timeout."""
         now = now or _now()
+        needs = Shipment.meta["needs_confirmation"].as_boolean().is_(True)
+        no_answer_flag = func.coalesce(Shipment.meta["no_answer"].as_boolean(), False).is_(False)
         changed = 0
-        rows = self.db.query(Shipment).filter(
-            Shipment.status == "pending_dispatch",
-            Shipment.hold_reason.in_(("awaiting_confirmation", "no_answer") + STOCK_HOLDS)).all()
-        for shipment in rows:
-            if shipment.store_id is None or not (shipment.meta or {}).get("needs_confirmation"):
+        released = self._expiry_candidates(
+            needs, Shipment.hold_reason.in_(("awaiting_confirmation", "no_answer") + STOCK_HOLDS),
+            self._confirmation_off()).all()
+        for shipment in released:
+            self._set_meta(shipment, needs_confirmation=None, no_answer=None)
+            if shipment.hold_reason in ("awaiting_confirmation", "no_answer"):
+                self._release_hold(shipment, now)
+            changed += 1
+        timeout = func.coalesce(ShippingSettings.confirmation_timeout_hours, DEFAULT_CONFIRMATION_TIMEOUT_HOURS)
+        hours = {h for (h,) in self.db.query(ShippingSettings.confirmation_timeout_hours).distinct()}
+        hours.add(DEFAULT_CONFIRMATION_TIMEOUT_HOURS)
+        overdue = or_(*[and_(timeout == h, Shipment.created_at <= now - timedelta(hours=h)) for h in sorted(hours)])
+        waiting = and_(needs, no_answer_flag, Shipment.hold_reason.in_(("awaiting_confirmation",) + STOCK_HOLDS))
+        released_ids = {s.id for s in released}
+        for shipment in self._expiry_candidates(waiting, overdue, not_(self._confirmation_off())).all():
+            if shipment.id in released_ids:
                 continue
-            settings = self.settings_service.get_or_default(shipment.store_id)
-            merchant = self.db.get(Merchant, shipment.merchant_id)
-            if not self.confirmation_applies(merchant) or settings.dispatch_trigger == "on_allow":
-                self._set_meta(shipment, needs_confirmation=None, no_answer=None)
-                if shipment.hold_reason in ("awaiting_confirmation", "no_answer"):
-                    self._release_hold(shipment, now)
-                changed += 1
-            elif shipment.hold_reason == "no_answer" or (shipment.meta or {}).get("no_answer"):
-                continue
-            elif _aware(shipment.created_at) + timedelta(hours=settings.confirmation_timeout_hours) <= now:
-                if shipment.hold_reason == "awaiting_confirmation":
-                    self._hold(shipment, "no_answer")
-                else:
-                    self._set_meta(shipment, no_answer=True)
-                changed += 1
+            if shipment.hold_reason == "awaiting_confirmation":
+                self._hold(shipment, "no_answer")
+            else:
+                self._set_meta(shipment, no_answer=True)
+            changed += 1
         if changed:
             self.db.flush()
         return changed
 
     # ---- merchant actions --------------------------------------------
     def _require_pending(self, shipment: Shipment) -> None:
+        self.lock(shipment)  # same instance, reloaded under a row lock
         if shipment.status != "pending_dispatch":
             raise ShipmentActionRefused(f"Shipment is {shipment.status}")
 
     def _open_for_dispatch(self, shipment: Shipment, action: str, actor_key) -> Shipment:
         order = self.db.get(Order, shipment.order_id)
-        if order is not None and order.status == OrderStatus.CANCELLED:
-            raise ShipmentActionRefused("Order is cancelled")
+        if order is not None and order.status in CLOSED_ORDER_STATUSES:
+            raise ShipmentActionRefused(f"Order is {order.status.value}")
         self._set_meta(shipment, needs_confirmation=None, no_answer=None,
                        merchant_approved={"by": str(actor_key) if actor_key is not None else None,
                                           "at": _now().isoformat()})
@@ -432,9 +532,9 @@ class ShippingService:
         return shipment
 
     def dispatch_from(self, shipment: Shipment, warehouse_id: UUID, actor_key) -> Shipment:
+        self._require_pending(shipment)
         if shipment.hold_reason in RISK_HOLDS:
             raise ShipmentActionRefused("Approve the order before dispatching it")
-        self._require_pending(shipment)
         order = self.db.get(Order, shipment.order_id)
         warehouse = self.db.get(CarrierWarehouse, warehouse_id)
         if order is None or warehouse is None or order.store_id is None:
@@ -466,8 +566,9 @@ class ShippingService:
         self.db.flush()
         return shipment
 
-    def available_warehouses(self, shipment: Shipment) -> list[CarrierWarehouse]:
-        """Warehouses of the order's route carriers that hold stock for every item."""
+    def available_warehouses(self, shipment: Shipment, lock: bool = False) -> list[CarrierWarehouse]:
+        """Warehouses of the order's route carriers that hold stock for every item.
+        Read-only by default (no row locks: used by GET endpoints)."""
         order = self.db.get(Order, shipment.order_id)
         if order is None or order.store_id is None or not order.items:
             return []
@@ -486,6 +587,6 @@ class ShippingService:
             if account is None:
                 continue
             for warehouse in self._candidate_warehouses(account, wilaya):
-                if all(self.inventory.available(p.id, warehouse.id) >= q for p, q in needs.values()):
+                if all(self.inventory.available(p.id, warehouse.id, lock=lock) >= q for p, q in needs.values()):
                     found.append(warehouse)
         return found

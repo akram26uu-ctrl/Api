@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import get_database, require_api_scope
 from app.api.v1.shipments import (
@@ -8,6 +8,7 @@ from app.api.v1.shipments import (
 from app.models.api_key import ApiKey
 from app.models.shipment import Shipment
 from app.models.order import Order
+from app.models.risk_assessment import RiskAssessment
 from app.schemas.shipping import DispatchFromRequest
 from app.services.shipping_service import ShipmentActionRefused, ShippingService
 
@@ -21,9 +22,24 @@ REASON_HOLDS = {
 ALL_PENDING_HOLDS = tuple(h for holds in REASON_HOLDS.values() for h in holds)
 
 
-def _item(db: Session, service: ShippingService, shipment) -> dict:
-    order = db.get(Order, shipment.order_id)
-    assessment = latest_assessment(db, shipment.order_id)
+def _latest_assessments(db: Session, order_ids: set) -> dict:
+    """Latest assessment per order for a page, in one query (events preloaded)."""
+    if not order_ids:
+        return {}
+    rows = db.query(RiskAssessment).options(selectinload(RiskAssessment.events)).filter(
+        RiskAssessment.order_id.in_(order_ids)).order_by(
+        RiskAssessment.created_at.desc(), RiskAssessment.id.desc()).all()
+    latest: dict = {}
+    for row in rows:
+        latest.setdefault(row.order_id, row)
+    return latest
+
+
+def _item(db: Session, service: ShippingService, shipment, orders: dict | None = None,
+          assessments: dict | None = None) -> dict:
+    order = orders.get(shipment.order_id) if orders is not None else db.get(Order, shipment.order_id)
+    assessment = assessments.get(shipment.order_id) if assessments is not None else latest_assessment(
+        db, shipment.order_id)
     events = sorted(assessment.events, key=lambda e: abs(e.score_impact), reverse=True)[:3] if assessment else []
     return {
         "shipment_id": str(shipment.id), "order_id": str(shipment.order_id),
@@ -57,15 +73,20 @@ def list_pending(
     total = query.count()
     rows = query.order_by(Shipment.created_at.desc(), Shipment.id.desc()).offset((page - 1) * limit).limit(limit).all()
     service = ShippingService(db)
+    order_ids = {s.order_id for s in rows}
+    orders = {o.id: o for o in db.query(Order).options(
+        selectinload(Order.address_identifier), selectinload(Order.items)).filter(
+        Order.id.in_(order_ids))} if order_ids else {}
+    assessments = _latest_assessments(db, order_ids)
     return {
-        "data": [_item(db, service, s) for s in rows], "counts": counts,
+        "data": [_item(db, service, s, orders, assessments) for s in rows], "counts": counts,
         "pagination": {"total": total, "page": page, "limit": limit,
                        "total_pages": (total + limit - 1) // limit if total else 1},
     }
 
 
 def _act(db: Session, api_key: ApiKey, shipment_id: str, store_id: str | None, call):
-    shipment = get_shipment(db, api_key, shipment_id, store_id)
+    shipment = get_shipment(db, api_key, shipment_id, store_id, lock=True)
     try:
         call(ShippingService(db), shipment)
     except ShipmentActionRefused as exc:

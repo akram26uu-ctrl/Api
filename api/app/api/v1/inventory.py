@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -22,6 +23,19 @@ from app.services.inventory_service import InventoryService
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 DEPOSIT_ORDER = {"in_transit": 0, "counting": 1, "received": 2}
+logger = logging.getLogger(__name__)
+
+
+def _reevaluate_holds(db: Session, store_id: UUID, environment: str) -> None:
+    """A product change may fix the cause of stock holds; never fails the request."""
+    from app.services.shipping_service import ShippingService
+    try:
+        with db.begin_nested():
+            ShippingService(db).reevaluate_store_holds(store_id, environment)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("hold re-evaluation failed for store %s", store_id)
 
 
 def _store_ids(db: Session, api_key: ApiKey, store_id: str | None) -> list[UUID]:
@@ -82,6 +96,7 @@ def create_product(data: ProductCreate, store_id: str | None = Query(default=Non
                       fulfillment=data.fulfillment, weight_grams=data.weight_grams)
     db.add(product)
     db.commit()
+    _reevaluate_holds(db, selected, api_key.environment)
     db.refresh(product)
     return product
 
@@ -111,11 +126,14 @@ def update_product(product_id: str, data: ProductUpdate, store_id: str | None = 
     product = _get_product(db, api_key, product_id, store_id)
     if data.name is not None:
         product.name = data.name.strip()
+    fulfillment_changed = data.fulfillment is not None and data.fulfillment != product.fulfillment
     if data.fulfillment is not None:
         product.fulfillment = data.fulfillment
     if "weight_grams" in data.model_fields_set:
         product.weight_grams = data.weight_grams
     db.commit()
+    if fulfillment_changed:
+        _reevaluate_holds(db, product.store_id, api_key.environment)
     db.refresh(product)
     return product
 
@@ -133,6 +151,7 @@ def link_product(product_id: str, data: ProductLinkCreate, store_id: str | None 
     else:
         link.external_product_id = data.external_product_id
     db.commit()
+    _reevaluate_holds(db, product.store_id, api_key.environment)
     return {"product_id": product.id, "carrier_account_id": account.id, "external_product_id": data.external_product_id}
 
 
@@ -205,7 +224,9 @@ def create_deposit(data: DepositCreate, store_id: str | None = Query(default=Non
                    api_key: ApiKey = Depends(require_api_scope("inventory:write"))):
     selected = _write_store(db, api_key, store_id)
     account = _get_account(db, api_key, data.carrier_account_id, selected)
-    if data.warehouse_id is not None and db.query(CarrierWarehouse.id).filter(
+    if data.warehouse_id is None:
+        raise HTTPException(422, "warehouse_required")  # deposits credit a carrier warehouse only
+    if db.query(CarrierWarehouse.id).filter(
             CarrierWarehouse.id == data.warehouse_id, CarrierWarehouse.carrier_account_id == account.id).first() is None:
         raise HTTPException(404, "Warehouse not found")
     deposit = StockDeposit(merchant_id=api_key.merchant_id, carrier_account_id=account.id,
@@ -231,7 +252,11 @@ def update_deposit_status(deposit_id: str, data: DepositStatusUpdate, store_id: 
     if DEPOSIT_ORDER[data.status] <= DEPOSIT_ORDER[deposit.status]:
         raise HTTPException(409, "invalid_deposit_transition")
     if data.status == "received":
-        InventoryService(db).receive_deposit(deposit)
+        try:
+            InventoryService(db).receive_deposit(deposit)
+        except ValueError as exc:
+            db.rollback()
+            raise HTTPException(422, str(exc)) from exc
     else:
         deposit.status = data.status
     db.commit()

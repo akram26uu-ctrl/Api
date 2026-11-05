@@ -69,20 +69,31 @@ class InventoryService:
             (matched if product is not None else unmatched).append((item, product) if product is not None else item)
         return matched, unmatched
 
-    def _level(self, product_id: UUID, warehouse_id: UUID | None, create: bool = False) -> StockLevel | None:
+    def _level_query(self, product_id: UUID, warehouse_id: UUID | None):
         query = self.db.query(StockLevel).filter(StockLevel.product_id == product_id)
-        query = query.filter(StockLevel.warehouse_id.is_(None)) if warehouse_id is None else query.filter(
+        return query.filter(StockLevel.warehouse_id.is_(None)) if warehouse_id is None else query.filter(
             StockLevel.warehouse_id == warehouse_id)
-        level = query.with_for_update().first()
+
+    def _level(self, product_id: UUID, warehouse_id: UUID | None, create: bool = False) -> StockLevel | None:
+        level = self._level_query(product_id, warehouse_id).with_for_update().first()
         if level is None and create:
             level = StockLevel(product_id=product_id, warehouse_id=warehouse_id, on_hand=0, reserved=0, inbound=0)
             self.db.add(level)
             self.db.flush()
         return level
 
-    def available(self, product_id: UUID, warehouse_id: UUID | None) -> int:
-        level = self._level(product_id, warehouse_id)
-        return 0 if level is None else level.on_hand - level.reserved
+    def available(self, product_id: UUID, warehouse_id: UUID | None, lock: bool = True) -> int:
+        """``lock=False`` for read paths (GET endpoints): no row lock is taken."""
+        if lock:
+            level = self._level(product_id, warehouse_id)
+            return 0 if level is None else level.on_hand - level.reserved
+        row = self._level_query(product_id, warehouse_id).with_entities(
+            StockLevel.on_hand, StockLevel.reserved).first()
+        return 0 if row is None else row[0] - row[1]
+
+    def is_tracked(self, product_id: UUID, warehouse_id: UUID | None) -> bool:
+        """Merchant-location stock is tracked only when its StockLevel row exists."""
+        return self._level_query(product_id, warehouse_id).with_entities(StockLevel.id).first() is not None
 
     def _move(self, product_id, warehouse_id, delta, reason, shipment_id=None, deposit_id=None) -> None:
         self.db.add(StockMovement(product_id=product_id, warehouse_id=warehouse_id, delta=delta, reason=reason,
@@ -172,6 +183,8 @@ class InventoryService:
             raise AlreadyAllocated(str(shipment.id))
         merged: dict[tuple, int] = defaultdict(int)
         for product, warehouse_id, qty in allocations:
+            if warehouse_id is None and shipment.environment == "test":
+                continue  # TEST shipments never reserve merchant-location stock
             merged[(product.id, warehouse_id)] += int(qty)
         for (product_id, warehouse_id), qty in merged.items():
             level = self._level(product_id, warehouse_id)
@@ -189,7 +202,10 @@ class InventoryService:
     @staticmethod
     def _parsed(shipment: Shipment):
         for a in shipment.allocations or []:
-            yield UUID(a["product_id"]), (UUID(a["warehouse_id"]) if a.get("warehouse_id") else None), int(a["quantity"])
+            warehouse_id = UUID(a["warehouse_id"]) if a.get("warehouse_id") else None
+            if warehouse_id is None and shipment.environment == "test":
+                continue  # TEST shipments never move merchant-location stock
+            yield UUID(a["product_id"]), warehouse_id, int(a["quantity"])
 
     def release(self, shipment: Shipment) -> None:
         if self._stock_state(shipment) != "reserved":
@@ -264,6 +280,8 @@ class InventoryService:
         self.db.query(StockDeposit).filter(StockDeposit.id == deposit.id).with_for_update().populate_existing().first()
         if deposit.status == "received":
             return
+        if deposit.warehouse_id is None:
+            raise ValueError("warehouse_required")  # deposits only credit a carrier warehouse
         account = self.db.get(CarrierAccount, deposit.carrier_account_id)
         increased: set = set()
         for line in deposit.lines or []:
