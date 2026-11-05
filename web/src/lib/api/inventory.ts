@@ -3,12 +3,9 @@
  */
 
 import { ordiumFetch } from './client';
-import { withStore } from './shipping';
+import { id, json, withStore } from './queryHelpers';
 import type { Deposit, DepositLine, MovementPage, Product, StockRow, UnmappedProduct } from './types';
 
-const id = encodeURIComponent;
-const json = (method: string, body?: unknown): RequestInit =>
-  ({ method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 
 export const inventoryApi = {
   listProducts: () => ordiumFetch<Product[]>(withStore('/inventory/products')),

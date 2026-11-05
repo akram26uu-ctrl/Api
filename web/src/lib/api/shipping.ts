@@ -2,27 +2,12 @@
  * ORDIUM Shipping API Service (carriers, settings, routes, shipments, pending decisions).
  */
 
-import { ordiumClient, ordiumFetch } from './client';
+import { ordiumFetch } from './client';
+import { id, json, withStore } from './queryHelpers';
 import type {
   CarrierAccount, CarrierListResponse, CarrierWarehouse, NextPickup, PendingAction, PendingListResponse,
-  Shipment, ShipmentListResponse, ShippingRoute, ShippingRouteWrite, ShippingSettings, ShippingSettingsUpdate,
+  Shipment, ShipmentActionResponse, ShipmentListResponse, ShippingRoute, ShippingRouteWrite, ShippingSettings, ShippingSettingsUpdate,
 } from './types';
-
-/** Build `path?query` with the active store appended, like listOrders/getOrder. */
-export function withStore(path: string, params: Record<string, string | number | undefined | null> = {}): string {
-  const qs = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== '') qs.set(key, String(value));
-  }
-  const storeId = ordiumClient.getStoreId();
-  if (storeId) qs.set('store_id', storeId);
-  const query = qs.toString();
-  return query ? `${path}?${query}` : path;
-}
-
-const id = encodeURIComponent;
-const json = (method: string, body?: unknown): RequestInit =>
-  ({ method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 
 export const shippingApi = {
   listCarriers: () => ordiumFetch<CarrierListResponse>(withStore('/shipping/carriers')),
@@ -54,9 +39,9 @@ export const shippingApi = {
   getShipment: (shipmentId: string) =>
     ordiumFetch<Shipment>(withStore(`/shipping/shipments/${id(shipmentId)}`)),
   dispatchOrder: (orderId: string) =>
-    ordiumFetch<Shipment>(withStore('/shipping/shipments'), json('POST', { order_id: orderId })),
+    ordiumFetch<ShipmentActionResponse>(withStore('/shipping/shipments'), json('POST', { order_id: orderId })),
   retryShipment: (shipmentId: string) =>
-    ordiumFetch<Shipment>(withStore(`/shipping/shipments/${id(shipmentId)}/retry`), json('POST')),
+    ordiumFetch<ShipmentActionResponse>(withStore(`/shipping/shipments/${id(shipmentId)}/retry`), json('POST')),
   cancelShipment: (shipmentId: string) =>
     ordiumFetch<Shipment>(withStore(`/shipping/shipments/${id(shipmentId)}/cancel`), json('POST')),
   nextPickups: () => ordiumFetch<{ data: NextPickup[] }>(withStore('/shipping/next-pickups')),

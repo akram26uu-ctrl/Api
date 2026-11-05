@@ -513,7 +513,7 @@ export type HoldReason =
 
 export interface ShipmentEvent {
   id: string;
-  status: ShipmentStatus | string;
+  status: ShipmentStatus;
   raw_status: string | null;
   location: string | null;
   occurred_at: string;
@@ -525,11 +525,11 @@ export interface ShipmentOrderSummary {
   external_order_id: string | null;
   customer_name: string | null;
   wilaya: string | null;
-  total_amount: number | string | null;
+  total_amount: number | null;
   currency: string | null;
   status: string;
   phone: string | null;
-  items: { product_name: string; sku: string | null; quantity: number; unit_price: number | string | null }[];
+  items: { product_name: string; sku: string | null; quantity: number; unit_price: number | null }[];
 }
 
 export interface Shipment {
@@ -540,12 +540,12 @@ export interface Shipment {
   carrier_account_id: string | null;
   carrier_code: string | null;
   warehouse_id: string | null;
-  fulfillment: 'carrier' | 'merchant' | string;
+  fulfillment: 'carrier' | 'merchant';
   status: ShipmentStatus;
   hold_reason: HoldReason | null;
   tracking_number: string | null;
   label_url: string | null;
-  cod_amount: number | string | null;
+  cod_amount: number | null;
   delivery_type: string | null;
   attempts: number;
   next_attempt_at: string | null;
@@ -563,6 +563,11 @@ export interface Shipment {
   events?: ShipmentEvent[];
   allocations?: Record<string, unknown>[];
   order?: ShipmentOrderSummary | null;
+}
+
+export interface ShipmentActionResponse {
+  shipment: Shipment;
+  outcome: 'dispatched' | 'retried' | 'failed' | 'fell_back' | 'held' | 'skipped';
 }
 
 export interface ShipmentListResponse {
@@ -583,9 +588,15 @@ export interface CarrierAccount {
   created_at: string;
 }
 
+export interface AvailableCarrier {
+  code: string;
+  display_name: string;
+  capabilities: { webhooks: boolean; warehouses: boolean; stop_desks: boolean; cancel: boolean };
+}
+
 export interface CarrierListResponse {
   accounts: CarrierAccount[];
-  available: Record<string, any>[];
+  available: AvailableCarrier[];
 }
 
 export interface CarrierWarehouse {
@@ -600,13 +611,13 @@ export interface CarrierWarehouse {
 export interface ShippingSettings {
   store_id: string;
   auto_dispatch: boolean;
-  dispatch_trigger: 'after_confirmation' | 'on_allow' | string;
+  dispatch_trigger: 'after_confirmation' | 'on_allow';
   hold_minutes: number;
   confirmation_timeout_hours: number;
   retry_max: number;
   retry_interval_minutes: number;
   fallback_enabled: boolean;
-  out_of_stock_policy: 'hold' | 'backorder' | 'other_warehouse' | string;
+  out_of_stock_policy: 'hold' | 'backorder' | 'other_warehouse';
   low_stock_days: number;
   reserve_on_accept: boolean;
   disable_product_when_out: boolean;
@@ -614,7 +625,7 @@ export interface ShippingSettings {
   pickup_wilaya: string | null;
   pickup_commune: string | null;
   pickup_phone: string | null;
-  label_size: 'a6' | 'a4_4' | 'a4_1' | string;
+  label_size: 'a6' | 'a4_4' | 'a4_1';
   notify_on_hold: boolean;
   notify_on_failure: boolean;
   notify_on_low_stock: boolean;
@@ -653,7 +664,7 @@ export interface PendingItem {
   external_order_id: string | null;
   customer_name: string | null;
   wilaya: string | null;
-  cod_amount: number | string | null;
+  cod_amount: number | null;
   currency: string | null;
   created_at: string;
   hold_reason: HoldReason;
@@ -676,7 +687,7 @@ export interface Product {
   store_id: string;
   sku: string;
   name: string;
-  fulfillment: 'carrier' | 'merchant' | string;
+  fulfillment: 'carrier' | 'merchant';
   weight_grams: number | null;
   created_at: string;
 }
@@ -699,7 +710,7 @@ export interface StockRow {
   store_id: string;
   sku: string;
   name: string;
-  fulfillment: string;
+  fulfillment: 'carrier' | 'merchant';
   locations: StockLocation[];
   total_on_hand: number;
   total_reserved: number;
@@ -716,7 +727,7 @@ export interface Deposit {
   carrier_account_id: string;
   warehouse_id: string | null;
   reference: string;
-  status: 'in_transit' | 'counting' | 'received' | string;
+  status: 'in_transit' | 'counting' | 'received';
   lines: DepositLine[];
   created_at: string;
 }
