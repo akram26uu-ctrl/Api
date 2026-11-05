@@ -35,6 +35,16 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def enqueue_shipment_updated(db: Session, shipment: Shipment, order: Order, status: str, carrier_code: str | None) -> None:
+    """Queue the ``order.shipment.updated`` webhook (shared with tracking ingestion)."""
+    WebhookService(db).enqueue(
+        shipment.merchant_id, shipment.environment, "order.shipment.updated",
+        {"order_id": str(order.id), "external_order_id": order.external_order_id,
+         "shipment_id": str(shipment.id), "status": status,
+         "tracking_number": shipment.tracking_number, "carrier_code": carrier_code},
+        store_id=shipment.store_id)
+
+
 class DispatchService:
     def __init__(self, db: Session, clock: Callable[[], datetime] = utcnow):
         self.db = db
@@ -198,12 +208,7 @@ class DispatchService:
             return
         self.db.add(ShipmentEvent(shipment_id=shipment.id, status="accepted", raw_status="accepted",
                                   occurred_at=now, source=source, dedupe_key=dedupe))
-        WebhookService(self.db).enqueue(
-            shipment.merchant_id, shipment.environment, "order.shipment.updated",
-            {"order_id": str(order.id), "external_order_id": order.external_order_id,
-             "shipment_id": str(shipment.id), "status": "accepted",
-             "tracking_number": result.tracking_number, "carrier_code": account.carrier_code},
-            store_id=shipment.store_id)
+        enqueue_shipment_updated(self.db, shipment, order, "accepted", account.carrier_code)
         self.db.flush()
 
     def _fail(self, shipment: Shipment, message: str, count_attempt: bool = True) -> str:

@@ -161,7 +161,7 @@ services:
     command:
       - sh
       - -c
-      - while true; do python -m scripts.dispatch_webhooks || echo "Webhook batch failed; retrying"; python -m scripts.dispatch_whatsapp || echo "WhatsApp batch failed; retrying"; python -m scripts.dispatch_shipments || echo "Shipment dispatch batch failed; retrying"; python -m scripts.retry_store_backlog || echo "Store backlog batch failed; retrying"; sleep 10; done
+      - while true; do python -m scripts.dispatch_webhooks || echo "Webhook batch failed; retrying"; python -m scripts.dispatch_whatsapp || echo "WhatsApp batch failed; retrying"; python -m scripts.dispatch_shipments || echo "Shipment dispatch batch failed; retrying"; python -m scripts.retry_store_backlog || echo "Store backlog batch failed; retrying"; [ $$(( $$(date +%s) - $$(cat /tmp/sync_shipments.ts 2>/dev/null || echo 0) )) -ge 1800 ] && { python -m scripts.sync_shipments || echo "Shipment sync failed; retrying"; date +%s > /tmp/sync_shipments.ts; }; [ $$(( $$(date +%s) - $$(cat /tmp/sync_inventory.ts 2>/dev/null || echo 0) )) -ge 3600 ] && { python -m scripts.sync_inventory || echo "Inventory sync failed; retrying"; date +%s > /tmp/sync_inventory.ts; }; sleep 10; done
     environment: *api-environment
     depends_on:
       api:
