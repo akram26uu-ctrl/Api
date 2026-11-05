@@ -2006,5 +2006,71 @@
       "count": "étiquettes prêtes à imprimer",
       "note": "Ceci ne concerne que la page actuelle."
     }
+  },
+  "pending": {
+    "title": "En attente de décision",
+    "description": "Commandes retenues avant l'envoi jusqu'à votre décision. Aucune n'est expédiée sans votre accord.",
+    "tabs_label": "Motif de blocage",
+    "tab": {
+      "review": "À examiner",
+      "stock": "Rupture de stock",
+      "rejected": "Rejetées"
+    },
+    "older_than_48": "Plus de 48 h",
+    "sort": "Trier",
+    "sort_oldest": "Plus anciennes d'abord",
+    "sort_risk": "Risque le plus élevé",
+    "sort_value": "Valeur la plus élevée",
+    "refresh": "Actualiser",
+    "load_error": "Impossible de charger les commandes en attente",
+    "loading": "Chargement des commandes en attente…",
+    "empty": {
+      "title": "Rien en attente de votre décision",
+      "review": "Aucune commande à examiner.",
+      "stock": "Aucune commande bloquée pour cause de stock.",
+      "rejected": "Aucune commande rejetée."
+    },
+    "hours": "h",
+    "days": "j",
+    "warehouses_with_stock": "Entrepôts avec du stock",
+    "risk_score": "Score de risque",
+    "box_stock": "stock",
+    "box_risk": "risque",
+    "open_order": "Ouvrir la commande",
+    "warehouse": "Entrepôt",
+    "approve": "Approuver et envoyer",
+    "no_answer": "Sans réponse",
+    "reject": "Rejeter",
+    "dispatch_from": "Expédier depuis cet entrepôt",
+    "cancel_order": "Annuler la commande",
+    "restore": "Restaurer",
+    "archive": "Archiver",
+    "action_failed": "Impossible d'effectuer l'action",
+    "order_failed": "Impossible d'ouvrir la commande",
+    "done": {
+      "approve": "Commande approuvée et envoyée",
+      "no_answer": "Tentative sans réponse enregistrée",
+      "reject": "Commande rejetée",
+      "dispatch": "Expédiée depuis l'entrepôt choisi",
+      "restore": "Commande restaurée",
+      "archive": "Commande archivée"
+    },
+    "confirm_reject": {
+      "title": "Rejeter cette commande ?",
+      "desc": "La commande ne sera pas envoyée au transporteur."
+    },
+    "confirm_archive": {
+      "title": "Archiver cette commande ?",
+      "desc": "Elle disparaîtra de cette liste et ne sera pas expédiée."
+    },
+    "reason": {
+      "review": "Le niveau de risque demande votre examen avant l'envoi.",
+      "rejected": "Rejetée par l'évaluation du risque.",
+      "no_answer": "Le client n'a pas répondu aux tentatives de confirmation.",
+      "unmapped_product": "Produit non lié au stock.",
+      "mixed_source": "Les produits viennent de sources de stock différentes.",
+      "no_store": "La commande n'est liée à aucune boutique.",
+      "out_of_stock": "Stock insuffisant pour cette commande."
+    }
   }
 }

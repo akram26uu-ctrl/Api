@@ -2005,5 +2005,71 @@
       "count": "labels ready to print",
       "note": "This covers the current page only."
     }
+  },
+  "pending": {
+    "title": "Awaiting decision",
+    "description": "Orders we held before dispatch until you decide. None is shipped without your approval.",
+    "tabs_label": "Hold reason",
+    "tab": {
+      "review": "To review",
+      "stock": "Out of stock",
+      "rejected": "Rejected"
+    },
+    "older_than_48": "Older than 48 h",
+    "sort": "Sort",
+    "sort_oldest": "Oldest first",
+    "sort_risk": "Highest risk",
+    "sort_value": "Highest value",
+    "refresh": "Refresh",
+    "load_error": "Unable to load held orders",
+    "loading": "Loading held orders…",
+    "empty": {
+      "title": "Nothing awaiting your decision",
+      "review": "No orders waiting for review.",
+      "stock": "No orders held for stock.",
+      "rejected": "No rejected orders."
+    },
+    "hours": "h",
+    "days": "d",
+    "warehouses_with_stock": "Warehouses with stock",
+    "risk_score": "Risk score",
+    "box_stock": "stock",
+    "box_risk": "risk",
+    "open_order": "Open order",
+    "warehouse": "Warehouse",
+    "approve": "Approve and send",
+    "no_answer": "No answer",
+    "reject": "Reject",
+    "dispatch_from": "Dispatch from this warehouse",
+    "cancel_order": "Cancel order",
+    "restore": "Restore",
+    "archive": "Archive",
+    "action_failed": "Unable to complete the action",
+    "order_failed": "Unable to open the order",
+    "done": {
+      "approve": "Order approved and sent",
+      "no_answer": "No-answer attempt recorded",
+      "reject": "Order rejected",
+      "dispatch": "Dispatched from the chosen warehouse",
+      "restore": "Order restored",
+      "archive": "Order archived"
+    },
+    "confirm_reject": {
+      "title": "Reject this order?",
+      "desc": "The order will not be sent to the carrier."
+    },
+    "confirm_archive": {
+      "title": "Archive this order?",
+      "desc": "It will leave this list and will not be shipped."
+    },
+    "reason": {
+      "review": "The risk level needs your review before dispatch.",
+      "rejected": "Rejected by risk scoring.",
+      "no_answer": "The customer did not answer confirmation attempts.",
+      "unmapped_product": "Product not linked to inventory.",
+      "mixed_source": "Products come from different stock sources.",
+      "no_store": "The order is not linked to a store.",
+      "out_of_stock": "Not enough stock for this order."
+    }
   }
 }
