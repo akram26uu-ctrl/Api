@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { Switch } from './Switch';
-import { LoadingCard, NoStoreNotice, SaveBar, SwitchRow, useShippingSettingsForm } from './shippingSettingsShared';
+import { LoadingCard, NoStoreNotice, SaveBar, SwitchRow, useShippingSettingsForm, SharedEnvironmentsHint } from './shippingSettingsShared';
 
 const FIELDS = ['notify_on_hold', 'notify_on_failure', 'notify_on_low_stock'] as const;
 
@@ -28,6 +28,7 @@ export const TrackingSettingsPanel: React.FC<{ storeId: string }> = ({ storeId }
           </SwitchRow>
         ))}
       </div>
+      <SharedEnvironmentsHint />
       <SaveBar feedback={feedback} dirty={dirty} saving={saving} onSave={() => void save()} label={t('settings.shipping.tracking.save', 'حفظ التنبيهات')} />
     </div>
   );

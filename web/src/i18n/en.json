@@ -1758,6 +1758,7 @@
       },
       "select_store": "Select an active store at the top of the dashboard first: shipping settings are per store.",
       "saved": "Settings saved.",
+      "shared_environments": "These settings apply to both TEST and LIVE for this store.",
       "range_error": "Enter a whole number between {min} and {max}.",
       "routes": {
         "carrier_required": "Choose the carrier.",

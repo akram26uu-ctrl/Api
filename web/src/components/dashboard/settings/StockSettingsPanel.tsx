@@ -3,7 +3,7 @@ import { Info, Package } from 'lucide-react';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { Button } from '../../common/Button';
 import { Switch } from './Switch';
-import { LoadingCard, NoStoreNotice, NumberField, SaveBar, SwitchRow, isIntInRange, useShippingSettingsForm } from './shippingSettingsShared';
+import { LoadingCard, NoStoreNotice, NumberField, SaveBar, SwitchRow, isIntInRange, useShippingSettingsForm, SharedEnvironmentsHint } from './shippingSettingsShared';
 
 const FIELDS = ['out_of_stock_policy', 'low_stock_days', 'reserve_on_accept', 'disable_product_when_out'] as const;
 
@@ -56,6 +56,8 @@ export const StockSettingsPanel: React.FC<{ storeId: string; onNavigate?: (targe
           {onNavigate && <Button variant="outline" size="sm" onClick={() => onNavigate('inventory')} leftIcon={<Package className="w-3.5 h-3.5" />}>{t('settings.shipping.stock.open_inventory', 'افتح صفحة المخزون')}</Button>}
         </div>
       </div>
+
+      <SharedEnvironmentsHint />
 
       <SaveBar feedback={feedback} dirty={dirty} saving={saving} invalid={!isIntInRange(settings.low_stock_days, 1, 60)} onSave={() => void save()} label={t('settings.shipping.stock.save', 'حفظ إعدادات المخزون')} />
     </div>

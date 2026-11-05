@@ -3,7 +3,7 @@ import { Info } from 'lucide-react';
 import { ALGERIAN_WILAYAS } from '../../../lib/algeriaData';
 import type { ShippingSettings } from '../../../lib/api/types';
 import { useLanguage } from '../../../i18n/LanguageContext';
-import { LoadingCard, NoStoreNotice, SaveBar, useShippingSettingsForm } from './shippingSettingsShared';
+import { LoadingCard, NoStoreNotice, SaveBar, useShippingSettingsForm, SharedEnvironmentsHint } from './shippingSettingsShared';
 
 const FIELDS = ['pickup_name', 'pickup_wilaya', 'pickup_commune', 'pickup_phone', 'label_size'] as const;
 
@@ -65,6 +65,8 @@ export const PickupSettingsPanel: React.FC<{ storeId: string }> = ({ storeId }) 
           </label>
         ))}
       </fieldset>
+
+      <SharedEnvironmentsHint />
 
       <SaveBar feedback={feedback} dirty={dirty} saving={saving} invalid={phoneInvalid} onSave={() => void save()} label={t('settings.shipping.pickup.save', 'حفظ بيانات الاستلام')} />
     </div>

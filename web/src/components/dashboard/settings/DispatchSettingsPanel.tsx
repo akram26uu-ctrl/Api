@@ -3,7 +3,7 @@ import { Info } from 'lucide-react';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { Switch } from './Switch';
 import { ShippingRoutesEditor } from './ShippingRoutesEditor';
-import { LoadingCard, NoStoreNotice, NumberField, SaveBar, SwitchRow, isIntInRange, useShippingSettingsForm } from './shippingSettingsShared';
+import { LoadingCard, NoStoreNotice, NumberField, SaveBar, SwitchRow, isIntInRange, useShippingSettingsForm, SharedEnvironmentsHint } from './shippingSettingsShared';
 
 const FIELDS = ['auto_dispatch', 'dispatch_trigger', 'hold_minutes', 'confirmation_timeout_hours', 'retry_max', 'retry_interval_minutes', 'fallback_enabled'] as const;
 
@@ -60,6 +60,8 @@ export const DispatchSettingsPanel: React.FC<{ storeId: string }> = ({ storeId }
           <Switch checked={settings.fallback_enabled} onChange={value => patch({ fallback_enabled: value })} labelledBy="ship-fallback-label" disabled={saving} />
         </SwitchRow>
       </div>
+
+      <SharedEnvironmentsHint />
 
       <SaveBar feedback={feedback} dirty={dirty} saving={saving} invalid={invalid} onSave={() => void save()} label={t('settings.shipping.dispatch.save', 'حفظ إعدادات الإرسال')} />
 

@@ -25,6 +25,12 @@ export const NoStoreNotice: React.FC = () => {
   );
 };
 
+/** One shipping-settings row per store: the same values apply in TEST and LIVE. */
+export const SharedEnvironmentsHint: React.FC = () => {
+  const { t } = useLanguage();
+  return <p className="settings-hint">{t('settings.shipping.shared_environments', 'تُطبَّق هذه الإعدادات على بيئتي TEST وLIVE معًا لهذا المتجر.')}</p>;
+};
+
 export const LoadingCard: React.FC = () => {
   const { t } = useLanguage();
   return <div className="settings-card h-48 animate-pulse" role="status" aria-label={t('common.loading', 'جارٍ التحميل…')} />;

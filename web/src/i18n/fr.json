@@ -1759,6 +1759,7 @@
       },
       "select_store": "Sélectionnez d'abord une boutique active en haut du tableau de bord : les réglages d'expédition sont propres à chaque boutique.",
       "saved": "Réglages enregistrés.",
+      "shared_environments": "Ces réglages s’appliquent à la fois aux environnements TEST et LIVE de cette boutique.",
       "range_error": "Saisissez un nombre entier entre {min} et {max}.",
       "routes": {
         "carrier_required": "Choisissez le transporteur.",
