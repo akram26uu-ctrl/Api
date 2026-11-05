@@ -1,4 +1,4 @@
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
@@ -98,3 +98,43 @@ def test_audit_logged_on_link():
     with SessionLocal() as db:
         row = db.query(AuditLog).filter(AuditLog.merchant_id == merchant_id, AuditLog.action == "carrier_account.linked").first()
         assert row is not None and str(row.resource_id) == account_id
+
+
+def test_test_keeps_disabled_status():
+    _, store_id, h = _setup()
+    account_id = _link(h, store_id).json()["id"]
+    client.post(f"/api/v1/shipping/carriers/{account_id}/disable", headers=h)
+    r = client.post(f"/api/v1/shipping/carriers/{account_id}/test", headers=h)
+    assert r.status_code == 200 and r.json()["status"] == "disabled"
+
+
+def test_duplicate_link_409_and_relink_after_disable():
+    _, store_id, h = _setup()
+    first = _link(h, store_id).json()["id"]
+    dup = _link(h, store_id)
+    assert dup.status_code == 409 and dup.json()["detail"] == "carrier_already_linked"
+    client.post(f"/api/v1/shipping/carriers/{first}/disable", headers=h)
+    again = _link(h, store_id, {**BODY, "display_name": "Renamed"})
+    assert again.status_code == 201
+    assert again.json()["id"] == first and again.json()["status"] == "active"
+    assert again.json()["display_name"] == "Renamed"
+    assert len(client.get("/api/v1/shipping/carriers", headers=h).json()["accounts"]) == 1
+
+
+def test_delete_refused_when_shipment_exists():
+    from app.models.order import Order
+    from app.models.enums import OrderStatus
+    from app.models.shipment import Shipment
+    merchant_id, store_id, h = _setup()
+    account_id = _link(h, store_id).json()["id"]
+    with SessionLocal() as db:
+        order = Order(merchant_id=merchant_id, external_order_id=f"o-{uuid4()}", status=OrderStatus.PENDING,
+                      total_amount=100, currency="DZD", first_name="A", last_name="B",
+                      environment="test", data_origin="real")
+        db.add(order)
+        db.flush()
+        db.add(Shipment(merchant_id=merchant_id, order_id=order.id, environment="test",
+                        carrier_account_id=UUID(account_id), idempotency_key=str(uuid4())))
+        db.commit()
+    r = client.delete(f"/api/v1/shipping/carriers/{account_id}", headers=h)
+    assert r.status_code == 409 and r.json()["detail"] == "carrier_in_use"

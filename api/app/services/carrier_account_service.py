@@ -16,6 +16,14 @@ from app.services.carriers.registry import get_adapter
 on_linked: Callable[[Session, CarrierAccount, CarrierAdapter], None] = lambda db, account, adapter: None
 
 
+class CarrierAlreadyLinked(Exception):
+    pass
+
+
+class CarrierInUse(Exception):
+    pass
+
+
 class CarrierAccountService:
     def __init__(self, db: Session):
         self.db = db
@@ -52,12 +60,24 @@ class CarrierAccountService:
         # Raises CarrierNotAvailable / CarrierAuthError before anything is stored.
         adapter = get_adapter(carrier_code, credentials, environment)
         adapter.validate_credentials()
-        account = CarrierAccount(
-            merchant_id=merchant_id, store_id=store_id, environment=environment, carrier_code=carrier_code,
-            display_name=display_name, credentials_encrypted=self.encrypt_credentials(credentials),
-            status="active", last_sync_at=datetime.now(timezone.utc),
-        )
-        self.db.add(account)
+        existing = self.db.query(CarrierAccount).filter(
+            CarrierAccount.store_id == store_id, CarrierAccount.environment == environment,
+            CarrierAccount.carrier_code == carrier_code,
+        ).order_by(CarrierAccount.created_at.desc()).all()
+        if any(a.status != "disabled" for a in existing):
+            raise CarrierAlreadyLinked(carrier_code)
+        encrypted = self.encrypt_credentials(credentials)
+        now = datetime.now(timezone.utc)
+        if existing:
+            account = existing[0]
+            account.display_name, account.credentials_encrypted = display_name, encrypted
+            account.status, account.last_error, account.last_sync_at = "active", None, now
+        else:
+            account = CarrierAccount(
+                merchant_id=merchant_id, store_id=store_id, environment=environment, carrier_code=carrier_code,
+                display_name=display_name, credentials_encrypted=encrypted, status="active", last_sync_at=now,
+            )
+            self.db.add(account)
         self.db.flush()
         self._sync_warehouses(account, adapter)
         on_linked(self.db, account, adapter)
@@ -69,11 +89,13 @@ class CarrierAccountService:
             adapter = self.adapter_for(account)
             adapter.validate_credentials()
         except CarrierError as exc:
-            account.status = "error"
+            if account.status != "disabled":
+                account.status = "error"
             account.last_error = str(exc)[:500]
             self.db.flush()
             raise
-        account.status = "active"
+        if account.status != "disabled":
+            account.status = "active"
         account.last_error = None
         account.last_sync_at = datetime.now(timezone.utc)
         self.db.flush()
@@ -83,6 +105,9 @@ class CarrierAccountService:
         self.db.flush()
 
     def delete(self, account: CarrierAccount) -> None:
+        from app.models.shipment import Shipment
+        if self.db.query(Shipment.id).filter(Shipment.carrier_account_id == account.id).first() is not None:
+            raise CarrierInUse(str(account.id))
         self.db.query(CarrierWarehouse).filter(CarrierWarehouse.carrier_account_id == account.id).delete()
         self.db.delete(account)
         self.db.flush()

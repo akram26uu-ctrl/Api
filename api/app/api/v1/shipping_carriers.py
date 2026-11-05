@@ -13,7 +13,7 @@ from app.schemas.shipping import (
     CarrierAccountCreate, CarrierAccountResponse, CarrierListResponse, CarrierWarehouseResponse,
 )
 from app.services.audit_service import AuditService
-from app.services.carrier_account_service import CarrierAccountService
+from app.services.carrier_account_service import CarrierAccountService, CarrierAlreadyLinked, CarrierInUse
 from app.services.carriers.base import CarrierAuthError, CarrierError
 from app.services.carriers.registry import CarrierNotAvailable, available_carriers
 
@@ -68,6 +68,8 @@ def link_carrier(data: CarrierAccountCreate, store_id: str | None = Query(defaul
     try:
         account = CarrierAccountService(db).link(
             api_key.merchant_id, selected, api_key.environment, data.carrier_code, data.display_name, data.credentials)
+    except CarrierAlreadyLinked as exc:
+        raise HTTPException(409, "carrier_already_linked") from exc
     except CarrierNotAvailable as exc:
         raise HTTPException(409, "carrier_not_available") from exc
     except CarrierAuthError as exc:
@@ -116,8 +118,11 @@ def disable_carrier(account_id: str, store_id: str | None = Query(default=None),
 def delete_carrier(account_id: str, store_id: str | None = Query(default=None), db: Session = Depends(get_database),
                    api_key: ApiKey = Depends(require_api_scope("shipping:write"))):
     account = _get_account(db, api_key, account_id, store_id)
+    try:
+        CarrierAccountService(db).delete(account)
+    except CarrierInUse as exc:
+        raise HTTPException(409, "carrier_in_use") from exc
     _audit(db, api_key, "carrier_account.deleted", account)
-    CarrierAccountService(db).delete(account)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
