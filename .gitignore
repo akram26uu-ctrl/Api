@@ -60,3 +60,6 @@ Thumbs.db
 .claude/
 .impeccable/
 .router/
+
+# Database backups made by deploy scripts
+backups/
