@@ -1,4 +1,4 @@
-import { AccountSettingsUpdate, AuthSession, ChangePasswordPayload, LoginCredentials, RegisterPayload } from './types';
+import { AccountSettingsUpdate, AuthSession, ChangePasswordPayload, GoogleCallbackResult, GoogleProfile, GoogleSignupPayload, LoginCredentials, RegisterPayload } from './types';
 export interface SessionInfo { id:string; created_at:string; last_seen_at:string; expires_at:string; current:boolean; }
 import { ControlPlaneError, CONTROL_PLANE_CONFIG, controlPlaneFetch } from './controlPlane';
 import { OrdiumApiError } from './client';
@@ -67,6 +67,66 @@ export const authApi = {
         }),
       });
       return session;
+    } catch (error) {
+      throw fromControlPlaneError(error);
+    }
+  },
+
+  /** Whether the account service has Google sign-in configured. Never throws. */
+  async googleEnabled(): Promise<boolean> {
+    try {
+      const config = await controlPlaneFetch<{ enabled: boolean }>('/api/v1/auth/google/config', { method: 'GET' });
+      return Boolean(config?.enabled);
+    } catch {
+      return false;
+    }
+  },
+
+  /** Returns Google's consent URL; the account service keeps the one-time state in an HttpOnly cookie. */
+  async googleStart(): Promise<string> {
+    try {
+      const { authorization_url } = await controlPlaneFetch<{ authorization_url: string }>('/api/v1/auth/google/start', { method: 'POST', body: '{}' });
+      return authorization_url;
+    } catch (error) {
+      throw fromControlPlaneError(error);
+    }
+  },
+
+  async googleCallback(code: string, state: string): Promise<GoogleCallbackResult> {
+    try {
+      return await controlPlaneFetch<GoogleCallbackResult>('/api/v1/auth/google/callback', { method: 'POST', body: JSON.stringify({ code, state }) });
+    } catch (error) {
+      throw fromControlPlaneError(error);
+    }
+  },
+
+  async googlePending(): Promise<GoogleProfile> {
+    try {
+      return await controlPlaneFetch<GoogleProfile>('/api/v1/auth/google/pending', { method: 'GET' });
+    } catch (error) {
+      throw fromControlPlaneError(error);
+    }
+  },
+
+  async googleCompleteSignup(payload: GoogleSignupPayload): Promise<AuthSession> {
+    try {
+      return await controlPlaneFetch<AuthSession>('/api/v1/auth/google/complete-signup', {
+        method: 'POST',
+        body: JSON.stringify({
+          first_name: payload.first_name ?? '',
+          last_name: payload.last_name ?? '',
+          organization_name: payload.organization,
+          country: payload.country ?? 'Algeria',
+          wilaya: payload.wilaya ?? null,
+          city: payload.city ?? null,
+          website_url: payload.website_url ?? null,
+          ecommerce_platform: payload.ecommerce_platform ?? null,
+          business_type: payload.business_type ?? null,
+          primary_market: payload.primary_market ?? null,
+          phone: payload.phone ?? null,
+          monthly_orders: payload.monthly_orders ?? null,
+        }),
+      });
     } catch (error) {
       throw fromControlPlaneError(error);
     }

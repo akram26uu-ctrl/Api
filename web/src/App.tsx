@@ -31,6 +31,7 @@ const CompanyPage = lazy(() => import('./components/pages/CompanyPage').then(m =
 const LegalPage = lazy(() => import('./components/pages/LegalPage').then(m => ({ default: m.LegalPage })));
 const LoginPage = lazy(() => import('./components/pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./components/pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const GoogleCallbackPage = lazy(() => import('./components/pages/GoogleCallbackPage').then(m => ({ default: m.GoogleCallbackPage })));
 const VerifyEmailPage = lazy(() => import('./components/pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
 const ErrorPage = lazy(() => import('./components/pages/ErrorPage').then(m => ({ default: m.ErrorPage })));
 const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
@@ -104,6 +105,9 @@ export function AppContent() {
   if (currentPath === '/verify-email') {
     const token = new URLSearchParams(window.location.search).get('token') || '';
     return <VerifyEmailPage token={token} onNavigate={navigateTo} onVerified={handleLaunchDashboard} />;
+  }
+  if (currentPath === '/auth/google/callback' || currentPath === '/register/google') {
+    return <GoogleCallbackPage path={currentPath} onNavigate={navigateTo} onSignedIn={handleLaunchDashboard} />;
   }
   if (currentPath === '/register') return <RegisterPage onNavigate={navigateTo} onLaunchConsole={handleLaunchDashboard} />;
 

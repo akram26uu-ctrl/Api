@@ -29,5 +29,12 @@ Control Plane email verification is enabled for production. Verification tokens 
 
 The Control Plane `PUBLIC_BASE_URL` must be set to the deployed public Web URL (the domain serving the `/verify-email` route). Keep SMTP credentials in the Control Plane's server-side environment only.
 
+## Sign in with Google
+Optional. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the Control Plane to show "Continue with Google" on the sign-in and registration pages. In Google Cloud Console, create an OAuth client of type *Web application* and add the authorized redirect URI `PUBLIC_BASE_URL + /auth/google/callback`.
+
+- An existing account (linked earlier, or active with the same Google-verified email) is signed in directly.
+- A new email first goes to `/register/google`, where the merchant enters the store details Google does not provide (store name, monthly orders, wilaya, platform, phone). The workspace is created only after that form is submitted. These accounts have no password and skip email verification because Google has already verified the address.
+- A Google identity is never attached to an account still waiting for email verification.
+
 ## Dashboard data path
 The dashboard uses the real ORDIUM API by default. `MockDatabase` is only available when `VITE_ORDIUM_DEMO_MODE=true`; it is not part of the normal production path.

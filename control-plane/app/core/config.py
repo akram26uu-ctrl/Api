@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
     email_from: str | None = Field(default=None, alias="EMAIL_FROM")
     public_base_url: str = Field(default="http://localhost:3000", alias="PUBLIC_BASE_URL")
+    # Sign in with Google. Enabled only when both are set; register the redirect URI
+    # PUBLIC_BASE_URL + "/auth/google/callback" on the Google OAuth client.
+    google_client_id: str | None = Field(default=None, alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str | None = Field(default=None, alias="GOOGLE_CLIENT_SECRET")
+
+    @property
+    def google_enabled(self) -> bool:
+        return bool(self.google_client_id and self.google_client_secret)
 
     @model_validator(mode="after")
     def validate_production(self):

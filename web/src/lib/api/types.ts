@@ -454,6 +454,21 @@ export interface ChangePasswordPayload {
   new_password: string;
 }
 
+export interface GoogleProfile {
+  email: string;
+  first_name: string;
+  last_name: string;
+}
+
+export interface GoogleCallbackResult {
+  status: 'signed_in' | 'signup_required';
+  session?: AuthSession | null;
+  profile?: GoogleProfile | null;
+}
+
+/** Store details Google cannot provide; email and identity come from the verified Google sign-in. */
+export type GoogleSignupPayload = Omit<RegisterPayload, 'email' | 'password' | 'name'> & { organization: string };
+
 export interface LoginCredentials {
   email: string;
   password: string;

@@ -324,7 +324,10 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     if _account_locked(email):
         raise HTTPException(status_code=429, detail="Too many failed sign-in attempts for this account; try again in 15 minutes")
     user = db.scalar(select(User).where(User.email == email))
-    password_ok = verify_password(data.password, user.password_hash if user is not None else _DUMMY_PASSWORD_HASH)
+    # Google-only accounts have no password; checking against the dummy hash keeps timing uniform.
+    password_ok = verify_password(data.password, user.password_hash if user is not None and user.password_hash else _DUMMY_PASSWORD_HASH)
+    if user is not None and not user.password_hash:
+        password_ok = False
     if user is None or not password_ok:
         _record_failed_login(email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -381,6 +384,8 @@ def change_password(
     db: Session = Depends(get_db),
 ):
     _session, user, _membership = session_data
+    if not user.password_hash:
+        raise HTTPException(status_code=400, detail="This account signs in with Google and has no password to change")
     if not verify_password(data.current_password, user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     if data.current_password == data.new_password:

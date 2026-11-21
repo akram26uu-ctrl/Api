@@ -187,7 +187,22 @@
     "verify_request_new": "Request a new link",
     "session_signed_out": "You signed out in another tab. Sign in again to continue.",
     "session_expired": "Your session has ended for your security. Sign in again to continue where you left off.",
-    "account_locked": "Too many failed attempts for this account. Wait 15 minutes, then try again."
+    "account_locked": "Too many failed attempts for this account. Wait 15 minutes, then try again.",
+    "google": {
+      "continue": "Continue with Google",
+      "redirecting": "Opening Google…",
+      "or_email": "or with email",
+      "start_failed": "Google sign-in is unavailable right now. Please try again or use your email.",
+      "verifying": "Confirming your Google account…",
+      "cancelled": "Google sign-in was cancelled.",
+      "failed": "Google sign-in could not be completed. Please try again.",
+      "linked_elsewhere": "This email is already linked to a different Google account.",
+      "pending_verification": "An account with this email is waiting for email verification. Open the verification link we emailed you, or sign in with your password.",
+      "signup_expired": "Your Google sign-up expired. Continue with Google again to finish creating your account.",
+      "complete_title": "One last step: your store",
+      "complete_subtitle": "Google confirmed your email. Tell us about your store so ORDIUM can set up your workspace.",
+      "verified_email": "Signed in with Google as"
+    }
   },
   "hero": {
     "badge": "ORDIUM ORDER RISK ENGINE",

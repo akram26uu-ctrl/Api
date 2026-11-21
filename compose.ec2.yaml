@@ -103,6 +103,9 @@ services:
       REQUIRE_EMAIL_VERIFICATION: "true"
       EXPOSE_VERIFICATION_TOKEN: "false"
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?Set PUBLIC_BASE_URL in .env.ec2}
+      # Optional: "Continue with Google" appears only when both are set.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST in .env.ec2}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:?Set SMTP_USERNAME in .env.ec2}

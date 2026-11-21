@@ -16,6 +16,7 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { authApi } from '../../lib/api/auth';
 import { AuthSession } from '../../lib/api/types';
 import { OrdiumApiError } from '../../lib/api/client';
+import { GoogleSignInButton } from '../common/GoogleSignInButton';
 
 interface LoginPageProps {
   onNavigate: (path: string) => void;
@@ -159,6 +160,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
             )}
             <div className="mb-5">
               <FormAlert message={errorMessage} requestId={requestId} focusKey={submitCount} />
+            </div>
+
+            <div className="mb-5">
+              <GoogleSignInButton onError={setErrorMessage} disabled={isLoading} />
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>

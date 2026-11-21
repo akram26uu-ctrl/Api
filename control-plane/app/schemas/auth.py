@@ -120,3 +120,55 @@ class SessionInfo(BaseModel):
     last_seen_at: datetime
     expires_at: datetime
     current: bool = False
+
+
+class GoogleConfigResponse(BaseModel):
+    enabled: bool
+
+
+class GoogleStartResponse(BaseModel):
+    authorization_url: str
+
+
+class GoogleCallbackRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=2048)
+    state: str = Field(min_length=16, max_length=256)
+
+
+class GoogleProfile(BaseModel):
+    email: EmailStr
+    first_name: str
+    last_name: str
+
+
+class GoogleCallbackResponse(BaseModel):
+    # "signed_in": an existing account was opened and the session cookie is set.
+    # "signup_required": Google confirmed the identity but no ORDIUM account exists yet;
+    # the client must collect the store details and call /auth/google/complete-signup.
+    status: str
+    session: SessionResponse | None = None
+    profile: GoogleProfile | None = None
+
+
+class GoogleSignupRequest(BaseModel):
+    """Store details Google cannot provide. Email and identity come from the verified Google sign-in."""
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+    organization_name: str = Field(min_length=2, max_length=255)
+    country: str = Field(default="Algeria", min_length=2, max_length=100)
+    wilaya: str | None = Field(default=None, max_length=100)
+    city: str | None = Field(default=None, max_length=100)
+    website_url: HttpUrl | None = None
+    ecommerce_platform: str | None = Field(default=None, max_length=100)
+    business_type: str | None = Field(default=None, max_length=100)
+    primary_market: str | None = Field(default=None, max_length=100)
+    phone: str | None = Field(default=None, max_length=32)
+    monthly_orders: str | None = Field(default=None, max_length=64)
+
+    @field_validator("first_name", "last_name", "organization_name", "country")
+    @classmethod
+    def reject_blank_required_fields(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("This field must not be blank")
+        return normalized

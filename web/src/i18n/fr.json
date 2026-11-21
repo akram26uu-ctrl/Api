@@ -188,7 +188,22 @@
     "workspace_status_ready": "Espace prêt",
     "session_signed_out": "Vous vous êtes déconnecté dans un autre onglet. Reconnectez-vous pour continuer.",
     "session_expired": "Votre session a pris fin pour votre sécurité. Reconnectez-vous pour reprendre là où vous en étiez.",
-    "account_locked": "Trop de tentatives échouées pour ce compte. Patientez 15 minutes puis réessayez."
+    "account_locked": "Trop de tentatives échouées pour ce compte. Patientez 15 minutes puis réessayez.",
+    "google": {
+      "continue": "Continuer avec Google",
+      "redirecting": "Ouverture de Google…",
+      "or_email": "ou par e-mail",
+      "start_failed": "La connexion Google est indisponible pour le moment. Réessayez ou utilisez votre e-mail.",
+      "verifying": "Confirmation de votre compte Google…",
+      "cancelled": "La connexion Google a été annulée.",
+      "failed": "La connexion Google n'a pas pu aboutir. Veuillez réessayer.",
+      "linked_elsewhere": "Cet e-mail est déjà associé à un autre compte Google.",
+      "pending_verification": "Un compte avec cet e-mail attend la vérification de l'adresse. Ouvrez le lien de vérification envoyé par e-mail, ou connectez-vous avec votre mot de passe.",
+      "signup_expired": "Votre inscription Google a expiré. Continuez avec Google à nouveau pour terminer la création de votre compte.",
+      "complete_title": "Dernière étape : votre boutique",
+      "complete_subtitle": "Google a confirmé votre e-mail. Parlez-nous de votre boutique pour que ORDIUM prépare votre espace.",
+      "verified_email": "Connecté avec Google en tant que"
+    }
   },
   "hero": {
     "badge": "MOTEUR DE RISQUE DES COMMANDES ORDIUM",

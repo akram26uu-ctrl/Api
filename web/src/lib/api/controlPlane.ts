@@ -78,8 +78,9 @@ export async function controlPlaneFetch<T>(endpoint: string, options: RequestIni
   // Only surface a reference ID the server actually issued; a locally invented one cannot be traced.
   const requestId = response.headers.get('X-Request-ID') || '';
   // A 401 on any authenticated account route means the session ended (expired or revoked).
-  // Sign-in itself answers 401 for wrong credentials, so it is excluded.
-  if (response.status === 401 && !endpoint.startsWith('/api/v1/auth/login') && !endpoint.startsWith('/api/v1/auth/me')) {
+  // Sign-in itself answers 401 for wrong credentials, and Google sign-up answers 401 when its
+  // pending sign-up expired (there is no session yet), so both are excluded.
+  if (response.status === 401 && !endpoint.startsWith('/api/v1/auth/login') && !endpoint.startsWith('/api/v1/auth/me') && !endpoint.startsWith('/api/v1/auth/google/')) {
     notifySessionExpired();
   }
   if (!response.ok) {

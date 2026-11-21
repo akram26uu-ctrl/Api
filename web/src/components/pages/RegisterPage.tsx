@@ -5,6 +5,8 @@
  * - Algerian market localization: 58 Wilayas, localized names, phone prefix (+213)
  * - Password strength meter aligned with the enforced password policy
  * - Connects to the typed authApi.register (no mock authentication, no tokens in localStorage)
+ * - Google mode: after "Continue with Google" the verified email and name come from Google, so only
+ *   the store details Google cannot provide are collected (no password, no email verification)
  * - Fully responsive with RTL support for Arabic, French, and English
  */
 
@@ -21,11 +23,17 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { bidiIsolate } from '../marketing/Bidi';
 import { authApi } from '../../lib/api/auth';
 import { OrdiumApiError } from '../../lib/api/client';
+import { AuthSession, GoogleProfile } from '../../lib/api/types';
+import { GoogleSignInButton } from '../common/GoogleSignInButton';
 import { ALGERIAN_WILAYAS, ECOMMERCE_PLATFORMS, MONTHLY_VOLUME_OPTIONS, BUSINESS_TYPES } from '../../lib/algeriaData';
 
 interface RegisterPageProps {
   onNavigate: (path: string) => void;
   onLaunchConsole?: () => void;
+  /** Set after a Google sign-in for an email without an ORDIUM account. */
+  googleProfile?: GoogleProfile | null;
+  /** Called with the new session once a Google sign-up has created the workspace. */
+  onGoogleSignupComplete?: (session: AuthSession) => void;
 }
 
 type FieldName = 'firstName' | 'lastName' | 'email' | 'organization' | 'password' | 'confirmPassword' | 'terms';
@@ -51,15 +59,16 @@ const FieldLabel: React.FC<{ htmlFor: string; required?: boolean; children: Reac
   </label>
 );
 
-export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunchConsole }) => {
+export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunchConsole, googleProfile, onGoogleSignupComplete }) => {
   const { t, language, isRTL } = useLanguage();
   const uid = useId();
   const fid = (name: string) => `${uid}-${name}`;
 
   // Form state
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  const isGoogle = Boolean(googleProfile);
+  const [firstName, setFirstName] = useState(googleProfile?.first_name ?? '');
+  const [lastName, setLastName] = useState(googleProfile?.last_name ?? '');
+  const [email, setEmail] = useState(googleProfile?.email ?? '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [organization, setOrganization] = useState('');
@@ -81,6 +90,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
   const [submitCount, setSubmitCount] = useState(0);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [googleExpired, setGoogleExpired] = useState(false);
   const [verificationRequired, setVerificationRequired] = useState(false);
   const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [verificationResendMessage, setVerificationResendMessage] = useState('');
@@ -128,39 +138,54 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
 
     if (!firstName.trim()) return fail('firstName', t('auth.errors.first_name_required', 'First name is required.'));
     if (!lastName.trim()) return fail('lastName', t('auth.errors.last_name_required', 'Last name is required.'));
-    if (!email.trim()) return fail('email', t('auth.errors.email_required', 'Email address is required.'));
-    if (!EMAIL_PATTERN.test(email.trim())) return fail('email', t('auth.errors.email_invalid', 'Please enter a valid work email address.'));
+    if (!isGoogle) {
+      if (!email.trim()) return fail('email', t('auth.errors.email_required', 'Email address is required.'));
+      if (!EMAIL_PATTERN.test(email.trim())) return fail('email', t('auth.errors.email_invalid', 'Please enter a valid work email address.'));
+    }
     if (!organization.trim()) return fail('organization', t('auth.errors.organization_required', 'Store or company name is required.'));
-    if (!password) return fail('password', t('auth.errors.password_required', 'Password is required.'));
-    if (!meetsPolicy) return fail('password', t('auth.errors.password_policy', 'Password must be at least 12 characters and include uppercase, lowercase, and numeric characters.'));
-    if (password !== confirmPassword) return fail('confirmPassword', t('auth.errors.password_mismatch', 'Passwords do not match.'));
+    if (!isGoogle) {
+      if (!password) return fail('password', t('auth.errors.password_required', 'Password is required.'));
+      if (!meetsPolicy) return fail('password', t('auth.errors.password_policy', 'Password must be at least 12 characters and include uppercase, lowercase, and numeric characters.'));
+      if (password !== confirmPassword) return fail('confirmPassword', t('auth.errors.password_mismatch', 'Passwords do not match.'));
+    }
     if (!agreedToTerms) return fail('terms', t('auth.errors.terms_required', 'You must accept the Terms of Service and Privacy Policy to continue.'));
+
+    const storeDetails = {
+      organization: organization.trim(),
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      phone: phone ? `+213${phone.replace(/\D/g, '')}` : undefined,
+      country: 'Algeria',
+      wilaya: wilaya || undefined,
+      city: city.trim() || undefined,
+      website_url: websiteUrl.trim() || undefined,
+      business_type: businessType,
+      ecommerce_platform: platform,
+      monthly_orders: monthlyVolume,
+      primary_market: primaryMarket,
+    };
 
     setIsLoading(true);
     try {
-      const session = await authApi.register({
-        email: email.trim(),
-        password,
-        organization: organization.trim(),
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        phone: phone ? `+213${phone.replace(/\D/g, '')}` : undefined,
-        country: 'Algeria',
-        wilaya: wilaya || undefined,
-        city: city.trim() || undefined,
-        website_url: websiteUrl.trim() || undefined,
-        business_type: businessType,
-        ecommerce_platform: platform,
-        monthly_orders: monthlyVolume,
-        primary_market: primaryMarket,
-      });
+      if (isGoogle) {
+        const session = await authApi.googleCompleteSignup(storeDetails);
+        if (onGoogleSignupComplete) onGoogleSignupComplete(session);
+        else onLaunchConsole?.();
+        return;
+      }
+      const session = await authApi.register({ ...storeDetails, email: email.trim(), password });
       setVerificationRequired(Boolean(session.verification_required));
       setIsSuccess(true);
       window.scrollTo({ top: 0 });
     } catch (err: unknown) {
       if (err instanceof OrdiumApiError) {
         setRequestId(err.requestId || null);
-        if (err.statusCode === 409) fail('email', t('auth.errors.conflict_email', 'An account with this email address already exists.'));
+        if (isGoogle && err.statusCode === 401) {
+          setGoogleExpired(true);
+          setErrorMessage(t('auth.google.signup_expired', 'Your Google sign-up expired. Continue with Google again to finish creating your account.'));
+        }
+        else if (isGoogle && err.statusCode === 409) setErrorMessage(t('auth.errors.conflict_email', 'An account with this email address already exists.'));
+        else if (err.statusCode === 409) fail('email', t('auth.errors.conflict_email', 'An account with this email address already exists.'));
         else if (err.statusCode === 429) setErrorMessage(t('auth.errors.rate_limited', 'Too many attempts. Please try again later.'));
         else if (err.statusCode === 0) setErrorMessage(t('auth.errors.network', 'Unable to reach ORDIUM. Check your connection and try again.'));
         else setErrorMessage(err.message || t('auth.errors.server_error', 'Something went wrong. Please try again.'));
@@ -221,10 +246,12 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
               <Shield aria-hidden="true" className="w-6 h-6 text-[#22D3EE]" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              {t('auth.register_title', 'Create your ORDIUM Account')}
+              {isGoogle ? t('auth.google.complete_title', 'One last step: your store') : t('auth.register_title', 'Create your ORDIUM Account')}
             </h1>
             <p className="text-sm text-[#A5B1C3] max-w-xl mx-auto leading-relaxed">
-              {t('auth.register_subtitle', 'Deploy deterministic order risk intelligence and protect your e-commerce operations.')}
+              {isGoogle
+                ? t('auth.google.complete_subtitle', 'Google confirmed your email. Tell us about your store so ORDIUM can set up your workspace.')
+                : t('auth.register_subtitle', 'Deploy deterministic order risk intelligence and protect your e-commerce operations.')}
             </p>
           </div>
 
@@ -293,6 +320,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
           ) : (
             <form onSubmit={handleSubmit} className="space-y-9" noValidate>
               <FormAlert message={errorMessage} requestId={requestId} focusKey={errorField ? undefined : submitCount} />
+              {isGoogle && googleExpired && <GoogleSignInButton onError={setErrorMessage} />}
+              {!isGoogle && <GoogleSignInButton onError={setErrorMessage} disabled={isLoading} />}
 
               <p className="text-xs text-[#A5B1C3] text-start">
                 <span className="text-[#52D9E8]" aria-hidden="true">*</span> {t('ui.required_fields', 'Required fields')}
@@ -315,6 +344,15 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                   </div>
                 </div>
 
+                {isGoogle ? (
+                  <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/[0.06] p-3.5 flex items-start gap-3 text-start">
+                    <CheckCircle2 aria-hidden="true" className="w-4 h-4 text-emerald-300 shrink-0 mt-0.5" />
+                    <p className="text-sm text-[#CFE9DD] leading-relaxed min-w-0">
+                      {t('auth.google.verified_email', 'Signed in with Google as')}{' '}
+                      <span dir="ltr" className="font-mono text-white break-all">{email}</span>
+                    </p>
+                  </div>
+                ) : (<>
                 <div>
                   <FieldLabel htmlFor={fid('email')} required>{t('auth.email_label', 'Work Email')}</FieldLabel>
                   <div className="relative" dir="ltr">
@@ -380,6 +418,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onLaunch
                     ))}
                   </ul>
                 </div>
+                </>)}
               </Section>
 
               {/* Group 2: Business & regional identity */}
